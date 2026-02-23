@@ -214,6 +214,7 @@ const comments = ref([
 <style lang="scss" scoped>
 .dashboard {
   padding: 0;
+  min-height: 100%;
 }
 
 .mb-6 {
@@ -222,10 +223,15 @@ const comments = ref([
 
 // 统计卡片
 .stat-card {
-  border-radius: 12px;
-  
+  border-radius: var(--border-radius-lg);
+  transition: all var(--transition-fast);
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+  }
+
   :deep(.el-card__body) {
-    padding: 20px;
+    padding: var(--spacing-lg);
   }
 
   .stat-content {
@@ -235,15 +241,16 @@ const comments = ref([
     margin-bottom: 16px;
 
     .stat-icon {
-      width: 60px;
-      height: 60px;
-      border-radius: 12px;
+      width: 56px;
+      height: 56px;
+      border-radius: var(--border-radius);
       display: flex;
       align-items: center;
       justify-content: center;
-      
+      flex-shrink: 0;
+
       .el-icon {
-        font-size: 28px;
+        font-size: 26px;
         color: #fff;
       }
     }
@@ -254,13 +261,13 @@ const comments = ref([
       .stat-value {
         font-size: 28px;
         font-weight: 700;
-        color: #333;
-        line-height: 1;
+        color: var(--text-primary);
+        line-height: 1.2;
       }
 
       .stat-label {
         font-size: 13px;
-        color: #999;
+        color: var(--text-secondary);
         margin-top: 4px;
       }
     }
@@ -272,19 +279,46 @@ const comments = ref([
     gap: 4px;
     font-size: 13px;
     padding-top: 12px;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid var(--border-color);
+    color: var(--text-secondary);
+
+    .el-icon {
+      font-size: 14px;
+    }
 
     &.positive {
-      color: #67c23a;
+      color: #10b981;
     }
 
     &.negative {
-      color: #f56c6c;
+      color: #ef4444;
     }
   }
 }
 
 // 卡片通用样式
+:deep(.el-card) {
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+  }
+
+  .el-card__header {
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+  }
+
+  .el-card__body {
+    padding: var(--spacing-lg);
+  }
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -292,9 +326,9 @@ const comments = ref([
 }
 
 .card-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 // 分类列表
@@ -313,12 +347,22 @@ const comments = ref([
       font-size: 14px;
 
       .category-name {
-        color: #333;
+        color: var(--text-primary);
         font-weight: 500;
       }
 
       .category-count {
-        color: #999;
+        color: var(--text-secondary);
+      }
+    }
+
+    :deep(.el-progress) {
+      .el-progress__bar {
+        border-radius: 4px;
+      }
+
+      .el-progress__text {
+        font-size: 12px !important;
       }
     }
   }
@@ -330,6 +374,12 @@ const comments = ref([
   display: flex;
   align-items: center;
   justify-content: center;
+
+  :deep(.el-empty) {
+    .el-empty__description {
+      color: var(--text-secondary);
+    }
+  }
 }
 
 // 热门文章
@@ -345,26 +395,49 @@ const comments = ref([
   color: #fff;
 
   &.rank-1 {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    background: #ef4444;
   }
 
   &.rank-2 {
-    background: linear-gradient(135deg, #ffa940 0%, #ff8c00 100%);
+    background: #f97316;
   }
 
   &.rank-3 {
-    background: linear-gradient(135deg, #ffd666 0%, #faad14 100%);
+    background: #f59e0b;
   }
 
   &.rank-4,
   &.rank-5 {
-    background: #d9d9d9;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
   }
 }
 
 :deep(.el-table) {
-  .el-table__row:hover {
-    background-color: #f5f5f5;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--bg-tertiary);
+  --el-table-text-color: var(--text-primary);
+  --el-table-header-text-color: var(--text-secondary);
+  --el-table-border-color: var(--border-color);
+
+  .el-table__header th {
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  .el-table__row {
+    td {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    &:hover {
+      background: var(--bg-tertiary) !important;
+    }
+  }
+
+  .el-table__cell {
+    font-size: 14px;
   }
 }
 
@@ -374,10 +447,14 @@ const comments = ref([
     display: flex;
     gap: 12px;
     padding: 12px 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--border-color);
 
     &:last-child {
       border-bottom: none;
+    }
+
+    :deep(.el-avatar) {
+      border: 2px solid var(--bg-tertiary);
     }
 
     .comment-content {
@@ -387,20 +464,20 @@ const comments = ref([
       .comment-user {
         font-size: 14px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
         margin-bottom: 4px;
       }
 
       .comment-text {
         font-size: 13px;
-        color: #666;
+        color: var(--text-secondary);
         margin-bottom: 6px;
         line-height: 1.5;
       }
 
       .comment-meta {
         font-size: 12px;
-        color: #999;
+        color: var(--text-tertiary);
         display: flex;
         gap: 12px;
       }
@@ -412,6 +489,12 @@ const comments = ref([
 @media (max-width: 768px) {
   .stat-card {
     margin-bottom: 16px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
   }
 }
 </style>
