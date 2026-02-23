@@ -100,7 +100,7 @@
       </div>
 
       <!-- 编辑器区域 -->
-      <div class="editor-panel">
+      <div class="editor-panel" ref="editorPanelRef">
         <!-- 工具栏 -->
         <div class="toolbar">
           <div class="toolbar-left">
@@ -124,6 +124,10 @@
             <el-button link :class="{ active: showPreview }" @click="togglePreview">
               <el-icon><View /></el-icon>
               {{ showPreview ? '编辑' : '预览' }}
+            </el-button>
+            <el-divider direction="vertical" />
+            <el-button link :class="{ active: isFullscreen }" @click="toggleFullscreen" title="全屏">
+              <el-icon><FullScreen /></el-icon>
             </el-button>
           </div>
         </div>
@@ -160,7 +164,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import MarkdownIt from 'markdown-it'
@@ -175,7 +179,8 @@ import {
   Picture as PictureIcon,
   View,
   InfoFilled,
-  Edit as EditIcon
+  Edit as EditIcon,
+  FullScreen
 } from '@element-plus/icons-vue'
 import { createArticle, updateArticle, getArticleDetail } from '@/api/article'
 import { getCategoryList } from '@/api/category'
@@ -197,6 +202,8 @@ const tags = ref([])
 const showPreview = ref(false)
 const saving = ref(false)
 const publishing = ref(false)
+const isFullscreen = ref(false)
+const editorPanelRef = ref(null)
 
 const articleForm = reactive({
   id: null,
@@ -229,6 +236,32 @@ const togglePreview = () => {
     })
   }
 }
+
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value
+  if (isFullscreen.value) {
+    document.documentElement.classList.add('editor-fullscreen')
+  } else {
+    document.documentElement.classList.remove('editor-fullscreen')
+  }
+}
+
+// 监听 ESC 键退出全屏
+const handleEscKey = (e) => {
+  if (e.key === 'Escape' && isFullscreen.value) {
+    isFullscreen.value = false
+    document.documentElement.classList.remove('editor-fullscreen')
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', handleEscKey)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleEscKey)
+  document.documentElement.classList.remove('editor-fullscreen')
+})
 
 const handleScroll = () => {
   if (showPreview.value && previewRef.value) {
@@ -366,7 +399,66 @@ onMounted(() => {
   height: 100vh;
   background: var(--bg-primary);
 }
+</style>
 
+<style lang="scss">
+// 全屏模式 - 不使用 scoped
+.editor-fullscreen {
+  .article-editor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background: var(--bg-primary);
+  }
+
+  .editor-header {
+    display: none !important;
+  }
+
+  .form-panel {
+    display: none !important;
+  }
+
+  .editor-body {
+    padding: 0 !important;
+    gap: 0 !important;
+    height: 100vh !important;
+  }
+
+  .editor-panel {
+    width: 100% !important;
+    height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .editor-container {
+    height: calc(100vh - 41px) !important;
+  }
+
+  .editor-wrapper,
+  .preview-wrapper {
+    height: 100% !important;
+  }
+
+  .markdown-editor {
+    height: 100% !important;
+  }
+
+  .toolbar-right {
+    .el-button:last-child {
+      color: #409EFF !important;
+      background: rgba(64, 158, 255, 0.1) !important;
+    }
+  }
+}
+</style>
+
+<style lang="scss" scoped>
 // 顶部 header
 .editor-header {
   display: flex;
