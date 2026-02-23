@@ -10,23 +10,21 @@
       <el-menu
         :default-active="activeMenu"
         class="sidebar-menu"
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
         :collapse="sidebarCollapsed"
         router
+        @select="handleMenuSelect"
       >
-        <el-menu-item index="/admin/dashboard">
-          <el-icon><DataAnalysis /></el-icon>
+        <el-menu-item index="/admin/dashboard" route="/admin/dashboard">
+          <el-icon><Document /></el-icon>
           <template #title>控制台</template>
         </el-menu-item>
-        
-        <el-menu-item index="/admin/articles">
+
+        <el-menu-item index="/admin/articles" route="/admin/articles">
           <el-icon><Document /></el-icon>
           <template #title>文章管理</template>
         </el-menu-item>
-        
-        <el-menu-item index="/admin/create">
+
+        <el-menu-item index="/admin/create" route="/admin/create">
           <el-icon><Edit /></el-icon>
           <template #title>写文章</template>
         </el-menu-item>
@@ -47,8 +45,8 @@
         <div class="header-left">
           <el-button link class="collapse-btn" @click="toggleSidebar">
             <el-icon>
-              <Fold v-if="!sidebarCollapsed" />
-              <Expand v-else />
+              <ArrowLeft v-if="!sidebarCollapsed" />
+              <ArrowRight v-else />
             </el-icon>
           </el-button>
           <el-breadcrumb separator="/">
@@ -86,12 +84,11 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  DataAnalysis,
+  ArrowLeft,
+  ArrowRight,
   Document,
   Edit,
-  HomeFilled,
-  Fold,
-  Expand
+  HomeFilled
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -114,6 +111,10 @@ const breadcrumb = computed(() => {
 
 const toggleSidebar = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value
+}
+
+const handleMenuSelect = (index) => {
+  router.push(index)
 }
 
 const goHome = () => {
@@ -172,7 +173,7 @@ const handleCommand = async (command) => {
 
     .logo,
     .logo-short {
-      color: var(--text-primary);
+      color: var(--color-primary);
       font-size: 16px;
       font-weight: 600;
       margin: 0;
