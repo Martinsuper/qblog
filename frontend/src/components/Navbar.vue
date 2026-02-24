@@ -7,8 +7,7 @@
         </router-link>
 
         <nav class="navbar-menu">
-          <router-link to="/" class="nav-link" active-class="active">首页</router-link>
-          <router-link to="/articles" class="nav-link" active-class="active">文章</router-link>
+          <router-link to="/" class="nav-link" exact-active-class="active">首页</router-link>
         </nav>
 
         <div class="navbar-right">

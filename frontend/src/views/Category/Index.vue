@@ -4,7 +4,7 @@
       <h3 class="text-lg font-semibold mb-4" style="color: var(--text-primary)">
         分类：{{ categoryName }}
       </h3>
-      <ArticleList :category-id="categoryId" />
+      <ArticleList :category-id="categoryId" :show-sidebar="false" />
     </div>
   </div>
 </template>
