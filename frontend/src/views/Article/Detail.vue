@@ -335,6 +335,9 @@ onMounted(() => {
     border: 1px solid #eaecef;
     border-radius: 6px;
     text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
     img {
       max-width: 100%;

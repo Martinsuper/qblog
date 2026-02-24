@@ -610,6 +610,11 @@ onMounted(() => {
       background: rgba(64, 158, 255, 0.1) !important;
     }
   }
+
+  // 确保 dropdown 菜单在全屏模式下也能正常显示
+  .el-dropdown__popper {
+    z-index: 10000 !important;
+  }
 }
 </style>
 
@@ -990,6 +995,9 @@ onMounted(() => {
         border-radius: var(--border-radius);
         border: 1px solid var(--border-color);
         text-align: center;
+        display: flex;
+        justify-content: center;
+        align-items: center;
 
         img {
           max-width: 100%;
