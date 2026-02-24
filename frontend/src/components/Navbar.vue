@@ -8,6 +8,7 @@
 
         <nav class="navbar-menu">
           <router-link to="/" class="nav-link" exact-active-class="active">首页</router-link>
+          <router-link to="/archives" class="nav-link" active-class="active">时间轴</router-link>
           <router-link to="/categories" class="nav-link" active-class="active">分类</router-link>
           <router-link to="/tags" class="nav-link" active-class="active">标签</router-link>
         </nav>

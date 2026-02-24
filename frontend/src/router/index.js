@@ -19,6 +19,11 @@ const router = createRouter({
       component: () => import('@/views/Article/Detail.vue')
     },
     {
+      path: '/archives',
+      name: 'archive',
+      component: () => import('@/views/Archive/Index.vue')
+    },
+    {
       path: '/categories',
       name: 'category-list',
       component: () => import('@/views/Category/List.vue')

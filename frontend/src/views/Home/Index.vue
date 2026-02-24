@@ -20,7 +20,7 @@
         </div>
 
         <div v-if="articleList.length > 0" class="mt-8 text-center">
-          <el-button @click="$router.push('/articles')">查看更多文章</el-button>
+          <el-button @click="$router.push('/archives')">查看更多文章</el-button>
         </div>
 
         <el-empty v-if="articleList.length === 0 && !topArticle" description="暂无文章" class="py-12" />
