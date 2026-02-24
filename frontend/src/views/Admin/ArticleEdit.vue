@@ -341,8 +341,8 @@ const insertText = (before, after = '') => {
 // PlantUML 模板
 const plantUMLTemplates = {
   sequence: `@startuml
-用户 -> 系统：请求
-系统 --> 用户：响应
+用户 -> 系统: 请求
+系统 --> 用户: 响应
 @enduml`,
   class: `@startuml
 class User {
