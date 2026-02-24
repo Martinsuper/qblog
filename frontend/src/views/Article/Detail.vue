@@ -105,9 +105,23 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import MarkdownIt from 'markdown-it'
+import plantumlEncoder from 'plantuml-encoder'
 import { getArticleDetail, likeArticle } from '@/api/article'
 
 const route = useRoute()
+
+// PlantUML 渲染函数
+const renderPlantUML = (code) => {
+  try {
+    const encoded = plantumlEncoder.encode(code)
+    return `<div class="plantuml-diagram"><img src="https://www.plantuml.com/plantuml/svg/${encoded}" alt="PlantUML Diagram" /></div>`
+  } catch (error) {
+    console.error('PlantUML 渲染失败:', error)
+    return `<div class="plantuml-error">PlantUML 渲染失败</div>`
+  }
+}
+
+// 创建 Markdown 实例
 const md = new MarkdownIt({
   html: true,
   linkify: true,
@@ -116,6 +130,21 @@ const md = new MarkdownIt({
     return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>'
   }
 })
+
+// 重写代码块渲染，支持 PlantUML
+const defaultFenceRenderer = md.renderer.rules.fence
+md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+  const token = tokens[idx]
+  const info = token.info ? token.info.trim() : ''
+  
+  // 检查是否是 PlantUML 代码块
+  if (info === 'plantuml' || info === 'puml') {
+    return renderPlantUML(token.content)
+  }
+  
+  // 默认代码块渲染
+  return defaultFenceRenderer(tokens, idx, options, env, self)
+}
 
 const article = ref(null)
 const commentContent = ref('')
@@ -296,6 +325,31 @@ onMounted(() => {
       font-size: 14px;
       line-height: 1.45;
     }
+  }
+
+  // PlantUML 图表样式
+  :deep(.plantuml-diagram) {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #eaecef;
+    border-radius: 6px;
+    text-align: center;
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+  }
+
+  :deep(.plantuml-error) {
+    margin: 16px 0;
+    padding: 12px 16px;
+    background: #fef0f0;
+    border: 1px solid #fde2e2;
+    border-radius: 6px;
+    color: #f56c6c;
+    font-size: 14px;
   }
 
   :deep(a) {

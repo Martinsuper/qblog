@@ -77,6 +77,11 @@ const router = createRouter({
           path: 'create',
           name: 'admin-article-create',
           component: () => import('@/views/Admin/ArticleEdit.vue')
+        },
+        {
+          path: 'categories',
+          name: 'admin-categories',
+          component: () => import('@/views/Admin/CategoryManage.vue')
         }
       ]
     }

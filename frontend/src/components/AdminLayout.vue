@@ -28,6 +28,11 @@
           <el-icon><Edit /></el-icon>
           <template #title>写文章</template>
         </el-menu-item>
+
+        <el-menu-item index="/admin/categories" route="/admin/categories">
+          <el-icon><Folder /></el-icon>
+          <template #title>分类管理</template>
+        </el-menu-item>
       </el-menu>
       
       <div class="sidebar-footer">
@@ -88,6 +93,7 @@ import {
   ArrowRight,
   Document,
   Edit,
+  Folder,
   HomeFilled
 } from '@element-plus/icons-vue'
 

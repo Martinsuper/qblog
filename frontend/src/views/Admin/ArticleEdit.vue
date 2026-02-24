@@ -119,6 +119,22 @@
             <el-button link @click="insertText('![', '](url)')" title="图片">
               <el-icon><PictureIcon /></el-icon>
             </el-button>
+            <el-divider direction="vertical" />
+            <el-dropdown trigger="click">
+              <el-button link title="插入图表">
+                <el-icon><Connection /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="insertPlantUML('sequence')">时序图</el-dropdown-item>
+                  <el-dropdown-item @click="insertPlantUML('class')">类图</el-dropdown-item>
+                  <el-dropdown-item @click="insertPlantUML('usecase')">用例图</el-dropdown-item>
+                  <el-dropdown-item @click="insertPlantUML('activity')">活动图</el-dropdown-item>
+                  <el-dropdown-item @click="insertPlantUML('component')">组件图</el-dropdown-item>
+                  <el-dropdown-item @click="insertPlantUML('deployment')">部署图</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
           <div class="toolbar-right">
             <el-button link :class="{ active: showPreview }" @click="togglePreview">
@@ -168,6 +184,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import MarkdownIt from 'markdown-it'
+import plantumlEncoder from 'plantuml-encoder'
 import {
   ArrowLeft,
   Download,
@@ -180,7 +197,8 @@ import {
   View,
   InfoFilled,
   Edit as EditIcon,
-  FullScreen
+  FullScreen,
+  Connection
 } from '@element-plus/icons-vue'
 import { createArticle, updateArticle, getArticleDetail } from '@/api/article'
 import { getCategoryList } from '@/api/category'
@@ -188,11 +206,39 @@ import { getTagList } from '@/api/tag'
 
 const route = useRoute()
 const router = useRouter()
+
+// PlantUML 渲染函数
+const renderPlantUML = (code) => {
+  try {
+    const encoded = plantumlEncoder.encode(code)
+    return `<div class="plantuml-diagram"><img src="https://www.plantuml.com/plantuml/svg/${encoded}" alt="PlantUML Diagram" /></div>`
+  } catch (error) {
+    console.error('PlantUML 渲染失败:', error)
+    return `<div class="plantuml-error">PlantUML 渲染失败：${error.message}</div>`
+  }
+}
+
+// 创建 Markdown 实例并配置插件
 const md = new MarkdownIt({
   breaks: true,
   linkify: true,
   typographer: true
 })
+
+// 重写代码块渲染，支持 PlantUML
+const defaultFenceRenderer = md.renderer.rules.fence
+md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+  const token = tokens[idx]
+  const info = token.info ? token.info.trim() : ''
+  
+  // 检查是否是 PlantUML 代码块
+  if (info === 'plantuml' || info === 'puml') {
+    return renderPlantUML(token.content)
+  }
+  
+  // 默认代码块渲染
+  return defaultFenceRenderer(tokens, idx, options, env, self)
+}
 
 const editorRef = ref(null)
 const previewRef = ref(null)
@@ -278,17 +324,98 @@ const syncScroll = () => {
 const insertText = (before, after = '') => {
   const textarea = editorRef.value
   if (!textarea) return
-  
+
   const start = textarea.selectionStart
   const end = textarea.selectionEnd
   const selectedText = articleForm.content.substring(start, end) || '文本'
-  
+
   const newText = articleForm.content.substring(0, start) + before + selectedText + after + articleForm.content.substring(end)
   articleForm.content = newText
-  
+
   nextTick(() => {
     textarea.focus()
     textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length)
+  })
+}
+
+// PlantUML 模板
+const plantUMLTemplates = {
+  sequence: `@startuml
+用户 -> 系统：请求
+系统 --> 用户：响应
+@enduml`,
+  class: `@startuml
+class User {
+  +id: Long
+  +name: String
+  +login()
+}
+class Article {
+  +id: Long
+  +title: String
+  +content: String
+}
+User --> Article: 发布
+@enduml`,
+  usecase: `@startuml
+:user: as 用户
+:系统: as 系统
+
+用户 --> (登录)
+用户 --> (查看文章)
+用户 --> (发表评论)
+(登录) --> 系统
+@enduml`,
+  activity: `@startuml
+start
+:接收请求;
+if (验证通过？) then (是)
+  :处理业务;
+  stop
+else (否)
+  :返回错误;
+  stop
+endif
+@enduml`,
+  component: `@startuml
+[前端] --> [API 网关]
+[API 网关] --> [服务 A]
+[API 网关] --> [服务 B]
+[服务 A] --> [(数据库 A)]
+[服务 B] --> [(数据库 B)]
+@enduml`,
+  deployment: `@startuml
+node "服务器" {
+  component "应用服务" as app
+  database "数据库" as db
+}
+
+internet --> app
+app --> db
+@enduml`
+}
+
+const insertPlantUML = (type) => {
+  const template = plantUMLTemplates[type] || plantUMLTemplates.sequence
+  const textarea = editorRef.value
+  if (!textarea) return
+
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  
+  // 在光标位置插入 PlantUML 代码块
+  const plantumlBlock = `\n\`\`\`plantuml
+${template}
+\`\`\`\n`
+  
+  const newText = articleForm.content.substring(0, start) + plantumlBlock + articleForm.content.substring(end)
+  articleForm.content = newText
+
+  nextTick(() => {
+    textarea.focus()
+    // 将光标定位到代码块内容位置
+    const newCursorPos = start + 11 // \`\`\`plantuml\n 的长度
+    textarea.setSelectionRange(newCursorPos, newCursorPos + template.length)
   })
 }
 
@@ -853,6 +980,32 @@ onMounted(() => {
         font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
         font-size: 0.9em;
         color: #e83e8c;
+      }
+
+      // PlantUML 图表样式
+      :deep(.plantuml-diagram) {
+        margin: 1.5em 0;
+        padding: 20px;
+        background: var(--bg-secondary);
+        border-radius: var(--border-radius);
+        border: 1px solid var(--border-color);
+        text-align: center;
+
+        img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 4px;
+        }
+      }
+
+      :deep(.plantuml-error) {
+        margin: 1em 0;
+        padding: 12px 16px;
+        background: #fef0f0;
+        border: 1px solid #fde2e2;
+        border-radius: var(--border-radius);
+        color: #f56c6c;
+        font-size: 14px;
       }
 
       :deep(pre) {
