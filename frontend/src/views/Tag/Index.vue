@@ -1,11 +1,23 @@
 <template>
   <div class="py-6 md:py-8">
-    <div class="card p-6">
-      <h3 class="text-lg font-semibold mb-4" style="color: var(--text-primary)">
-        标签：{{ tagName }}
-      </h3>
-      <ArticleList :tag-id="tagId" :show-sidebar="false" />
+    <div class="mb-6">
+      <el-breadcrumb separator="/">
+        <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: '/tags' }">标签</el-breadcrumb-item>
+        <el-breadcrumb-item>{{ tagName }}</el-breadcrumb-item>
+      </el-breadcrumb>
     </div>
+
+    <div class="card p-6 mb-6">
+      <div class="flex items-center gap-3">
+        <span class="text-xl">🏷️</span>
+        <h3 class="text-xl font-semibold" style="color: var(--text-primary)">
+          标签：{{ tagName }}
+        </h3>
+      </div>
+    </div>
+
+    <ArticleList :tag-id="tagId" :show-sidebar="true" />
   </div>
 </template>
 
