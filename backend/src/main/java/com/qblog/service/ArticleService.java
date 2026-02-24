@@ -15,10 +15,16 @@ import java.util.List;
 public interface ArticleService extends IService<Article> {
 
     /**
-     * 分页获取文章列表
+     * 分页获取文章列表（公开接口）
      */
-    Page<ArticleListItemVO> getArticleList(Integer page, Integer size, Long categoryId, 
+    Page<ArticleListItemVO> getArticleList(Integer page, Integer size, Long categoryId,
                                            Long tagId, String keyword, String sortBy, String sortOrder);
+
+    /**
+     * 管理后台 - 获取所有文章（包括草稿）
+     */
+    Page<ArticleListItemVO> getAdminArticleList(Integer page, Integer size, Long categoryId,
+                                                 String keyword, Integer status, String sortBy, String sortOrder);
 
     /**
      * 获取文章详情

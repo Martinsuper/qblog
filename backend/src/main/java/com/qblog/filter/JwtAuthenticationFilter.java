@@ -27,22 +27,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        
+
+        // 跳过登录、注册等公开接口
+        String path = request.getRequestURI();
+        if (path.startsWith("/api/auth/login") || 
+            path.startsWith("/api/auth/register") ||
+            path.startsWith("/api/test/") ||
+            path.startsWith("/api/doc") ||
+            path.startsWith("/api/webjars/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // 其他接口需要验证 token
         String token = getTokenFromRequest(request);
 
-        if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
-            Long userId = jwtUtil.getUserIdFromToken(token);
-            String username = jwtUtil.getUsernameFromToken(token);
-
-            Map<String, Object> attributes = new HashMap<>();
-            attributes.put("userId", userId);
-
-            UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(username, null, new ArrayList<>());
-            authentication.setDetails(attributes);
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+        if (!StringUtils.hasText(token) || !jwtUtil.validateToken(token)) {
+            // token 无效，返回 401
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":401,\"message\":\"未授权，请先登录\"}");
+            return;
         }
+
+        // token 有效，设置认证信息
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        String username = jwtUtil.getUsernameFromToken(token);
+
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("userId", userId);
+
+        UsernamePasswordAuthenticationToken authentication =
+            new UsernamePasswordAuthenticationToken(username, null, new ArrayList<>());
+        authentication.setDetails(attributes);
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
         filterChain.doFilter(request, response);
     }

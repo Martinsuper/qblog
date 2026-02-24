@@ -11,6 +11,17 @@ export function getArticleList(params) {
   })
 }
 
+/**
+ * 管理后台 - 获取所有文章（包括草稿）
+ */
+export function getAdminArticleList(params) {
+  return request({
+    url: '/articles/admin/list',
+    method: 'get',
+    params
+  })
+}
+
 export function getArticleDetail(id) {
   return request({
     url: `/articles/${id}`,

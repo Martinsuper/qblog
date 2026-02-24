@@ -144,7 +144,7 @@ CREATE TABLE `favorite` (
 -- 管理员账户（密码：admin123，BCrypt 加密）
 -- 生成方式：new BCryptPasswordEncoder().encode("admin123")
 INSERT INTO `user` (`username`, `password`, `nickname`, `role`, `status`) VALUES
-('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iRF6zZk1QFhLqVl5jZl9JZl9JZl9', '管理员', 1, 1);
+('admin', '$2a$10$n7y.FzdHQWM69UK4ohewZOAUZu4ZBidvtmrKzhohsOiKlE/DL1fwO', '管理员', 1, 1);
 
 -- 测试分类
 -- 注意：使用 CONVERT(... USING utf8mb4) 确保中文正确存储

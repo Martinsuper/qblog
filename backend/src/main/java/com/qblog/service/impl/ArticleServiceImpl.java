@@ -49,10 +49,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     public Page<ArticleListItemVO> getArticleList(Integer page, Integer size, Long categoryId,
                                                    Long tagId, String keyword, String sortBy, String sortOrder) {
         Page<Article> articlePage = new Page<>(page, size);
-        
+
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Article::getStatus, 1); // 只查询已发布的文章
-        
+        // 默认只查询已发布的文章
+        wrapper.eq(Article::getStatus, 1);
+
         if (categoryId != null) {
             wrapper.eq(Article::getCategoryId, categoryId);
         }
@@ -85,15 +86,69 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     @Override
+    public Page<ArticleListItemVO> getAdminArticleList(Integer page, Integer size, Long categoryId,
+                                                        String keyword, Integer status, String sortBy, String sortOrder) {
+        Page<Article> articlePage = new Page<>(page, size);
+
+        LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<>();
+
+        // 管理员可以选择查看特定状态的文章，不传则查看除已删除外的全部文章
+        if (status != null) {
+            wrapper.eq(Article::getStatus, status);
+        } else {
+            // 默认排除已删除的文章（status=2）
+            wrapper.ne(Article::getStatus, 2);
+        }
+
+        if (categoryId != null) {
+            wrapper.eq(Article::getCategoryId, categoryId);
+        }
+        if (StrUtil.isNotBlank(keyword)) {
+            wrapper.and(w -> w.like(Article::getTitle, keyword)
+                    .or().like(Article::getSummary, keyword));
+        }
+
+        // 排序
+        if (StrUtil.isNotBlank(sortBy)) {
+            String column = getSortColumn(sortBy);
+            if ("asc".equalsIgnoreCase(sortOrder)) {
+                wrapper.last("ORDER BY " + column + " ASC");
+            } else {
+                wrapper.last("ORDER BY " + column + " DESC");
+            }
+        } else {
+            wrapper.orderByDesc(true, Article::getCreateTime);
+        }
+
+        Page<Article> resultPage = page(articlePage, wrapper);
+
+        // 转换为 VO - 手动设置总数，解决 MyBatis-Plus 分页计数问题
+        Page<ArticleListItemVO> voPage = new Page<>(resultPage.getCurrent(), resultPage.getSize());
+        // 使用 count 查询获取总数
+        Long total = count(wrapper);
+        voPage.setTotal(total);
+        voPage.setRecords(convertToListItemVO(resultPage.getRecords()));
+
+        return voPage;
+    }
+
+    @Override
     public ArticleVO getArticleDetail(Long id) {
         Article article = getById(id);
-        if (article == null || article.getStatus() != 1) {
+        if (article == null) {
+            throw new RuntimeException("文章不存在");
+        }
+        
+        // 只检查已删除的文章（status=2），允许访问草稿（status=0）和已发布（status=1）
+        if (article.getStatus() == 2) {
             throw new RuntimeException("文章不存在");
         }
 
-        // 增加浏览量
-        article.setViewCount(article.getViewCount() + 1);
-        updateById(article);
+        // 增加浏览量（仅已发布文章）
+        if (article.getStatus() == 1) {
+            article.setViewCount(article.getViewCount() + 1);
+            updateById(article);
+        }
 
         ArticleVO vo = BeanUtil.copyProperties(article, ArticleVO.class);
 

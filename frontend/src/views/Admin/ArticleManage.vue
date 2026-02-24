@@ -76,7 +76,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getArticleList, deleteArticle } from '@/api/article'
+import { getAdminArticleList, deleteArticle } from '@/api/article'
 import { getCategoryList } from '@/api/category'
 
 const loading = ref(false)
@@ -94,7 +94,7 @@ const searchForm = reactive({
 const fetchArticles = async () => {
   loading.value = true
   try {
-    const res = await getArticleList({
+    const res = await getAdminArticleList({
       page: currentPage.value,
       size: pageSize.value,
       ...searchForm

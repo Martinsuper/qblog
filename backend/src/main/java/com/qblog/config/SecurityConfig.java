@@ -38,29 +38,8 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // 公开接口
-                .requestMatchers(
-                    "/auth/login",
-                    "/auth/register",
-                    "/articles/**",
-                    "/categories/**",
-                    "/tags/**",
-                    "/test/**"
-                ).permitAll()
-                // API 文档
-                .requestMatchers(
-                    "/doc.html",
-                    "/webjars/**",
-                    "/doc/**",
-                    "/swagger-resources/**"
-                ).permitAll()
-                // 需要认证的接口
-                .requestMatchers("/auth/**").authenticated()
-                .requestMatchers("/comments/**", "/favorites/**", "/users/**", "/upload/**").authenticated()
-                // 管理员接口
-                .requestMatchers("/admin/**").hasRole("ADMIN")
-                // 其他请求
-                .anyRequest().authenticated()
+                // 所有请求都允许访问（由过滤器进行 JWT 认证）
+                .anyRequest().permitAll()
             )
             .addFilterBefore(new JwtAuthenticationFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
 

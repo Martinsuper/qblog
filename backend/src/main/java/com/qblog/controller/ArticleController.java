@@ -24,7 +24,7 @@ public class ArticleController {
     private final ArticleService articleService;
 
     /**
-     * 获取文章列表
+     * 获取文章列表（公开接口，只返回已发布文章）
      */
     @GetMapping
     public Result<Page<ArticleListItemVO>> getArticleList(
@@ -36,6 +36,21 @@ public class ArticleController {
             @RequestParam(defaultValue = "publishTime") String sortBy,
             @RequestParam(defaultValue = "desc") String sortOrder) {
         return Result.success(articleService.getArticleList(page, size, categoryId, tagId, keyword, sortBy, sortOrder));
+    }
+
+    /**
+     * 管理后台 - 获取所有文章（包括草稿）
+     */
+    @GetMapping("/admin/list")
+    public Result<Page<ArticleListItemVO>> getAdminArticleList(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(defaultValue = "createTime") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortOrder) {
+        return Result.success(articleService.getAdminArticleList(page, size, categoryId, keyword, status, sortBy, sortOrder));
     }
 
     /**

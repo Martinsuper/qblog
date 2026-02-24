@@ -502,7 +502,8 @@ const handleSubmit = async () => {
   try {
     publishing.value = true
     articleForm.status = 1
-    if (isEdit.value) {
+    // 如果有 ID 且是编辑模式，才调用更新接口
+    if (isEdit.value && articleForm.id) {
       await updateArticle(articleForm.id, articleForm)
       ElMessage.success('文章更新成功')
     } else {
@@ -512,6 +513,7 @@ const handleSubmit = async () => {
     router.push('/admin/articles')
   } catch (error) {
     console.error('发布文章失败:', error)
+    ElMessage.error('发布文章失败：' + (error.message || '未知错误'))
   } finally {
     publishing.value = false
   }
@@ -521,14 +523,17 @@ const handleSaveDraft = async () => {
   try {
     saving.value = true
     articleForm.status = 0
-    if (isEdit.value) {
+    // 如果有 ID 且是编辑模式，才调用更新接口
+    if (isEdit.value && articleForm.id) {
       await updateArticle(articleForm.id, articleForm)
     } else {
+      // 否则调用创建接口
       await createArticle(articleForm)
     }
     ElMessage.success('草稿保存成功')
   } catch (error) {
     console.error('保存草稿失败:', error)
+    ElMessage.error('保存草稿失败：' + (error.message || '未知错误'))
   } finally {
     saving.value = false
   }
