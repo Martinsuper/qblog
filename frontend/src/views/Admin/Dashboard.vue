@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard">
+  <div class="dashboard" v-loading="loading">
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="mb-6">
       <el-col :xs="24" :sm="12" :md="6">
@@ -9,13 +9,9 @@
               <el-icon><Document /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">128</div>
+              <div class="stat-value">{{ stats.articleCount }}</div>
               <div class="stat-label">文章总数</div>
             </div>
-          </div>
-          <div class="stat-trend positive">
-            <el-icon><Top /></el-icon>
-            <span>较上周 +12%</span>
           </div>
         </el-card>
       </el-col>
@@ -27,13 +23,9 @@
               <el-icon><View /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">10,234</div>
+              <div class="stat-value">{{ stats.viewCount.toLocaleString() }}</div>
               <div class="stat-label">总浏览量</div>
             </div>
-          </div>
-          <div class="stat-trend positive">
-            <el-icon><Top /></el-icon>
-            <span>较上周 +8.5%</span>
           </div>
         </el-card>
       </el-col>
@@ -45,13 +37,9 @@
               <el-icon><User /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">542</div>
+              <div class="stat-value">{{ stats.userCount }}</div>
               <div class="stat-label">用户总数</div>
             </div>
-          </div>
-          <div class="stat-trend positive">
-            <el-icon><Top /></el-icon>
-            <span>较上周 +15%</span>
           </div>
         </el-card>
       </el-col>
@@ -63,13 +51,9 @@
               <el-icon><ChatDotRound /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">1,024</div>
+              <div class="stat-value">{{ stats.commentCount }}</div>
               <div class="stat-label">评论总数</div>
             </div>
-          </div>
-          <div class="stat-trend negative">
-            <el-icon><Bottom /></el-icon>
-            <span>较上周 -3.2%</span>
           </div>
         </el-card>
       </el-col>
@@ -125,7 +109,13 @@
                 <span :class="['rank', `rank-${$index + 1}`]">{{ $index + 1 }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="title" label="标题" />
+            <el-table-column prop="title" label="标题">
+              <template #default="{ row }">
+                <router-link :to="`/article/${row.id}`" class="article-link">
+                  {{ row.title }}
+                </router-link>
+              </template>
+            </el-table-column>
             <el-table-column prop="viewCount" label="浏览" width="80" align="right" />
           </el-table>
         </el-card>
@@ -136,19 +126,20 @@
           <template #header>
             <span class="card-title">💬 最新评论</span>
           </template>
-          <div class="comment-list">
+          <div v-if="comments.length > 0" class="comment-list">
             <div v-for="comment in comments" :key="comment.id" class="comment-item">
-              <el-avatar :size="40" :src="comment.avatar" />
+              <el-avatar :size="40" :src="comment.user?.avatar || ''" />
               <div class="comment-content">
-                <div class="comment-user">{{ comment.user }}</div>
+                <div class="comment-user">{{ comment.user?.nickname || comment.user?.username || '匿名用户' }}</div>
                 <div class="comment-text">{{ comment.content }}</div>
                 <div class="comment-meta">
-                  <span>{{ comment.time }}</span>
-                  <span>来自：{{ comment.article }}</span>
+                  <span>{{ formatTime(comment.createTime) }}</span>
+                  <span>来自：{{ comment.article?.title || '文章' }}</span>
                 </div>
               </div>
             </div>
           </div>
+          <el-empty v-else description="暂无评论" :image-size="60" />
         </el-card>
       </el-col>
     </el-row>
@@ -156,59 +147,135 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getArticleList, getHotArticles } from '@/api/article'
+import { getCategoryList } from '@/api/category'
+import { getCommentList } from '@/api/comment'
 
 const dateRange = ref('week')
+const loading = ref(false)
 
-const categories = ref([
-  { id: 1, name: '技术', count: 45, percentage: 45, color: '#67c23a' },
-  { id: 2, name: '生活', count: 30, percentage: 30, color: '#409eff' },
-  { id: 3, name: '随笔', count: 15, percentage: 15, color: '#e6a23c' },
-  { id: 4, name: '其他', count: 10, percentage: 10, color: '#909399' }
-])
+// 统计数据
+const stats = ref({
+  articleCount: 0,
+  viewCount: 0,
+  userCount: 0,
+  commentCount: 0
+})
 
-const hotArticles = ref([
-  { id: 1, title: 'Spring Boot 入门教程', viewCount: 1234 },
-  { id: 2, title: 'Vue.js 3.0 新特性', viewCount: 987 },
-  { id: 3, title: 'MySQL 性能优化实战', viewCount: 756 },
-  { id: 4, title: 'Docker 容器化部署', viewCount: 543 },
-  { id: 5, title: 'Redis 缓存最佳实践', viewCount: 432 }
-])
+// 分类统计
+const categories = ref([])
 
-const comments = ref([
-  {
-    id: 1,
-    user: '张三',
-    avatar: '',
-    content: '这篇文章写得很好，学到了很多！',
-    time: '10 分钟前',
-    article: 'Spring Boot 入门教程'
-  },
-  {
-    id: 2,
-    user: '李四',
-    avatar: '',
-    content: '感谢分享，已收藏',
-    time: '30 分钟前',
-    article: 'Vue.js 3.0 新特性'
-  },
-  {
-    id: 3,
-    user: '王五',
-    avatar: '',
-    content: '请问有源码吗？',
-    time: '1 小时前',
-    article: 'MySQL 性能优化实战'
-  },
-  {
-    id: 4,
-    user: '赵六',
-    avatar: '',
-    content: '非常实用的教程',
-    time: '2 小时前',
-    article: 'Docker 容器化部署'
+// 热门文章
+const hotArticles = ref([])
+
+// 最新评论
+const comments = ref([])
+
+// 获取统计数据
+const fetchStats = async () => {
+  try {
+    // 获取文章总数和总浏览量
+    const articleRes = await getArticleList({ page: 1, size: 1 })
+    stats.value.articleCount = articleRes.data?.total || 0
+    
+    // 计算总浏览量（需要后端提供统计接口，这里先估算）
+    const allArticlesRes = await getArticleList({ page: 1, size: 100 })
+    const articles = allArticlesRes.data?.records || []
+    stats.value.viewCount = articles.reduce((sum, article) => sum + (article.viewCount || 0), 0)
+  } catch (error) {
+    console.error('获取统计数据失败:', error)
   }
-])
+}
+
+// 获取分类统计
+const fetchCategoryStats = async () => {
+  try {
+    const res = await getCategoryList()
+    const categoryList = res.data || []
+    
+    // 获取每个分类的文章数量
+    const categoryStats = await Promise.all(
+      categoryList.map(async (cat) => {
+        const articleRes = await getArticleList({ page: 1, size: 1, categoryId: cat.id })
+        const count = articleRes.data?.total || 0
+        return {
+          id: cat.id,
+          name: cat.name,
+          count,
+          percentage: 0,
+          color: getCategoryColor(cat.id)
+        }
+      })
+    )
+    
+    // 计算百分比
+    const total = categoryStats.reduce((sum, cat) => sum + cat.count, 0)
+    categories.value = categoryStats.map(cat => ({
+      ...cat,
+      percentage: total > 0 ? Math.round((cat.count / total) * 100) : 0
+    }))
+  } catch (error) {
+    console.error('获取分类统计失败:', error)
+  }
+}
+
+// 获取热门文章
+const fetchHotArticles = async () => {
+  try {
+    const res = await getHotArticles({ limit: 5 })
+    hotArticles.value = res.data || []
+  } catch (error) {
+    console.error('获取热门文章失败:', error)
+  }
+}
+
+// 获取最新评论
+const fetchComments = async () => {
+  try {
+    const res = await getCommentList({ page: 1, size: 4 })
+    comments.value = res.data?.records || []
+  } catch (error) {
+    console.error('获取评论失败:', error)
+  }
+}
+
+// 分类颜色
+const categoryColors = ['#67c23a', '#409eff', '#e6a23c', '#909399', '#f56c6c', '#a0cfa1']
+const getCategoryColor = (id) => {
+  return categoryColors[(id - 1) % categoryColors.length]
+}
+
+// 格式化时间
+const formatTime = (time) => {
+  if (!time) return ''
+  const date = new Date(time)
+  const now = new Date()
+  const diff = now - date
+  
+  const minute = 60 * 1000
+  const hour = 60 * minute
+  const day = 24 * hour
+  
+  if (diff < minute) {
+    return '刚刚'
+  } else if (diff < hour) {
+    return Math.floor(diff / minute) + '分钟前'
+  } else if (diff < day) {
+    return Math.floor(diff / hour) + '小时前'
+  } else if (diff < 7 * day) {
+    return Math.floor(diff / day) + '天前'
+  } else {
+    return date.toLocaleDateString()
+  }
+}
+
+onMounted(() => {
+  fetchStats()
+  fetchCategoryStats()
+  fetchHotArticles()
+  // fetchComments() // 如果后端没有评论接口，先注释
+})
 </script>
 
 <style lang="scss" scoped>
@@ -438,6 +505,17 @@ const comments = ref([
 
   .el-table__cell {
     font-size: 14px;
+  }
+}
+
+// 文章链接
+.article-link {
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+
+  &:hover {
+    color: var(--color-primary);
   }
 }
 

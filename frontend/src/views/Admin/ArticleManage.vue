@@ -31,7 +31,11 @@
       <el-table :data="tableData" style="width: 100%" v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="category" label="分类" width="100" />
+        <el-table-column label="分类" width="100">
+          <template #default="{ row }">
+            <span>{{ row.category?.name || '-' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="viewCount" label="浏览" width="80" />
         <el-table-column prop="likeCount" label="点赞" width="80" />
         <el-table-column prop="commentCount" label="评论" width="80" />

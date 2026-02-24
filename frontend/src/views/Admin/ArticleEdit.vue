@@ -311,24 +311,52 @@ const fetchTags = async () => {
 }
 
 const fetchArticle = async () => {
-  const id = route.params.id
+  // 使用 query 参数获取 ID（编辑时 URL 为 /admin/create?id=123）
+  const id = route.query.id
   if (id) {
     isEdit.value = true
-    articleForm.id = id
+    articleForm.id = Number(id)
     try {
       const res = await getArticleDetail(id)
+      console.log('📦 API 响应:', res)
+
+      // 响应拦截器已经返回了 res.data，所以这里 res 就是 {code, message, data}
       const data = res.data
-      Object.assign(articleForm, {
-        id: data.id,
-        title: data.title,
-        summary: data.summary,
-        content: data.content,
-        coverImage: data.coverImage,
-        categoryId: data.category?.id,
-        tagIds: data.tags?.map(t => t.id) || []
+      console.log('📄 文章数据:', data)
+      console.log('📝 文章内容:', data?.content)
+      console.log('📝 内容长度:', data?.content?.length)
+
+      if (!data) {
+        ElMessage.warning('未获取到文章数据')
+        return
+      }
+
+      // 直接逐个字段赋值，确保响应式更新
+      articleForm.id = data.id || Number(id)
+      articleForm.title = data.title || ''
+      articleForm.summary = data.summary || ''
+      articleForm.content = data.content || ''
+      articleForm.coverImage = data.coverImage || ''
+      articleForm.categoryId = data.categoryId || data.category?.id || null
+      articleForm.tagIds = data.tagIds || data.tags?.map(t => t.id) || []
+      articleForm.status = data.status || 1
+
+      console.log('✅ 表单已填充:', {
+        id: articleForm.id,
+        title: articleForm.title,
+        contentLength: articleForm.content?.length || 0,
+        summaryLength: articleForm.summary?.length || 0,
+        categoryId: articleForm.categoryId,
+        tagCount: articleForm.tagIds?.length
       })
+
+      // 验证内容是否真的填充了
+      if (data.content && articleForm.content === '') {
+        console.error('❌ 内容字段填充失败！')
+      }
     } catch (error) {
       console.error('获取文章失败:', error)
+      ElMessage.error('获取文章失败：' + (error.message || '未知错误'))
     }
   }
 }
