@@ -152,13 +152,9 @@ const commentCount = ref(0)
 
 const renderedContent = computed(() => {
   if (!article.value?.content) {
-    console.log('没有内容')
     return '<p>暂无内容</p>'
   }
-  const content = article.value.content
-  console.log('原始内容:', content)
-  console.log('渲染后内容:', md.render(content))
-  return md.render(content)
+  return md.render(article.value.content)
 })
 
 const fetchArticle = async () => {
@@ -166,7 +162,6 @@ const fetchArticle = async () => {
     const res = await getArticleDetail(route.params.id)
     article.value = res.data
     commentCount.value = res.data.commentCount || 0
-    console.log('文章数据:', article.value)
   } catch (error) {
     console.error('获取文章失败:', error)
     ElMessage.error('获取文章失败')

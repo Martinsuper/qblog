@@ -117,11 +117,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getArticleList, getHotArticles } from '@/api/article'
 import { getCategoryList } from '@/api/category'
 import { getTagList } from '@/api/tag'
+
+const props = defineProps({
+  categoryId: {
+    type: [String, Number],
+    default: null
+  }
+})
 
 const route = useRoute()
 const articleList = ref([])
@@ -134,11 +141,15 @@ const pageSize = ref(10)
 
 const fetchArticles = async () => {
   try {
+    // 优先使用 props 传入的 categoryId，其次使用路由参数
+    const catId = props.categoryId ? Number(props.categoryId) : (route.params.id ? Number(route.params.id) : null)
+    const tagId = !props.categoryId && route.params.id ? Number(route.params.id) : null
+    
     const res = await getArticleList({
       page: currentPage.value,
       size: pageSize.value,
-      categoryId: route.params.id ? Number(route.params.id) : null,
-      tagId: route.params.id ? Number(route.params.id) : null,
+      categoryId: catId,
+      tagId: tagId,
       keyword: route.query.keyword || ''
     })
     articleList.value = res.data.records || []
@@ -147,6 +158,12 @@ const fetchArticles = async () => {
     console.error('获取文章列表失败:', error)
   }
 }
+
+// 监听 categoryId 变化
+watch(() => props.categoryId, () => {
+  currentPage.value = 1
+  fetchArticles()
+})
 
 const fetchCategories = async () => {
   try {

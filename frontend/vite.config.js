@@ -18,7 +18,18 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false,
+        configure: (proxy, options) => {
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            // 确保请求和响应使用 UTF-8 编码
+            proxyReq.setHeader('Content-Type', 'application/json; charset=utf-8')
+          })
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            // 确保响应使用 UTF-8 编码
+            proxyRes.headers['content-type'] = 'application/json; charset=utf-8'
+          })
+        }
       }
     }
   }

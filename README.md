@@ -2,6 +2,13 @@
 
 基于 Spring Boot 3.x 和 Vue.js 3.0 的前后端分离博客系统
 
+## 📚 文档导航
+
+- **[项目结构](STRUCTURE.md)** - 详细的目录结构说明
+- **[启动指南](docs/guides/startup.md)** - 快速启动指南
+- **[Docker 部署](docs/guides/docker.md)** - Docker 部署指南
+- **[数据库配置](docs/guides/database.md)** - 数据库配置说明
+
 ## 技术栈
 
 ### 后端
@@ -22,121 +29,76 @@
 - **HTTP 客户端**: Axios
 - **Markdown**: markdown-it
 
-## 项目结构
-
-```
-qblog/
-├── backend/                 # 后端项目
-│   ├── src/main/java/com/qblog/
-│   │   ├── common/          # 公共类
-│   │   ├── config/          # 配置类
-│   │   ├── controller/      # 控制器
-│   │   ├── entity/          # 实体类
-│   │   ├── filter/          # 过滤器
-│   │   ├── mapper/          # Mapper 接口
-│   │   ├── model/           # DTO/VO
-│   │   ├── service/         # 服务层
-│   │   └── QblogApplication.java
-│   ├── src/main/resources/
-│   │   ├── application.yml  # 配置文件
-│   │   └── mapper/          # MyBatis XML
-│   └── pom.xml
-│
-├── frontend/                # 前端项目
-│   ├── src/
-│   │   ├── api/             # API 接口
-│   │   ├── assets/          # 静态资源
-│   │   ├── components/      # 组件
-│   │   ├── router/          # 路由
-│   │   ├── stores/          # Pinia 状态
-│   │   ├── views/           # 页面
-│   │   ├── App.vue
-│   │   └── main.js
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.js
-│
-├── database/
-│   └── schema.sql           # 数据库脚本
-│
-└── docs/
-    ├── api-design.md        # API 设计文档
-    └── frontend-design.md   # 前端设计文档
-```
-
 ## 快速开始
 
-### 环境要求
-- JDK 17+
-- MySQL 8.0+
-- Redis
-- Node.js 18+
-
-### 数据库配置
-
-1. 创建数据库
-```sql
-CREATE DATABASE qblog DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-2. 导入数据表结构
+### 方式一：使用启动脚本（推荐）
 ```bash
-mysql -u root -p qblog < database/schema.sql
+./start.sh
 ```
 
-### 后端启动
+### 方式二：手动启动
 
-1. 修改配置文件 `backend/src/main/resources/application.yml`
-```yaml
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/qblog?...
-    username: your_username
-    password: your_password
-  redis:
-    host: localhost
-    port: 6379
+#### 1. 启动 Docker 服务
+```bash
+cd docker
+docker-compose up -d
 ```
 
-2. 启动后端
+#### 2. 初始化数据库
+```bash
+docker exec -i qblog-mysql mysql -u root -proot123 < ../database/mysql-schema.sql
+```
+
+#### 3. 启动后端
 ```bash
 cd backend
 mvn spring-boot:run
 ```
 
-访问 API 文档：http://localhost:8080/api/doc.html
-
-### 前端启动
-
-1. 安装依赖
+#### 4. 启动前端
 ```bash
 cd frontend
 npm install
-```
-
-2. 启动开发服务器
-```bash
 npm run dev
 ```
 
-访问前端：http://localhost:3000
+### 访问地址
 
-## 默认账号
+| 服务 | 地址 | 说明 |
+|------|------|------|
+| 前端 | http://localhost:3001 | 博客首页 |
+| 后端 API | http://localhost:8080/api | API 接口 |
+| API 文档 | http://localhost:8080/api/doc.html | Swagger 文档 |
 
-- 管理员账号：admin / admin123
+### 默认账号
+
+- 管理员账号：`admin` / `admin123`
+
+## 项目结构概览
+
+```
+qblog/
+├── backend/           # Spring Boot 后端
+├── frontend/          # Vue.js 前端
+├── docker/            # Docker 配置和数据
+├── database/          # 数据库脚本
+├── docs/              # 文档目录
+├── logs/              # 日志目录
+├── start.sh           # 启动脚本
+└── stop.sh            # 停止脚本
+```
+
+详细结构请查看 [STRUCTURE.md](STRUCTURE.md)
 
 ## API 接口
 
 | 模块 | 前缀 | 说明 |
 |------|------|------|
-| 认证 | /api/v1/auth | 登录、注册、退出 |
-| 文章 | /api/v1/articles | 文章 CRUD |
-| 分类 | /api/v1/categories | 分类管理 |
-| 标签 | /api/v1/tags | 标签管理 |
-| 评论 | /api/v1/comments | 评论管理 |
-| 用户 | /api/v1/users | 用户信息 |
-
-详细 API 文档请查看：[API 设计文档](docs/api-design.md)
+| 认证 | /api/auth | 登录、注册 |
+| 文章 | /api/articles | 文章 CRUD |
+| 分类 | /api/categories | 分类管理 |
+| 标签 | /api/tags | 标签管理 |
+| 评论 | /api/comments | 评论管理 |
 
 ## 功能特性
 
@@ -155,24 +117,12 @@ npm run dev
 - [ ] 文件上传
 - [ ] 搜索功能
 - [ ] 数据统计
-- [ ] 邮件通知
 
-## 开发计划
+## 停止服务
 
-1. **第一阶段**: 核心功能开发
-   - 完善文章管理
-   - 实现评论系统
-   - 文件上传功能
-
-2. **第二阶段**: 用户体验优化
-   - 搜索优化
-   - 性能优化
-   - 移动端适配
-
-3. **第三阶段**: 高级功能
-   - 数据统计
-   - SEO 优化
-   - 主题切换
+```bash
+./stop.sh
+```
 
 ## License
 

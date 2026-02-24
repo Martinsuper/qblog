@@ -52,8 +52,7 @@ public class SecurityConfig {
                     "/doc.html",
                     "/webjars/**",
                     "/doc/**",
-                    "/swagger-resources/**",
-                    "/h2-console/**"
+                    "/swagger-resources/**"
                 ).permitAll()
                 // 需要认证的接口
                 .requestMatchers("/auth/**").authenticated()
@@ -63,8 +62,7 @@ public class SecurityConfig {
                 // 其他请求
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(new JwtAuthenticationFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)
-            .headers(headers -> headers.frameOptions(frame -> frame.disable()));
+            .addFilterBefore(new JwtAuthenticationFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

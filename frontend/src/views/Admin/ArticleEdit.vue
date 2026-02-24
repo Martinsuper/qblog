@@ -453,13 +453,8 @@ const fetchArticle = async () => {
     articleForm.id = Number(id)
     try {
       const res = await getArticleDetail(id)
-      console.log('📦 API 响应:', res)
 
-      // 响应拦截器已经返回了 res.data，所以这里 res 就是 {code, message, data}
       const data = res.data
-      console.log('📄 文章数据:', data)
-      console.log('📝 文章内容:', data?.content)
-      console.log('📝 内容长度:', data?.content?.length)
 
       if (!data) {
         ElMessage.warning('未获取到文章数据')
@@ -475,15 +470,6 @@ const fetchArticle = async () => {
       articleForm.categoryId = data.categoryId || data.category?.id || null
       articleForm.tagIds = data.tagIds || data.tags?.map(t => t.id) || []
       articleForm.status = data.status || 1
-
-      console.log('✅ 表单已填充:', {
-        id: articleForm.id,
-        title: articleForm.title,
-        contentLength: articleForm.content?.length || 0,
-        summaryLength: articleForm.summary?.length || 0,
-        categoryId: articleForm.categoryId,
-        tagCount: articleForm.tagIds?.length
-      })
 
       // 验证内容是否真的填充了
       if (data.content && articleForm.content === '') {
