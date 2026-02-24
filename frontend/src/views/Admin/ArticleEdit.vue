@@ -325,6 +325,9 @@ const insertText = (before, after = '') => {
   const textarea = editorRef.value
   if (!textarea) return
 
+  // 保存当前滚动位置
+  const scrollTop = textarea.scrollTop
+
   const start = textarea.selectionStart
   const end = textarea.selectionEnd
   const selectedText = articleForm.content.substring(start, end) || '文本'
@@ -334,6 +337,8 @@ const insertText = (before, after = '') => {
 
   nextTick(() => {
     textarea.focus()
+    // 恢复滚动位置
+    textarea.scrollTop = scrollTop
     textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length)
   })
 }
@@ -400,22 +405,25 @@ const insertPlantUML = (type) => {
   const textarea = editorRef.value
   if (!textarea) return
 
+  // 保存当前滚动位置
+  const scrollTop = textarea.scrollTop
+  
   const start = textarea.selectionStart
   const end = textarea.selectionEnd
   
   // 在光标位置插入 PlantUML 代码块
-  const plantumlBlock = `\n\`\`\`plantuml
-${template}
-\`\`\`\n`
+  const plantumlBlock = `\n\`\`\`plantuml\n${template}\n\`\`\`\n`
   
   const newText = articleForm.content.substring(0, start) + plantumlBlock + articleForm.content.substring(end)
   articleForm.content = newText
 
   nextTick(() => {
     textarea.focus()
-    // 将光标定位到代码块内容位置
-    const newCursorPos = start + 11 // \`\`\`plantuml\n 的长度
-    textarea.setSelectionRange(newCursorPos, newCursorPos + template.length)
+    // 恢复滚动位置
+    textarea.scrollTop = scrollTop
+    // 将光标定位到代码块开始位置（在 plantuml 关键字后面）
+    const newCursorPos = start + 12 // \n\`\`\`plantuml\n 的长度
+    textarea.setSelectionRange(newCursorPos, newCursorPos)
   })
 }
 
