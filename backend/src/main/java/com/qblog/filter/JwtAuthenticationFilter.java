@@ -8,12 +8,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,18 +25,35 @@ import java.util.Map;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
+
+    /**
+     * 公开接口白名单（不需要认证）
+     */
+    private static final List<String> PUBLIC_PATHS = List.of(
+        "/api/auth/login",
+        "/api/auth/register",
+        "/api/articles",
+        "/api/articles/**",
+        "/api/categories",
+        "/api/categories/**",
+        "/api/tags",
+        "/api/tags/**",
+        "/api/doc.html",
+        "/api/doc/**",
+        "/api/webjars/**",
+        "/api/swagger-resources/**",
+        "/api/v3/api-docs/**"
+    );
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        // 跳过登录、注册等公开接口
         String path = request.getRequestURI();
-        if (path.startsWith("/api/auth/login") || 
-            path.startsWith("/api/auth/register") ||
-            path.startsWith("/api/test/") ||
-            path.startsWith("/api/doc") ||
-            path.startsWith("/api/webjars/")) {
+
+        // 检查是否是公开接口
+        if (isPublicPath(path)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -64,6 +83,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * 检查路径是否是公开接口
+     */
+    private boolean isPublicPath(String path) {
+        for (String pattern : PUBLIC_PATHS) {
+            if (pathMatcher.match(pattern, path)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String getTokenFromRequest(HttpServletRequest request) {

@@ -277,7 +277,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private List<ArticleListItemVO> convertToListItemVO(List<Article> articles) {
         List<ArticleListItemVO> list = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        
+
         for (Article article : articles) {
             ArticleListItemVO vo = BeanUtil.copyProperties(article, ArticleListItemVO.class);
 
@@ -289,10 +289,51 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 vo.setPublishTime(article.getPublishTime().format(formatter));
             }
 
-            // TODO: 填充作者、分类、标签信息
-            vo.setAuthor(new UserVO());
-            vo.setCategory(new CategoryVO());
+            // 填充作者信息
+            if (article.getAuthorId() != null) {
+                User author = userService.getById(article.getAuthorId());
+                if (author != null) {
+                    UserVO authorVO = new UserVO();
+                    BeanUtil.copyProperties(author, authorVO);
+                    vo.setAuthor(authorVO);
+                }
+            }
+            if (vo.getAuthor() == null) {
+                vo.setAuthor(new UserVO());
+            }
+
+            // 填充分类信息
+            if (article.getCategoryId() != null) {
+                Category category = categoryService.getById(article.getCategoryId());
+                if (category != null) {
+                    CategoryVO categoryVO = new CategoryVO();
+                    BeanUtil.copyProperties(category, categoryVO);
+                    vo.setCategory(categoryVO);
+                }
+            }
+            if (vo.getCategory() == null) {
+                vo.setCategory(new CategoryVO());
+            }
+
+            // 填充标签信息
             vo.setTags(new ArrayList<>());
+            if (article.getId() != null) {
+                List<ArticleTag> articleTags = articleTagService.list(
+                    new LambdaQueryWrapper<ArticleTag>().eq(ArticleTag::getArticleId, article.getId())
+                );
+                if (!articleTags.isEmpty()) {
+                    List<Long> tagIds = articleTags.stream()
+                        .map(ArticleTag::getTagId)
+                        .collect(Collectors.toList());
+                    List<Tag> tags = tagService.listByIds(tagIds);
+                    List<TagVO> tagVOs = tags.stream().map(tag -> {
+                        TagVO tagVO = new TagVO();
+                        BeanUtil.copyProperties(tag, tagVO);
+                        return tagVO;
+                    }).collect(Collectors.toList());
+                    vo.setTags(tagVOs);
+                }
+            }
 
             list.add(vo);
         }

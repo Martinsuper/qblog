@@ -48,3 +48,5 @@ logs/
 # Docker 数据（可选）
 docker/data/
 docker/logs/
+
+CLAUDE.md

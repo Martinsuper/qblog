@@ -2,6 +2,7 @@ package com.qblog.controller;
 
 import com.qblog.common.Result;
 import com.qblog.entity.Category;
+import com.qblog.model.vo.CategoryVO;
 import com.qblog.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -19,11 +20,11 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     /**
-     * 获取分类列表
+     * 获取分类列表（含文章数量）
      */
     @GetMapping
-    public Result<List<Category>> getCategoryList() {
-        return Result.success(categoryService.list());
+    public Result<List<CategoryVO>> getCategoryList() {
+        return Result.success(categoryService.listWithArticleCount());
     }
 
     /**
