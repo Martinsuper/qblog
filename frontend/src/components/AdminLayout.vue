@@ -14,14 +14,14 @@
         router
         @select="handleMenuSelect"
       >
-        <el-menu-item index="/admin/dashboard" route="/admin/dashboard">
-          <el-icon><Document /></el-icon>
-          <template #title>控制台</template>
-        </el-menu-item>
-
         <el-menu-item index="/admin/articles" route="/admin/articles">
           <el-icon><Document /></el-icon>
           <template #title>文章管理</template>
+        </el-menu-item>
+
+        <el-menu-item index="/admin/categories" route="/admin/categories">
+          <el-icon><Folder /></el-icon>
+          <template #title>分类管理</template>
         </el-menu-item>
 
         <el-menu-item index="/admin/create" route="/admin/create">
@@ -29,9 +29,9 @@
           <template #title>写文章</template>
         </el-menu-item>
 
-        <el-menu-item index="/admin/categories" route="/admin/categories">
-          <el-icon><Folder /></el-icon>
-          <template #title>分类管理</template>
+        <el-menu-item index="/admin/dashboard" route="/admin/dashboard">
+          <el-icon><Document /></el-icon>
+          <template #title>控制台</template>
         </el-menu-item>
       </el-menu>
       
@@ -108,9 +108,10 @@ const activeMenu = computed(() => route.path)
 
 const breadcrumb = computed(() => {
   const menuMap = {
-    '/admin/dashboard': '控制台',
     '/admin/articles': '文章管理',
-    '/admin/create': '写文章'
+    '/admin/categories': '分类管理',
+    '/admin/create': '写文章',
+    '/admin/dashboard': '控制台'
   }
   return menuMap[route.path] || ''
 })
