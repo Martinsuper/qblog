@@ -13,7 +13,7 @@
           <el-input v-model="searchForm.keyword" placeholder="搜索文章标题" clearable />
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="searchForm.categoryId" placeholder="全部分类" clearable>
+          <el-select v-model="searchForm.categoryId" placeholder="全部分类" clearable style="min-width: 150px">
             <el-option
               v-for="cat in categories"
               :key="cat.id"

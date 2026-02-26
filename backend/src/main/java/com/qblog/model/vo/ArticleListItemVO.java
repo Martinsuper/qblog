@@ -28,6 +28,8 @@ public class ArticleListItemVO {
 
     private Integer commentCount;
 
+    private Integer status;
+
     private Integer top;
 
     private String createTime;
