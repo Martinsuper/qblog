@@ -34,10 +34,6 @@
                     <el-icon><User /></el-icon>
                     个人中心
                   </el-dropdown-item>
-                  <el-dropdown-item command="favorites">
-                    <el-icon><Star /></el-icon>
-                    我的收藏
-                  </el-dropdown-item>
                   <el-dropdown-item v-if="isAdmin" command="admin" divided>
                     <el-icon><Setting /></el-icon>
                     管理后台
@@ -69,7 +65,6 @@ const router = useRouter()
 
 const isLoggedIn = ref(false)
 const userInfo = ref(null)
-
 const isDark = ref(false)
 
 const isAdmin = computed(() => userInfo.value?.role === 1)
@@ -85,7 +80,6 @@ const checkAuth = () => {
       userInfo.value = null
     }
   } else if (token) {
-    // 如果有 token 但没有用户信息，尝试从 token 解析
     try {
       const payload = JSON.parse(atob(token.split('.')[1]))
       userInfo.value = {
@@ -99,7 +93,6 @@ const checkAuth = () => {
   }
 }
 
-// 监听存储变化
 const handleStorageChange = (e) => {
   if (e.key === 'token' || e.key === 'userInfo') {
     checkAuth()
@@ -116,9 +109,6 @@ const handleCommand = (command) => {
   switch (command) {
     case 'profile':
       router.push('/user/profile')
-      break
-    case 'favorites':
-      router.push('/user/favorites')
       break
     case 'admin':
       router.push('/admin/dashboard')
@@ -160,7 +150,6 @@ onMounted(() => {
   transition: all var(--transition-normal);
 }
 
-/* Dark Mode Glassmorphism */
 .navbar[data-theme="dark"] {
   background: rgba(31, 41, 55, 0.8);
 }
@@ -172,7 +161,6 @@ onMounted(() => {
   height: 60px;
 }
 
-/* Brand with Gradient */
 .navbar-brand {
   display: flex;
   align-items: center;
@@ -189,7 +177,6 @@ onMounted(() => {
   background-clip: text;
 }
 
-/* Navigation Menu */
 .navbar-menu {
   display: flex;
   align-items: center;
@@ -230,14 +217,12 @@ onMounted(() => {
   font-weight: 500;
 }
 
-/* Right Section */
 .navbar-right {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
 }
 
-/* Theme Toggle with Rotation */
 .theme-toggle {
   display: flex;
   align-items: center;
@@ -261,7 +246,6 @@ onMounted(() => {
   transition: all var(--transition-fast);
 }
 
-/* User Dropdown */
 .user-dropdown {
   display: flex;
   align-items: center;
@@ -285,7 +269,6 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-/* Register Button with Gradient */
 .btn-register {
   display: inline-flex;
   align-items: center;
@@ -306,7 +289,6 @@ onMounted(() => {
   box-shadow: var(--shadow-md);
 }
 
-/* Mobile Responsive */
 @media (max-width: 640px) {
   .navbar-menu {
     display: none;

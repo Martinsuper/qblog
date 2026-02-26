@@ -61,10 +61,6 @@ public class Article implements Serializable {
      */
     private Integer likeCount;
 
-    /**
-     * 评论数
-     */
-    private Integer commentCount;
 
     /**
      * 状态：0-草稿 1-已发布 2-已删除

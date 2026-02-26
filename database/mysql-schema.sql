@@ -77,8 +77,6 @@ CREATE TABLE `article` (
     `category_id` BIGINT DEFAULT NULL COMMENT '分类 ID',
     `view_count` INT DEFAULT 0 COMMENT '浏览量',
     `like_count` INT DEFAULT 0 COMMENT '点赞数',
-    `comment_count` INT DEFAULT 0 COMMENT '评论数',
-    `favorite_count` INT DEFAULT 0 COMMENT '收藏数',
     `top` TINYINT DEFAULT 0 COMMENT '是否置顶：0-否，1-是',
     `status` TINYINT DEFAULT 1 COMMENT '状态：0-草稿，1-已发布',
     `publish_time` DATETIME DEFAULT NULL COMMENT '发布时间',
@@ -104,38 +102,6 @@ CREATE TABLE `article_tag` (
     KEY `idx_article_id` (`article_id`),
     KEY `idx_tag_id` (`tag_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='文章标签关联表';
-
--- =====================================================
--- 评论表
--- =====================================================
-DROP TABLE IF EXISTS `comment`;
-CREATE TABLE `comment` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '评论 ID',
-    `article_id` BIGINT NOT NULL COMMENT '文章 ID',
-    `user_id` BIGINT NOT NULL COMMENT '用户 ID',
-    `parent_id` BIGINT DEFAULT 0 COMMENT '父评论 ID',
-    `content` TEXT NOT NULL COMMENT '评论内容',
-    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`),
-    KEY `idx_article_id` (`article_id`),
-    KEY `idx_user_id` (`user_id`),
-    KEY `idx_parent_id` (`parent_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='评论表';
-
--- =====================================================
--- 收藏表
--- =====================================================
-DROP TABLE IF EXISTS `favorite`;
-CREATE TABLE `favorite` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT 'ID',
-    `user_id` BIGINT NOT NULL COMMENT '用户 ID',
-    `article_id` BIGINT NOT NULL COMMENT '文章 ID',
-    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_user_article` (`user_id`, `article_id`),
-    KEY `idx_article_id` (`article_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='收藏表';
 
 -- =====================================================
 -- 测试数据

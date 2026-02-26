@@ -26,10 +26,6 @@
                 <el-icon><Star /></el-icon>
                 {{ article.likeCount }}
               </span>
-              <span class="meta-item">
-                <el-icon><ChatDotRound /></el-icon>
-                {{ article.commentCount }}
-              </span>
             </div>
           </div>
         </div>
@@ -60,38 +56,6 @@
             <el-icon><Star /></el-icon>
             点赞 ({{ article.likeCount }})
           </el-button>
-          <el-button @click="handleFavorite">
-            <el-icon>
-              <StarFilled v-if="article.isFavorited" />
-              <Star v-else />
-            </el-icon>
-            收藏
-          </el-button>
-          <el-button @click="handleShare">
-            <el-icon><Share /></el-icon>
-            分享
-          </el-button>
-        </div>
-      </el-card>
-
-      <!-- 评论区 -->
-      <el-card class="comment-section">
-        <h3 class="comment-title">评论 ({{ commentCount }})</h3>
-        
-        <div class="comment-editor">
-          <el-input
-            v-model="commentContent"
-            type="textarea"
-            :rows="4"
-            placeholder="写下你的评论..."
-          />
-          <el-button type="primary" class="mt-3" @click="submitComment">
-            发表评论
-          </el-button>
-        </div>
-
-        <div class="comment-list">
-          <el-empty v-if="commentCount === 0" description="暂无评论" />
         </div>
       </el-card>
     </article>
@@ -147,8 +111,6 @@ md.renderer.rules.fence = (tokens, idx, options, env, self) => {
 }
 
 const article = ref(null)
-const commentContent = ref('')
-const commentCount = ref(0)
 
 const renderedContent = computed(() => {
   if (!article.value?.content) {
@@ -161,7 +123,6 @@ const fetchArticle = async () => {
   try {
     const res = await getArticleDetail(route.params.id)
     article.value = res.data
-    commentCount.value = res.data.commentCount || 0
   } catch (error) {
     console.error('获取文章失败:', error)
     ElMessage.error('获取文章失败')
@@ -176,22 +137,6 @@ const handleLike = async () => {
   } catch (error) {
     console.error('点赞失败:', error)
   }
-}
-
-const handleFavorite = () => {
-  ElMessage.info('收藏功能开发中...')
-}
-
-const handleShare = () => {
-  ElMessage.info('分享功能开发中...')
-}
-
-const submitComment = () => {
-  if (!commentContent.value.trim()) {
-    ElMessage.warning('请输入评论内容')
-    return
-  }
-  ElMessage.info('评论功能开发中...')
 }
 
 onMounted(() => {
@@ -408,23 +353,5 @@ onMounted(() => {
   border-top: 1px solid #eaecef;
   display: flex;
   gap: 10px;
-}
-
-.comment-section {
-  margin-top: 20px;
-
-  .comment-title {
-    font-size: 18px;
-    margin-bottom: 20px;
-    color: #333;
-  }
-
-  .comment-editor {
-    margin-bottom: 20px;
-  }
-}
-
-.mt-3 {
-  margin-top: 12px;
 }
 </style>
