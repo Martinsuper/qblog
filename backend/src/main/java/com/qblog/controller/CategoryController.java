@@ -63,4 +63,13 @@ public class CategoryController {
         categoryService.removeById(id);
         return Result.success();
     }
+
+    /**
+     * 批量更新分类排序
+     */
+    @PutMapping("/sort")
+    public Result<Void> updateCategorySort(@RequestBody List<Long> ids) {
+        categoryService.updateBatchSort(ids);
+        return Result.success();
+    }
 }

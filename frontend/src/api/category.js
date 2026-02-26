@@ -39,3 +39,10 @@ export function deleteCategory(id) {
     method: 'delete'
   })
 }
+export function updateCategorySort(ids) {
+  return request({
+    url: '/categories/sort',
+    method: 'put',
+    data: ids
+  })
+}
