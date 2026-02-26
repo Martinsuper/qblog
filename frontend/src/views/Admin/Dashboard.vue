@@ -44,19 +44,6 @@
         </el-card>
       </el-col>
 
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%)">
-              <el-icon><ChatDotRound /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ stats.commentCount }}</div>
-              <div class="stat-label">评论总数</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
     </el-row>
 
     <!-- 图表区域 -->
@@ -96,53 +83,6 @@
       </el-col>
     </el-row>
 
-    <!-- 最新动态 -->
-    <el-row :gutter="20">
-      <el-col :xs="24" :md="12">
-        <el-card shadow="hover">
-          <template #header>
-            <span class="card-title">🔥 热门文章</span>
-          </template>
-          <el-table :data="hotArticles" style="width: 100%" :show-header="false">
-            <el-table-column type="index" width="50" align="center">
-              <template #default="{ $index }">
-                <span :class="['rank', `rank-${$index + 1}`]">{{ $index + 1 }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="title" label="标题">
-              <template #default="{ row }">
-                <router-link :to="`/article/${row.id}`" class="article-link">
-                  {{ row.title }}
-                </router-link>
-              </template>
-            </el-table-column>
-            <el-table-column prop="viewCount" label="浏览" width="80" align="right" />
-          </el-table>
-        </el-card>
-      </el-col>
-
-      <el-col :xs="24" :md="12">
-        <el-card shadow="hover">
-          <template #header>
-            <span class="card-title">💬 最新评论</span>
-          </template>
-          <div v-if="comments.length > 0" class="comment-list">
-            <div v-for="comment in comments" :key="comment.id" class="comment-item">
-              <el-avatar :size="40" :src="comment.user?.avatar || ''" />
-              <div class="comment-content">
-                <div class="comment-user">{{ comment.user?.nickname || comment.user?.username || '匿名用户' }}</div>
-                <div class="comment-text">{{ comment.content }}</div>
-                <div class="comment-meta">
-                  <span>{{ formatTime(comment.createTime) }}</span>
-                  <span>来自：{{ comment.article?.title || '文章' }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <el-empty v-else description="暂无评论" :image-size="60" />
-        </el-card>
-      </el-col>
-    </el-row>
   </div>
 </template>
 
@@ -230,15 +170,7 @@ const fetchHotArticles = async () => {
   }
 }
 
-// 获取最新评论
-const fetchComments = async () => {
-  try {
-    const res = await getCommentList({ page: 1, size: 4 })
-    comments.value = res.data?.records || []
-  } catch (error) {
-    console.error('获取评论失败:', error)
-  }
-}
+
 
 // 分类颜色
 const categoryColors = ['#67c23a', '#409eff', '#e6a23c', '#909399', '#f56c6c', '#a0cfa1']
