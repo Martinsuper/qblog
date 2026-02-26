@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-[calc(100vh-140px)] flex items-center justify-center p-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
-    <div class="w-full max-w-md p-8 md:p-10 rounded-xl shadow-2xl" style="background: var(--bg-secondary)">
+  <div class="min-h-[calc(100vh-140px)] flex items-center justify-center p-4 bg-gradient-custom">
+    <div class="login-card animate-fade-in-up w-full max-w-md p-8 md:p-10 bg-glass backdrop-blur-md rounded-xl shadow-xl border border-glass-stroke">
       <h2 class="text-2xl font-bold text-center mb-8" style="color: var(--text-primary)">
         用户登录
       </h2>
@@ -21,12 +21,12 @@
           <el-checkbox v-model="loginForm.remember">记住我</el-checkbox>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :loading="loading" class="w-full" @click="handleLogin">
+          <el-button type="primary" :loading="loading" class="login-btn" @click="handleLogin">
             登录
           </el-button>
         </el-form-item>
         <div class="text-center mt-4">
-          <router-link to="/register" class="text-sm" style="color: var(--color-primary)">
+          <router-link to="/register" class="text-sm register-link hover-underline">
             还没有账号？立即注册
           </router-link>
         </div>
@@ -84,5 +84,79 @@ const handleLogin = async () => {
 <style scoped>
 .w-full {
   width: 100%;
+}
+.bg-gradient-custom {
+  background:
+    linear-gradient(135deg, #667eea 0%, #764ba2 100%),
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.1) 0%, transparent 40%);
+  min-height: calc(100vh - 140px);
+  position: relative;
+  overflow: hidden;
+}
+.border-glass-stroke {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.bg-glass {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.login-card {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-xl);
+  transition: all var(--transition-normal);
+}
+
+.login-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.login-btn {
+  width: 100%;
+  background: var(--color-primary-gradient);
+  border: none;
+  border-radius: var(--border-radius);
+  color: white;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.login-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.register-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-normal);
+  display: inline-block;
+}
+
+.register-link:hover {
+  color: var(--color-primary-light);
+  transform: translateX(2px);
+}
+
+@keyframes slideInUp {
+  0% {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in-up {
+  animation: slideInUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 </style>

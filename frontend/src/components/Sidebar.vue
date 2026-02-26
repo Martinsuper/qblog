@@ -7,10 +7,10 @@
         <span>分类</span>
       </h4>
       <ul class="space-y-2">
-        <li v-for="cat in categories" :key="cat.id" class="flex items-center justify-between py-1.5 px-2 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+        <li v-for="cat in categories" :key="cat.id" class="category-list-item flex items-center justify-between text-sm">
           <router-link
             :to="`/category/${cat.id}`"
-            class="flex-1 truncate transition-colors duration-150"
+            class="flex-1 truncate"
             style="color: var(--text-secondary)"
           >
             {{ cat.name }}
@@ -32,8 +32,7 @@
         <li
           v-for="(article, index) in hotArticles"
           :key="article.id"
-          class="flex items-start gap-2"
-        >
+          class="hot-article-item flex items-start gap-2">
           <span
             class="flex-shrink-0 w-5 h-5 rounded text-xs flex items-center justify-center font-medium"
             :class="[
@@ -111,12 +110,38 @@ onMounted(fetchData)
 <style scoped>
 .card {
   background: var(--bg-secondary);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-lg);
   padding: var(--spacing-md);
   box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+}
+.card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .sidebar a:hover {
   color: var(--color-primary) !important;
 }
+.category-list-item {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  transition: all var(--transition-fast);
+}
+.category-list-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.hot-article-item {
+  transition: all var(--transition-fast);
+}
+.hot-article-item:hover {
+  background: var(--bg-tertiary);
+  border-radius: var(--border-radius-sm); 
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
 </style>
+.sidebar {
+  gap: var(--spacing-lg);
+}
+

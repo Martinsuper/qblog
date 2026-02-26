@@ -147,13 +147,22 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Navbar Container with Glassmorphism */
 .navbar {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--bg-secondary);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+}
+
+/* Dark Mode Glassmorphism */
+.navbar[data-theme="dark"] {
+  background: rgba(31, 41, 55, 0.8);
 }
 
 .navbar-content {
@@ -163,6 +172,7 @@ onMounted(() => {
   height: 60px;
 }
 
+/* Brand with Gradient */
 .navbar-brand {
   display: flex;
   align-items: center;
@@ -179,6 +189,7 @@ onMounted(() => {
   background-clip: text;
 }
 
+/* Navigation Menu */
 .navbar-menu {
   display: flex;
   align-items: center;
@@ -192,10 +203,26 @@ onMounted(() => {
   transition: color var(--transition-fast);
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--border-radius-sm);
+  position: relative;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--color-primary);
+  transition: width var(--transition-fast);
 }
 
 .nav-link:hover {
   color: var(--color-primary);
+}
+
+.nav-link:hover::after {
+  width: 100%;
 }
 
 .nav-link.active {
@@ -203,12 +230,14 @@ onMounted(() => {
   font-weight: 500;
 }
 
+/* Right Section */
 .navbar-right {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
 }
 
+/* Theme Toggle with Rotation */
 .theme-toggle {
   display: flex;
   align-items: center;
@@ -221,13 +250,18 @@ onMounted(() => {
   cursor: pointer;
   color: var(--text-secondary);
   transition: all var(--transition-fast);
+  transform: rotate(0deg);
+  transition: all var(--transition-fast), transform var(--transition-fast);
 }
 
 .theme-toggle:hover {
   background: var(--bg-tertiary);
   color: var(--color-primary);
+  transform: rotate(360deg);
+  transition: all var(--transition-fast);
 }
 
+/* User Dropdown */
 .user-dropdown {
   display: flex;
   align-items: center;
@@ -251,24 +285,28 @@ onMounted(() => {
   white-space: nowrap;
 }
 
+/* Register Button with Gradient */
 .btn-register {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-primary);
+  background: var(--color-primary-gradient);
   color: white;
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: 500;
   border-radius: var(--border-radius);
   transition: all var(--transition-fast);
+  border: none;
 }
 
 .btn-register:hover {
-  background: var(--color-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
+/* Mobile Responsive */
 @media (max-width: 640px) {
   .navbar-menu {
     display: none;

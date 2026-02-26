@@ -1,6 +1,6 @@
 <template>
   <div
-    class="article-card card cursor-pointer hover:shadow-md transition-shadow duration-200"
+    class="article-card card cursor-pointer"
     :class="{ 'flex flex-col md:flex-row overflow-hidden': horizontal }"
     @click="$router.push(`/article/${article.id}`)"
   >
@@ -9,7 +9,10 @@
     </div>
     
     <div class="flex-1" :class="horizontal ? 'p-4 md:p-5' : ''">
-      <h3 :class="titleClass" style="color: var(--text-primary)">
+      <h3
+        :class="titleClass"
+        class="title-text"
+        :style="{ color: 'var(--text-primary)' }">
         {{ article.title }}
       </h3>
       <p class="text-sm mb-3 line-clamp-2" style="color: var(--text-secondary)">
@@ -72,10 +75,15 @@ const titleClass = computed(() => {
 <style scoped>
 .card {
   background: var(--bg-secondary);
-  border-radius: var(--border-radius);
-  padding: var(--spacing-md);
+  border-radius: var(--border-radius-lg);
+  transition: all var(--transition-normal);
   box-shadow: var(--shadow-sm);
 }
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
 
 .article-card.overflow-hidden {
   padding: 0;
@@ -87,4 +95,13 @@ const titleClass = computed(() => {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.title-text {
+  color: var(--text-primary);
+  transition: color var(--transition-fast);
+}
+
+.article-card:hover .title-text {
+  color: var(--color-primary);
+}
+
 </style>
