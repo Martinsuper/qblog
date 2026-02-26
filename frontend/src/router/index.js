@@ -92,6 +92,11 @@ const router = createRouter({
           path: 'categories',
           name: 'admin-categories',
           component: () => import('@/views/Admin/CategoryManage.vue')
+        },
+        {
+          path: 'backup',
+          name: 'admin-backup',
+          component: () => import('@/views/Admin/BackupManage.vue')
         }
       ]
     }

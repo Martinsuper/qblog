@@ -72,3 +72,7 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+
+# 备份配置
+backup:
+  cron: ${BACKUP_CRON:0 0 2 * * ?}  # 默认每天凌晨 2 点执行
