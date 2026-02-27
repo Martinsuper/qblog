@@ -10,7 +10,7 @@
       </div>
       <div class="header-right">
         <el-button @click="handleSaveDraft" :loading="saving">
-          <el-icon><Download /></el-icon>
+          <el-icon><Document /></el-icon>
           存草稿
         </el-button>
         <el-button type="primary" @click="handleSubmit" :loading="publishing">
@@ -187,7 +187,6 @@ import MarkdownIt from 'markdown-it'
 import plantumlEncoder from 'plantuml-encoder'
 import {
   ArrowLeft,
-  Download,
   Check,
   Plus,
   Document,

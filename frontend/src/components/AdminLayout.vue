@@ -35,7 +35,7 @@
         </el-menu-item>
 
         <el-menu-item index="/admin/backup" route="/admin/backup">
-          <el-icon><Delete /></el-icon>
+          <el-icon><Download /></el-icon>
           <template #title>备份管理</template>
         </el-menu-item>
       </el-menu>
@@ -101,7 +101,7 @@ import {
   Folder,
   HomeFilled,
   DataBoard,
-  Delete
+  Download
 } from '@element-plus/icons-vue'
 
 const router = useRouter()

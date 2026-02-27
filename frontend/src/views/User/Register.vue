@@ -98,6 +98,7 @@ const handleRegister = async () => {
 <style scoped>
 .w-full {
   width: 100%;
+}
 
 .register-container {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%),
@@ -147,6 +148,5 @@ const handleRegister = async () => {
 
 .el-form-item {
   margin-bottom: var(--spacing-md, 1.25rem);
-}
 }
 </style>

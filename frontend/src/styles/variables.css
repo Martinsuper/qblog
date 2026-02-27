@@ -54,31 +54,150 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     /* Dark Mode Color Palette */
     --color-primary: #3B82F6;
     --color-primary-light: #60A5FA;
     --color-primary-dark: #2563EB;
-    
+
     /* Dark Mode Backgrounds */
     --bg-primary: #111827;
     --bg-secondary: #1F2937;
     --bg-tertiary: #374151;
-    
+
     /* Dark Mode Text */
     --text-primary: #F9FAFB;
     --text-secondary: #D1D5DB;
     --text-tertiary: #9CA3AF;
-    
+
     /* Dark Mode Borders */
     --border-color: #374151;
     --border-color-light: #1F2937;
-    
+
     /* Dark Mode Shadows */
     --shadow-sm: 0 2px 4px rgba(0,0,0,0.3);
     --shadow-md: 0 4px 8px rgba(0,0,0,0.4);
     --shadow-lg: 0 10px 24px rgba(0,0,0,0.5);
     --shadow-xl: 0 20px 40px rgba(0,0,0,0.6);
+
+    /* Element Plus Dark Mode Variables */
+    --el-bg-color: #1F2937;
+    --el-bg-color-page: #111827;
+    --el-bg-color-overlay: #1F2937;
+    --el-text-color-primary: #F9FAFB;
+    --el-text-color-regular: #D1D5DB;
+    --el-text-color-secondary: #9CA3AF;
+    --el-text-color-placeholder: #6B7280;
+    --el-text-color-disabled: #4B5563;
+    --el-border-color: #374151;
+    --el-border-color-light: #4B5563;
+    --el-border-color-lighter: #374151;
+    --el-border-color-extra-light: #1F2937;
+    --el-border-color-dark: #4B5563;
+    --el-border-color-darker: #6B7280;
+    --el-fill-color: #374151;
+    --el-fill-color-light: #1F2937;
+    --el-fill-color-lighter: #111827;
+    --el-fill-color-extra-light: #1F2937;
+    --el-fill-color-dark: #374151;
+    --el-fill-color-darker: #4B5563;
+    --el-fill-color-blank: #1F2937;
+    --el-mask-color: rgba(0, 0, 0, 0.8);
+    --el-mask-color-extra-light: rgba(0, 0, 0, 0.3);
+    --el-box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, 0.36), 0px 8px 20px rgba(0, 0, 0, 0.72);
+    --el-box-shadow-light: 0px 0px 12px rgba(0, 0, 0, 0.72);
+    --el-box-shadow-lighter: 0px 0px 6px rgba(0, 0, 0, 0.72);
+    --el-box-shadow-dark: 0px 16px 48px 16px rgba(0, 0, 0, 0.72), 0px 12px 32px rgba(0, 0, 0, 0.72), 0px 8px 16px -8px rgba(0, 0, 0, 0.72);
+
+    /* Element Plus Menu Dark Mode */
+    --el-menu-bg-color: #1F2937;
+    --el-menu-text-color: #D1D5DB;
+    --el-menu-active-color: #3B82F6;
+    --el-menu-hover-bg-color: #374151;
+
+    /* Element Plus Tag Dark Mode */
+    --el-tag-bg-color: #374151;
+    --el-tag-border-color: #4B5563;
+    --el-tag-text-color: #D1D5DB;
+
+    /* Element Plus Dropdown Dark Mode */
+    --el-dropdown-menu-box-shadow: var(--el-box-shadow);
+
+    /* Element Plus Card Dark Mode */
+    --el-card-bg-color: #1F2937;
+    --el-card-border-color: #374151;
+
+    /* Element Plus Input Dark Mode */
+    --el-input-bg-color: #1F2937;
+    --el-input-border-color: #374151;
+    --el-input-hover-border-color: #4B5563;
+    --el-input-focus-border-color: #3B82F6;
+    --el-input-text-color: #F9FAFB;
+    --el-input-placeholder-color: #6B7280;
+
+    /* Element Plus Button Dark Mode */
+    --el-button-bg-color: #374151;
+    --el-button-text-color: #D1D5DB;
+    --el-button-border-color: #4B5563;
+    --el-button-hover-bg-color: #4B5563;
+    --el-button-hover-text-color: #F9FAFB;
+    --el-button-hover-border-color: #6B7280;
+
+    /* Element Plus Table Dark Mode */
+    --el-table-bg-color: #1F2937;
+    --el-table-tr-bg-color: #1F2937;
+    --el-table-header-bg-color: #111827;
+    --el-table-header-text-color: #D1D5DB;
+    --el-table-text-color: #D1D5DB;
+    --el-table-row-hover-bg-color: #374151;
+    --el-table-border-color: #374151;
+
+    /* Element Plus Pagination Dark Mode */
+    --el-pagination-bg-color: #1F2937;
+    --el-pagination-text-color: #D1D5DB;
+    --el-pagination-button-bg-color: #374151;
+    --el-pagination-button-color: #D1D5DB;
+    --el-pagination-hover-color: #3B82F6;
+
+    /* Element Plus Dialog Dark Mode */
+    --el-dialog-bg-color: #1F2937;
+    --el-dialog-title-font-size: 18px;
+
+    /* Element Plus Message Box Dark Mode */
+    --el-messagebox-title-color: #F9FAFB;
+    --el-messagebox-content-color: #D1D5DB;
+
+    /* Element Plus Popover Dark Mode */
+    --el-popover-bg-color: #1F2937;
+    --el-popover-border-color: #374151;
+
+    /* Element Plus Tooltip Dark Mode */
+    --el-tooltip-bg-color: #374151;
+    --el-tooltip-border-color: #4B5563;
+
+    /* Element Plus Select Dark Mode */
+    --el-select-border-color-hover: #4B5563;
+
+    /* Element Plus Form Dark Mode */
+    --el-form-label-font-size: 14px;
+
+    /* Element Plus Breadcrumb Dark Mode */
+    --el-breadcrumb-base-color: #D1D5DB;
+
+    /* Element Plus Avatar Dark Mode */
+    --el-avatar-bg-color: #374151;
+
+    /* Element Plus Empty Dark Mode */
+    --el-empty-fill-color-0: #374151;
+    --el-empty-fill-color-1: #4B5563;
+    --el-empty-fill-color-2: #1F2937;
+    --el-empty-fill-color-3: #374151;
+    --el-empty-fill-color-4: #4B5563;
+    --el-empty-fill-color-5: #1F2937;
+    --el-empty-fill-color-6: #374151;
+    --el-empty-fill-color-7: #4B5563;
+    --el-empty-fill-color-8: #1F2937;
+    --el-empty-fill-color-9: #374151;
   }
 }
 
@@ -87,20 +206,143 @@
   --color-primary: #3B82F6;
   --color-primary-light: #60A5FA;
   --color-primary-dark: #2563EB;
-  
+
   --bg-primary: #111827;
   --bg-secondary: #1F2937;
   --bg-tertiary: #374151;
-  
+
   --text-primary: #F9FAFB;
   --text-secondary: #D1D5DB;
   --text-tertiary: #9CA3AF;
-  
+
   --border-color: #374151;
   --border-color-light: #1F2937;
-  
+
   --shadow-sm: 0 2px 4px rgba(0,0,0,0.3);
   --shadow-md: 0 4px 8px rgba(0,0,0,0.4);
   --shadow-lg: 0 10px 24px rgba(0,0,0,0.5);
   --shadow-xl: 0 20px 40px rgba(0,0,0,0.6);
+
+  /* Element Plus Dark Mode Variables */
+  --el-bg-color: #1F2937;
+  --el-bg-color-page: #111827;
+  --el-bg-color-overlay: #1F2937;
+  --el-text-color-primary: #F9FAFB;
+  --el-text-color-regular: #D1D5DB;
+  --el-text-color-secondary: #9CA3AF;
+  --el-text-color-placeholder: #6B7280;
+  --el-text-color-disabled: #4B5563;
+  --el-border-color: #374151;
+  --el-border-color-light: #4B5563;
+  --el-border-color-lighter: #374151;
+  --el-border-color-extra-light: #1F2937;
+  --el-border-color-dark: #4B5563;
+  --el-border-color-darker: #6B7280;
+  --el-fill-color: #374151;
+  --el-fill-color-light: #1F2937;
+  --el-fill-color-lighter: #111827;
+  --el-fill-color-extra-light: #1F2937;
+  --el-fill-color-dark: #374151;
+  --el-fill-color-darker: #4B5563;
+  --el-fill-color-blank: #1F2937;
+  --el-mask-color: rgba(0, 0, 0, 0.8);
+  --el-mask-color-extra-light: rgba(0, 0, 0, 0.3);
+  --el-box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, 0.36), 0px 8px 20px rgba(0, 0, 0, 0.72);
+  --el-box-shadow-light: 0px 0px 12px rgba(0, 0, 0, 0.72);
+  --el-box-shadow-lighter: 0px 0px 6px rgba(0, 0, 0, 0.72);
+  --el-box-shadow-dark: 0px 16px 48px 16px rgba(0, 0, 0, 0.72), 0px 12px 32px rgba(0, 0, 0, 0.72), 0px 8px 16px -8px rgba(0, 0, 0, 0.72);
+
+  /* Element Plus Menu Dark Mode */
+  --el-menu-bg-color: #1F2937;
+  --el-menu-text-color: #D1D5DB;
+  --el-menu-active-color: #3B82F6;
+  --el-menu-hover-bg-color: #374151;
+
+  /* Element Plus Tag Dark Mode */
+  --el-tag-bg-color: #374151;
+  --el-tag-border-color: #4B5563;
+  --el-tag-text-color: #D1D5DB;
+
+  /* Element Plus Dropdown Dark Mode */
+  --el-dropdown-menu-box-shadow: var(--el-box-shadow);
+  --el-dropdown-menu-bg-color: #1F2937;
+  --el-dropdown-menu-border-color: #374151;
+  --el-dropdown-menu-item-hover-fill: #374151;
+  --el-dropdown-menu-item-hover-color: #F9FAFB;
+
+  /* Element Plus Card Dark Mode */
+  --el-card-bg-color: #1F2937;
+  --el-card-border-color: #374151;
+
+  /* Element Plus Input Dark Mode */
+  --el-input-bg-color: #1F2937;
+  --el-input-border-color: #374151;
+  --el-input-hover-border-color: #4B5563;
+  --el-input-focus-border-color: #3B82F6;
+  --el-input-text-color: #F9FAFB;
+  --el-input-placeholder-color: #6B7280;
+
+  /* Element Plus Button Dark Mode */
+  --el-button-bg-color: #374151;
+  --el-button-text-color: #D1D5DB;
+  --el-button-border-color: #4B5563;
+  --el-button-hover-bg-color: #4B5563;
+  --el-button-hover-text-color: #F9FAFB;
+  --el-button-hover-border-color: #6B7280;
+
+  /* Element Plus Table Dark Mode */
+  --el-table-bg-color: #1F2937;
+  --el-table-tr-bg-color: #1F2937;
+  --el-table-header-bg-color: #111827;
+  --el-table-header-text-color: #D1D5DB;
+  --el-table-text-color: #D1D5DB;
+  --el-table-row-hover-bg-color: #374151;
+  --el-table-border-color: #374151;
+
+  /* Element Plus Pagination Dark Mode */
+  --el-pagination-bg-color: #1F2937;
+  --el-pagination-text-color: #D1D5DB;
+  --el-pagination-button-bg-color: #374151;
+  --el-pagination-button-color: #D1D5DB;
+  --el-pagination-hover-color: #3B82F6;
+
+  /* Element Plus Dialog Dark Mode */
+  --el-dialog-bg-color: #1F2937;
+  --el-dialog-title-font-size: 18px;
+
+  /* Element Plus Message Box Dark Mode */
+  --el-messagebox-title-color: #F9FAFB;
+  --el-messagebox-content-color: #D1D5DB;
+
+  /* Element Plus Popover Dark Mode */
+  --el-popover-bg-color: #1F2937;
+  --el-popover-border-color: #374151;
+
+  /* Element Plus Tooltip Dark Mode */
+  --el-tooltip-bg-color: #374151;
+  --el-tooltip-border-color: #4B5563;
+
+  /* Element Plus Select Dark Mode */
+  --el-select-border-color-hover: #4B5563;
+
+  /* Element Plus Form Dark Mode */
+  --el-form-label-font-size: 14px;
+
+  /* Element Plus Breadcrumb Dark Mode */
+  --el-breadcrumb-base-color: #D1D5DB;
+
+  /* Element Plus Avatar Dark Mode */
+  --el-avatar-bg-color: #374151;
+
+  /* Element Plus Empty Dark Mode */
+  --el-empty-fill-color-0: #374151;
+  --el-empty-fill-color-1: #4B5563;
+  --el-empty-fill-color-2: #1F2937;
+  --el-empty-fill-color-3: #374151;
+  --el-empty-fill-color-4: #4B5563;
+  --el-empty-fill-color-5: #1F2937;
+  --el-empty-fill-color-6: #374151;
+  --el-empty-fill-color-7: #4B5563;
+  --el-empty-fill-color-8: #1F2937;
+  --el-empty-fill-color-9: #374151;
 }

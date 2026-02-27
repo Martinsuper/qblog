@@ -176,7 +176,7 @@ onMounted(() => {
   .article-title {
     font-size: 28px;
     font-weight: bold;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 20px;
     line-height: 1.4;
   }
@@ -187,7 +187,7 @@ onMounted(() => {
     align-items: center;
     justify-content: space-between;
     gap: 15px;
-    color: #666;
+    color: var(--text-secondary);
     font-size: 14px;
 
     .author-info {
@@ -229,25 +229,25 @@ onMounted(() => {
 .article-body {
   font-size: 16px;
   line-height: 1.8;
-  color: #333;
+  color: var(--text-primary);
 
   :deep(h1), :deep(h2), :deep(h3), :deep(h4), :deep(h5), :deep(h6) {
     margin-top: 24px;
     margin-bottom: 16px;
     font-weight: 600;
     line-height: 1.25;
-    color: #333;
+    color: var(--text-primary);
   }
 
   :deep(h1) {
     font-size: 24px;
-    border-bottom: 1px solid #eaecef;
+    border-bottom: 1px solid var(--border-color);
     padding-bottom: 0.3em;
   }
 
   :deep(h2) {
     font-size: 20px;
-    border-bottom: 1px solid #eaecef;
+    border-bottom: 1px solid var(--border-color);
     padding-bottom: 0.3em;
   }
 
@@ -261,14 +261,14 @@ onMounted(() => {
 
   :deep(code) {
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    background: #f6f8fa;
+    background: var(--bg-tertiary);
     padding: 0.2em 0.4em;
     border-radius: 3px;
     font-size: 85%;
   }
 
   :deep(pre) {
-    background: #f6f8fa;
+    background: var(--bg-tertiary);
     padding: 16px;
     border-radius: 6px;
     overflow-x: auto;
@@ -286,8 +286,8 @@ onMounted(() => {
   :deep(.plantuml-diagram) {
     margin: 24px 0;
     padding: 20px;
-    background: #fff;
-    border: 1px solid #eaecef;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
     text-align: center;
     display: flex;
@@ -311,7 +311,7 @@ onMounted(() => {
   }
 
   :deep(a) {
-    color: #409eff;
+    color: var(--color-primary);
     text-decoration: none;
 
     &:hover {
@@ -330,8 +330,8 @@ onMounted(() => {
 
   :deep(blockquote) {
     padding: 0 1em;
-    color: #6a737d;
-    border-left: 0.25em solid #dfe2e5;
+    color: var(--text-secondary);
+    border-left: 0.25em solid var(--border-color);
     margin-bottom: 16px;
   }
 
@@ -346,12 +346,12 @@ onMounted(() => {
     margin-bottom: 16px;
 
     th, td {
-      border: 1px solid #dfe2e5;
+      border: 1px solid var(--border-color);
       padding: 6px 13px;
     }
 
     tr:nth-child(2n) {
-      background-color: #f6f8fa;
+      background-color: var(--bg-tertiary);
     }
   }
 }
@@ -359,13 +359,13 @@ onMounted(() => {
 .article-tags {
   margin-top: 30px;
   padding-top: 20px;
-  border-top: 1px solid #eaecef;
+  border-top: 1px solid var(--border-color);
 }
 
 .article-actions {
   margin-top: 30px;
   padding-top: 20px;
-  border-top: 1px solid #eaecef;
+  border-top: 1px solid var(--border-color);
   display: flex;
   gap: 10px;
 }

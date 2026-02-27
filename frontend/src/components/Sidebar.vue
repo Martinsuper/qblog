@@ -136,12 +136,12 @@ onMounted(fetchData)
 }
 .hot-article-item:hover {
   background: var(--bg-tertiary);
-  border-radius: var(--border-radius-sm); 
+  border-radius: var(--border-radius-sm);
   padding: var(--spacing-xs) var(--spacing-sm);
 }
 
-</style>
 .sidebar {
   gap: var(--spacing-lg);
 }
+</style>
 

@@ -88,9 +88,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getArticleList, getHotArticles } from '@/api/article'
+import { getArticleList } from '@/api/article'
 import { getCategoryList } from '@/api/category'
-import { getCommentList } from '@/api/comment'
 
 const dateRange = ref('week')
 const loading = ref(false)
@@ -105,12 +104,6 @@ const stats = ref({
 
 // 分类统计
 const categories = ref([])
-
-// 热门文章
-const hotArticles = ref([])
-
-// 最新评论
-const comments = ref([])
 
 // 获取统计数据
 const fetchStats = async () => {
@@ -160,18 +153,6 @@ const fetchCategoryStats = async () => {
   }
 }
 
-// 获取热门文章
-const fetchHotArticles = async () => {
-  try {
-    const res = await getHotArticles({ limit: 5 })
-    hotArticles.value = res.data || []
-  } catch (error) {
-    console.error('获取热门文章失败:', error)
-  }
-}
-
-
-
 // 分类颜色
 const categoryColors = ['#67c23a', '#409eff', '#e6a23c', '#909399', '#f56c6c', '#a0cfa1']
 const getCategoryColor = (id) => {
@@ -205,8 +186,6 @@ const formatTime = (time) => {
 onMounted(() => {
   fetchStats()
   fetchCategoryStats()
-  fetchHotArticles()
-  // fetchComments() // 如果后端没有评论接口，先注释
 })
 </script>
 

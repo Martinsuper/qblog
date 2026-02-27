@@ -150,7 +150,8 @@ onMounted(() => {
   transition: all var(--transition-normal);
 }
 
-.navbar[data-theme="dark"] {
+/* Dark mode - data-theme is on html element */
+:global([data-theme="dark"]) .navbar {
   background: rgba(31, 41, 55, 0.8);
 }
 
