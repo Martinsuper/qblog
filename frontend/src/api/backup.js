@@ -75,10 +75,8 @@ export function importBackup(file) {
   return request({
     url: '/backup/import',
     method: 'post',
-    data: formData,
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+    data: formData
+    // 注意：不要手动设置 Content-Type，让浏览器自动设置 boundary
   })
 }
 

@@ -13,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -31,7 +30,7 @@ public class BackupController {
      */
     @PostMapping("/create")
     public Result<BackupVO> createBackup(
-            @RequestParam(required = false, defaultValue = "database") String type,
+            @RequestParam(required = false, defaultValue = "json") String type,
             @RequestParam(required = false) String description) {
         BackupVO backup = backupService.createBackup(type, description);
         return Result.success(backup);
@@ -59,24 +58,23 @@ public class BackupController {
     @GetMapping("/download/{id}")
     public ResponseEntity<ByteArrayResource> downloadBackup(@PathVariable String id)
             throws java.io.IOException {
+        // 读取备份文件
         byte[] data = backupService.downloadBackup(id);
 
-        // 查找备份文件
+        // 查找备份文件 (ZIP 格式)
         java.nio.file.Path backupPath = java.nio.file.Paths.get("backups");
-        java.io.File sqlFile = backupPath.resolve(id + ".sql").toFile();
         java.io.File zipFile = backupPath.resolve(id + ".zip").toFile();
 
-        String filename = java.net.URLEncoder.encode(
-            sqlFile.exists() ? sqlFile.getName() : zipFile.getName(),
-            StandardCharsets.UTF_8.toString()
-        );
-        MediaType contentType = sqlFile.exists()
-            ? MediaType.parseMediaType("application/sql")
-            : MediaType.parseMediaType("application/zip");
+        MediaType contentType = MediaType.parseMediaType("application/zip");
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(contentType);
-        headers.setContentDispositionFormData("attachment", filename);
+        headers.setContentDisposition(
+            org.springframework.http.ContentDisposition
+                .attachment()
+                .filename(zipFile.getName())
+                .build()
+        );
 
         return ResponseEntity.ok()
             .headers(headers)

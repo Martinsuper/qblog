@@ -1,11 +1,18 @@
 package com.qblog.service.impl;
 
+import com.qblog.mapper.ArticleMapper;
+import com.qblog.mapper.ArticleTagMapper;
+import com.qblog.mapper.CategoryMapper;
+import com.qblog.mapper.TagMapper;
+import com.qblog.mapper.UserMapper;
 import com.qblog.model.dto.BackupSettingsDTO;
 import com.qblog.model.vo.BackupVO;
 import com.qblog.model.vo.BackupSettingsVO;
 import com.qblog.service.BackupService;
+import com.qblog.util.JsonBackupExporter;
+import com.qblog.util.JsonBackupImporter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,16 +22,12 @@ import java.io.*;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.Properties;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 
 /**
  * 备份服务实现
+ * 使用 JSON 格式进行数据备份和恢复
  */
 @Slf4j
 @Service
@@ -41,26 +44,31 @@ public class BackupServiceImpl implements BackupService {
     private static final String SETTINGS_FILE = "backup-settings.properties";
 
     /**
-     * 数据库备份前缀
+     * 备份文件前缀
      */
-    private static final String DB_BACKUP_PREFIX = "qblog-db-";
+    private static final String BACKUP_PREFIX = "qblog-backup-";
 
-    /**
-     * 完整备份前缀
-     */
-    private static final String FULL_BACKUP_PREFIX = "qblog-full-";
-
-    @Value("${spring.datasource.url}")
-    private String databaseUrl;
-
-    @Value("${spring.datasource.username}")
-    private String databaseUsername;
-
-    @Value("${spring.datasource.password}")
-    private String databasePassword;
+    private final UserMapper userMapper;
+    private final CategoryMapper categoryMapper;
+    private final TagMapper tagMapper;
+    private final ArticleMapper articleMapper;
+    private final ArticleTagMapper articleTagMapper;
 
     private Path backupDirPath;
     private Path settingsFilePath;
+
+    @Autowired
+    public BackupServiceImpl(UserMapper userMapper,
+                             CategoryMapper categoryMapper,
+                             TagMapper tagMapper,
+                             ArticleMapper articleMapper,
+                             ArticleTagMapper articleTagMapper) {
+        this.userMapper = userMapper;
+        this.categoryMapper = categoryMapper;
+        this.tagMapper = tagMapper;
+        this.articleMapper = articleMapper;
+        this.articleTagMapper = articleTagMapper;
+    }
 
     @PostConstruct
     public void init() {
@@ -93,7 +101,7 @@ public class BackupServiceImpl implements BackupService {
         props.setProperty("minute", "0");
         props.setProperty("dayOfWeek", "0");
         props.setProperty("keepCount", "7");
-        props.setProperty("backupType", "database");
+        props.setProperty("backupType", "json");
 
         try (OutputStream os = Files.newOutputStream(settingsFilePath)) {
             props.store(os, "Backup Settings");
@@ -105,220 +113,40 @@ public class BackupServiceImpl implements BackupService {
 
     @Override
     public BackupVO createBackup(String type, String description) {
-        log.info("开始创建备份，类型：{}, 描述：{}", type, description);
+        log.info("开始创建 JSON 备份，描述：{}", description);
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
-        String prefix = "database".equals(type) ? DB_BACKUP_PREFIX : FULL_BACKUP_PREFIX;
-        String baseFilename = prefix + timestamp;
+        String zipFilename = BACKUP_PREFIX + timestamp + ".zip";
+        Path zipPath = backupDirPath.resolve(zipFilename);
 
         try {
-            if ("database".equals(type)) {
-                // 创建数据库备份
-                String sqlFilename = baseFilename + ".sql";
-                Path sqlPath = backupDirPath.resolve(sqlFilename);
+            // 使用 JSON 导出器创建备份
+            JsonBackupExporter exporter = new JsonBackupExporter(
+                userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper
+            );
+            exporter.exportBackup(zipPath, description);
 
-                backupDatabase(sqlPath);
+            // 创建元数据文件
+            writeMetadata(BACKUP_PREFIX + timestamp, description, zipPath);
 
-                // 创建元数据文件
-                writeMetadata(baseFilename, type, description, sqlPath);
-
-                log.info("数据库备份完成：{}", sqlFilename);
-            } else if ("full".equals(type)) {
-                // 创建完整备份（ZIP）
-                String zipFilename = baseFilename + ".zip";
-                Path zipPath = backupDirPath.resolve(zipFilename);
-
-                createFullBackup(zipPath, description);
-
-                log.info("完整备份完成：{}", zipFilename);
-            } else {
-                throw new IllegalArgumentException("不支持的备份类型：" + type);
-            }
+            log.info("JSON 备份完成：{}", zipFilename);
 
             // 清理过期备份
             cleanupOldBackups();
 
-            return getBackupDetail(baseFilename);
+            return getBackupDetail(BACKUP_PREFIX + timestamp);
         } catch (IOException e) {
             log.error("创建备份失败", e);
             throw new RuntimeException("创建备份失败：" + e.getMessage(), e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.error("创建备份被中断", e);
-            throw new RuntimeException("创建备份被中断", e);
         }
-    }
-
-    /**
-     * 备份数据库
-     */
-    private void backupDatabase(Path outputPath) throws IOException, InterruptedException {
-        // 检查 mysqldump 是否可用
-        if (!isMysqldumpAvailable()) {
-            throw new RuntimeException("mysqldump 命令不可用，请安装 MySQL 客户端工具");
-        }
-
-        // 从 JDBC URL 中提取数据库名
-        String dbName = extractDatabaseName(databaseUrl);
-
-        // 构建 mysqldump 命令
-        List<String> command = new ArrayList<>();
-        command.add("mysqldump");
-        command.add("--host=localhost");
-        command.add("--port=3306");
-        command.add("--user=" + databaseUsername);
-        command.add("--password=" + databasePassword);
-        command.add("--default-character-set=utf8mb4");
-        command.add("--set-gtid-purged=OFF");
-        command.add("--single-transaction");
-        command.add("--quick");
-        command.add("--lock-tables=false");
-        command.add(dbName);
-
-        log.debug("执行命令：{}", String.join(" ", command));
-
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        Process process = processBuilder.start();
-
-        try (FileOutputStream fos = new FileOutputStream(outputPath.toFile());
-             BufferedOutputStream bos = new BufferedOutputStream(fos);
-             InputStream is = process.getInputStream();
-             InputStream es = process.getErrorStream()) {
-
-            // 读取输出
-            byte[] buffer = new byte[8192];
-            int bytesRead;
-            while ((bytesRead = is.read(buffer)) != -1) {
-                bos.write(buffer, 0, bytesRead);
-            }
-
-            // 等待进程完成
-            boolean completed = process.waitFor(5, java.util.concurrent.TimeUnit.MINUTES);
-            if (!completed) {
-                process.destroyForcibly();
-                throw new RuntimeException("mysqldump 执行超时");
-            }
-
-            int exitCode = process.exitValue();
-            if (exitCode != 0) {
-                String errorMessage = new String(es.readAllBytes());
-                throw new RuntimeException("mysqldump 执行失败：" + errorMessage);
-            }
-        }
-
-        // 检查文件是否生成
-        if (!Files.exists(outputPath) || Files.size(outputPath) == 0) {
-            throw new RuntimeException("备份文件未生成或为空");
-        }
-    }
-
-    /**
-     * 检查 mysqldump 是否可用
-     */
-    private boolean isMysqldumpAvailable() {
-        try {
-            ProcessBuilder pb = new ProcessBuilder("which", "mysqldump");
-            Process process = pb.start();
-            int exitCode = process.waitFor();
-            return exitCode == 0;
-        } catch (Exception e) {
-            log.warn("检查 mysqldump 可用性失败", e);
-            return false;
-        }
-    }
-
-    /**
-     * 从 JDBC URL 中提取数据库名
-     */
-    private String extractDatabaseName(String jdbcUrl) {
-        // jdbc:mysql://localhost:3306/qblog?...
-        int lastSlash = jdbcUrl.lastIndexOf('/');
-        int questionMark = jdbcUrl.indexOf('?');
-        if (questionMark == -1) {
-            questionMark = jdbcUrl.length();
-        }
-        return jdbcUrl.substring(lastSlash + 1, questionMark);
-    }
-
-    /**
-     * 创建完整备份（包含数据库和文件）
-     */
-    private void createFullBackup(Path zipPath, String description) throws IOException, InterruptedException {
-        // 先创建数据库备份（临时文件）
-        Path tempSqlPath = Files.createTempFile("qblog-db-", ".sql");
-        try {
-            backupDatabase(tempSqlPath);
-
-            // 创建 ZIP 文件
-            try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(zipPath))) {
-                // 添加数据库文件
-                addToZip(zos, tempSqlPath.toFile(), "database/" + tempSqlPath.getFileName());
-
-                // 添加上传文件目录（如果存在）
-                Path uploadsPath = Paths.get("uploads");
-                if (Files.exists(uploadsPath)) {
-                    addDirectoryToZip(zos, uploadsPath, "files/");
-                }
-
-                // 添加元数据
-                ZipEntry metaEntry = new ZipEntry("metadata.json");
-                zos.putNextEntry(metaEntry);
-                String metadata = createMetadataJson(description);
-                zos.write(metadata.getBytes());
-                zos.closeEntry();
-            }
-        } finally {
-            Files.deleteIfExists(tempSqlPath);
-        }
-    }
-
-    /**
-     * 添加文件到 ZIP
-     */
-    private void addToZip(ZipOutputStream zos, File file, String pathInZip) throws IOException {
-        ZipEntry entry = new ZipEntry(pathInZip);
-        zos.putNextEntry(entry);
-
-        try (FileInputStream fis = new FileInputStream(file)) {
-            fis.transferTo(zos);
-        }
-
-        zos.closeEntry();
-    }
-
-    /**
-     * 添加目录到 ZIP
-     */
-    private void addDirectoryToZip(ZipOutputStream zos, Path directory, String pathInZip) throws IOException {
-        Files.walk(directory)
-            .filter(Files::isRegularFile)
-            .forEach(path -> {
-                try {
-                    String relativePath = pathInZip + directory.relativize(path).toString().replace('\\', '/');
-                    addToZip(zos, path.toFile(), relativePath);
-                } catch (IOException e) {
-                    log.error("添加文件到 ZIP 失败：{}", path, e);
-                }
-            });
-    }
-
-    /**
-     * 创建元数据 JSON
-     */
-    private String createMetadataJson(String description) {
-        return String.format(
-            "{\"version\":\"1.0\",\"timestamp\":\"%s\",\"description\":\"%s\",\"database\":\"qblog\"}",
-            LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-            description != null ? description : ""
-        );
     }
 
     /**
      * 写入元数据文件
      */
-    private void writeMetadata(String baseFilename, String type, String description, Path backupFile) throws IOException {
+    private void writeMetadata(String baseFilename, String description, Path backupFile) throws IOException {
         Properties meta = new Properties();
-        meta.setProperty("type", type);
+        meta.setProperty("type", "json");
         meta.setProperty("description", description != null ? description : "");
         meta.setProperty("filename", backupFile.getFileName().toString());
         meta.setProperty("size", String.valueOf(Files.size(backupFile)));
@@ -340,34 +168,20 @@ public class BackupServiceImpl implements BackupService {
             Files.list(backupDirPath)
                 .filter(path -> {
                     String filename = path.getFileName().toString();
-                    return filename.endsWith(".sql") || filename.endsWith(".zip");
+                    return filename.endsWith(".zip") && filename.startsWith(BACKUP_PREFIX);
                 })
                 .forEach(path -> {
                     try {
                         String filename = path.getFileName().toString();
-                        String backupId = filename.endsWith(".sql")
-                            ? filename.substring(0, filename.length() - 4)
-                            : filename.substring(0, filename.length() - 4);
-
-                        // 跳过元数据文件
-                        if (backupId.endsWith(".meta")) {
-                            return;
-                        }
+                        String backupId = filename.substring(0, filename.length() - 4);
 
                         BackupVO vo = new BackupVO();
                         vo.setId(backupId);
                         vo.setFilename(filename);
                         vo.setSize(Files.size(path));
                         vo.setFormattedSize(formatFileSize(Files.size(path)));
-                        vo.setType(filename.endsWith(".sql") ? "database" : "full");
-                        vo.setCreateTime(LocalDateTime.of(
-                            Integer.parseInt(backupId.substring(10, 14)),
-                            Integer.parseInt(backupId.substring(14, 16)),
-                            Integer.parseInt(backupId.substring(16, 18)),
-                            Integer.parseInt(backupId.substring(19, 21)),
-                            Integer.parseInt(backupId.substring(21, 23)),
-                            Integer.parseInt(backupId.substring(24, 26))
-                        ));
+                        vo.setType("json");
+                        vo.setCreateTime(parseCreateTimeFromBackupId(backupId));
 
                         // 读取元数据
                         Path metaPath = backupDirPath.resolve(backupId + ".meta");
@@ -386,7 +200,7 @@ public class BackupServiceImpl implements BackupService {
                 });
 
             // 按创建时间倒序排序
-            backups.sort(Comparator.comparing(BackupVO::getCreateTime).reversed());
+            backups.sort(Comparator.comparing(BackupVO::getCreateTime, Comparator.nullsLast(Comparator.reverseOrder())));
         } catch (IOException e) {
             log.error("获取备份列表失败", e);
         }
@@ -394,16 +208,34 @@ public class BackupServiceImpl implements BackupService {
         return backups;
     }
 
+    /**
+     * 从备份 ID 解析创建时间
+     */
+    private LocalDateTime parseCreateTimeFromBackupId(String backupId) {
+        try {
+            // 格式: qblog-backup-20260227-210546
+            // 拆分: [qblog, backup, 20260227, 210546]
+            String[] parts = backupId.split("-");
+            if (parts.length >= 4) {
+                String datePart = parts[2]; // 20260227
+                String timePart = parts[3]; // 210546
+
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+                String dateTimeStr = datePart + timePart;
+                return LocalDateTime.parse(dateTimeStr, formatter);
+            }
+        } catch (Exception e) {
+            log.warn("解析备份时间失败：{}", backupId, e);
+        }
+        return null;
+    }
+
     @Override
     public BackupVO getBackupDetail(String backupId) {
         log.debug("获取备份详情：{}", backupId);
 
         try {
-            // 尝试查找 .sql 或 .zip 文件
-            Path backupPath = backupDirPath.resolve(backupId + ".sql");
-            if (!Files.exists(backupPath)) {
-                backupPath = backupDirPath.resolve(backupId + ".zip");
-            }
+            Path backupPath = backupDirPath.resolve(backupId + ".zip");
 
             if (!Files.exists(backupPath)) {
                 throw new RuntimeException("备份文件不存在：" + backupId);
@@ -415,21 +247,8 @@ public class BackupServiceImpl implements BackupService {
             vo.setFilename(filename);
             vo.setSize(Files.size(backupPath));
             vo.setFormattedSize(formatFileSize(Files.size(backupPath)));
-            vo.setType(filename.endsWith(".sql") ? "database" : "full");
-
-            // 解析创建时间
-            try {
-                vo.setCreateTime(LocalDateTime.of(
-                    Integer.parseInt(backupId.substring(10, 14)),
-                    Integer.parseInt(backupId.substring(14, 16)),
-                    Integer.parseInt(backupId.substring(16, 18)),
-                    Integer.parseInt(backupId.substring(19, 21)),
-                    Integer.parseInt(backupId.substring(21, 23)),
-                    Integer.parseInt(backupId.substring(24, 26))
-                ));
-            } catch (Exception e) {
-                log.warn("解析备份时间失败：{}", backupId, e);
-            }
+            vo.setType("json");
+            vo.setCreateTime(parseCreateTimeFromBackupId(backupId));
 
             // 读取元数据
             Path metaPath = backupDirPath.resolve(backupId + ".meta");
@@ -452,10 +271,7 @@ public class BackupServiceImpl implements BackupService {
     public byte[] downloadBackup(String backupId) throws IOException {
         log.info("下载备份：{}", backupId);
 
-        Path backupPath = backupDirPath.resolve(backupId + ".sql");
-        if (!Files.exists(backupPath)) {
-            backupPath = backupDirPath.resolve(backupId + ".zip");
-        }
+        Path backupPath = backupDirPath.resolve(backupId + ".zip");
 
         if (!Files.exists(backupPath)) {
             throw new RuntimeException("备份文件不存在：" + backupId);
@@ -477,153 +293,16 @@ public class BackupServiceImpl implements BackupService {
                 throw new RuntimeException("备份文件不存在：" + backupId);
             }
 
-            if ("database".equals(backup.getType())) {
-                // 恢复数据库
-                restoreDatabase(backupPath);
-            } else if ("full".equals(backup.getType())) {
-                // 恢复完整备份（从 ZIP 解压）
-                restoreFullBackup(backupPath);
-            }
+            // 使用 JSON 导入器恢复数据
+            JsonBackupImporter importer = new JsonBackupImporter(
+                userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper
+            );
+            Map<String, Integer> counts = importer.importBackup(backupPath);
 
-            log.info("备份恢复完成：{}", backupId);
+            log.info("备份恢复完成：{}, 导入记录数：{}", backupId, counts);
         } catch (IOException e) {
             log.error("恢复备份失败：{}", backupId, e);
             throw new RuntimeException("恢复备份失败：" + e.getMessage(), e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.error("恢复备份被中断：{}", backupId, e);
-            throw new RuntimeException("恢复备份被中断", e);
-        }
-    }
-
-    /**
-     * 恢复数据库
-     */
-    private void restoreDatabase(Path sqlPath) throws IOException, InterruptedException {
-        String dbName = extractDatabaseName(databaseUrl);
-
-        // 构建 mysql 命令
-        List<String> command = new ArrayList<>();
-        command.add("mysql");
-        command.add("--host=localhost");
-        command.add("--port=3306");
-        command.add("--user=" + databaseUsername);
-        command.add("--password=" + databasePassword);
-        command.add("--default-character-set=utf8mb4");
-        command.add(dbName);
-
-        log.debug("执行命令：{}", String.join(" ", command));
-
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        Process process = processBuilder.start();
-
-        try (FileInputStream fis = new FileInputStream(sqlPath.toFile());
-             BufferedInputStream bis = new BufferedInputStream(fis);
-             OutputStream os = process.getOutputStream()) {
-
-            // 写入 SQL 文件
-            bis.transferTo(os);
-        }
-
-        // 等待进程完成
-        boolean completed = process.waitFor(5, java.util.concurrent.TimeUnit.MINUTES);
-        if (!completed) {
-            process.destroyForcibly();
-            throw new RuntimeException("mysql 恢复执行超时");
-        }
-
-        int exitCode = process.exitValue();
-        if (exitCode != 0) {
-            throw new RuntimeException("mysql 恢复失败，退出码：" + exitCode);
-        }
-    }
-
-    /**
-     * 恢复完整备份
-     */
-    private void restoreFullBackup(Path zipPath) throws IOException {
-        Path tempDir = Files.createTempDirectory("qblog-restore-");
-        try {
-            // 解压 ZIP 文件
-            try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(zipPath))) {
-                ZipEntry entry;
-                while ((entry = zis.getNextEntry()) != null) {
-                    Path entryPath = tempDir.resolve(entry.getName());
-                    if (entry.isDirectory()) {
-                        Files.createDirectories(entryPath);
-                    } else {
-                        Files.createDirectories(entryPath.getParent());
-                        Files.copy(zis, entryPath, StandardCopyOption.REPLACE_EXISTING);
-                    }
-                    zis.closeEntry();
-                }
-            }
-
-            // 恢复数据库
-            Path sqlPath = tempDir.resolve("database");
-            if (Files.isDirectory(sqlPath)) {
-                // 找到 SQL 文件
-                try (var stream = Files.list(sqlPath)) {
-                    stream.filter(p -> p.toString().endsWith(".sql"))
-                        .findFirst()
-                        .ifPresent(p -> {
-                            try {
-                                restoreDatabase(p);
-                            } catch (IOException | InterruptedException e) {
-                                throw new RuntimeException("恢复数据库失败", e);
-                            }
-                        });
-                }
-            }
-
-            // 恢复文件（如果存在）
-            Path filesPath = tempDir.resolve("files");
-            if (Files.exists(filesPath)) {
-                Path targetUploads = Paths.get("uploads");
-                copyDirectory(filesPath, targetUploads);
-            }
-        } finally {
-            // 清理临时目录
-            deleteDirectory(tempDir.toFile());
-        }
-    }
-
-    /**
-     * 复制目录
-     */
-    private void copyDirectory(Path source, Path target) throws IOException {
-        Files.walk(source)
-            .forEach(sourcePath -> {
-                try {
-                    Path targetPath = target.resolve(source.relativize(sourcePath).toString());
-                    if (Files.isDirectory(sourcePath)) {
-                        Files.createDirectories(targetPath);
-                    } else {
-                        Files.createDirectories(targetPath.getParent());
-                        Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
-                    }
-                } catch (IOException e) {
-                    log.error("复制文件失败：{}", sourcePath, e);
-                }
-            });
-    }
-
-    /**
-     * 删除目录
-     */
-    private void deleteDirectory(File directory) {
-        if (directory.exists()) {
-            File[] files = directory.listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    if (file.isDirectory()) {
-                        deleteDirectory(file);
-                    } else {
-                        file.delete();
-                    }
-                }
-            }
-            directory.delete();
         }
     }
 
@@ -632,11 +311,8 @@ public class BackupServiceImpl implements BackupService {
         log.info("删除备份：{}", backupId);
 
         try {
-            // 删除 SQL 或 ZIP 文件
-            Path sqlPath = backupDirPath.resolve(backupId + ".sql");
+            // 删除 ZIP 文件
             Path zipPath = backupDirPath.resolve(backupId + ".zip");
-
-            Files.deleteIfExists(sqlPath);
             Files.deleteIfExists(zipPath);
 
             // 删除元数据文件
@@ -659,9 +335,9 @@ public class BackupServiceImpl implements BackupService {
             throw new IllegalArgumentException("文件名不能为空");
         }
 
-        // 验证文件扩展名
-        if (!originalFilename.endsWith(".sql") && !originalFilename.endsWith(".zip")) {
-            throw new IllegalArgumentException("不支持的文件格式，仅支持 .sql 和 .zip");
+        // 验证文件扩展名 - 仅支持 .zip (JSON 备份格式)
+        if (!originalFilename.endsWith(".zip")) {
+            throw new IllegalArgumentException("不支持的文件格式，仅支持 .zip 格式的 JSON 备份文件");
         }
 
         // 验证文件大小（最大 100MB）
@@ -671,31 +347,70 @@ public class BackupServiceImpl implements BackupService {
         }
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
-        String prefix = originalFilename.endsWith(".sql") ? DB_BACKUP_PREFIX : FULL_BACKUP_PREFIX;
-        String filename = prefix + timestamp + (originalFilename.endsWith(".sql") ? ".sql" : ".zip");
+        String filename = BACKUP_PREFIX + timestamp + ".zip";
 
         Path targetPath = backupDirPath.resolve(filename);
 
         try {
             file.transferTo(targetPath);
 
+            // 验证是否为有效的 JSON 备份文件
+            if (!isValidJsonBackup(targetPath)) {
+                Files.deleteIfExists(targetPath);
+                throw new IllegalArgumentException("无效的 JSON 备份文件格式");
+            }
+
             // 写入元数据
             Properties meta = new Properties();
-            meta.setProperty("type", originalFilename.endsWith(".sql") ? "database" : "full");
+            meta.setProperty("type", "json");
             meta.setProperty("description", "导入的备份");
             meta.setProperty("originalFilename", originalFilename);
             meta.setProperty("importTime", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
 
-            Path metaPath = backupDirPath.resolve(filename.substring(0, filename.lastIndexOf('.')) + ".meta");
+            Path metaPath = backupDirPath.resolve(BACKUP_PREFIX + timestamp + ".meta");
             try (OutputStream os = Files.newOutputStream(metaPath)) {
                 meta.store(os, "Backup Metadata");
             }
 
-            log.info("备份导入完成：{}", filename);
-            return getBackupDetail(filename.substring(0, filename.lastIndexOf('.')));
+            // 立即恢复数据到数据库
+            log.info("开始从导入的备份恢复数据...");
+            JsonBackupImporter importer = new JsonBackupImporter(
+                userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper
+            );
+            Map<String, Integer> counts = importer.importBackup(targetPath);
+            log.info("备份导入并恢复完成：{}, 恢复记录数：{}", filename, counts);
+
+            return getBackupDetail(BACKUP_PREFIX + timestamp);
         } catch (IOException e) {
             log.error("导入备份失败", e);
             throw new RuntimeException("导入备份失败：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 验证是否为有效的 JSON 备份文件
+     */
+    private boolean isValidJsonBackup(Path zipPath) {
+        try (java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(Files.newInputStream(zipPath))) {
+            java.util.zip.ZipEntry entry;
+            boolean hasManifest = false;
+            boolean hasDataDir = false;
+
+            while ((entry = zis.getNextEntry()) != null) {
+                String name = entry.getName();
+                if ("manifest.json".equals(name)) {
+                    hasManifest = true;
+                }
+                if (name.startsWith("data/") && name.endsWith(".json")) {
+                    hasDataDir = true;
+                }
+                zis.closeEntry();
+            }
+
+            return hasManifest && hasDataDir;
+        } catch (IOException e) {
+            log.warn("验证备份文件格式失败", e);
+            return false;
         }
     }
 
@@ -712,7 +427,7 @@ public class BackupServiceImpl implements BackupService {
         vo.setMinute(Integer.parseInt(props.getProperty("minute", "0")));
         vo.setDayOfWeek(Integer.parseInt(props.getProperty("dayOfWeek", "0")));
         vo.setKeepCount(Integer.parseInt(props.getProperty("keepCount", "7")));
-        vo.setBackupType(props.getProperty("backupType", "database"));
+        vo.setBackupType(props.getProperty("backupType", "json"));
 
         // 计算 cron 表达式
         vo.setCronExpression(calculateCronExpression(vo));
@@ -809,8 +524,7 @@ public class BackupServiceImpl implements BackupService {
         }
 
         log.info("执行定时备份");
-        String backupType = props.getProperty("backupType", "database");
-        createBackup(backupType, "定时自动备份");
+        createBackup("json", "定时自动备份");
     }
 
     @Override
@@ -824,7 +538,7 @@ public class BackupServiceImpl implements BackupService {
             List<Path> backups = Files.list(backupDirPath)
                 .filter(path -> {
                     String filename = path.getFileName().toString();
-                    return filename.endsWith(".sql") || filename.endsWith(".zip");
+                    return filename.endsWith(".zip") && filename.startsWith(BACKUP_PREFIX);
                 })
                 .sorted((p1, p2) -> {
                     try {

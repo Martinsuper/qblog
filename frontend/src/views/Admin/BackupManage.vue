@@ -74,8 +74,7 @@
           <el-col :xs="24" :sm="12" :md="8">
             <el-form-item label="备份类型">
               <el-select v-model="settingsForm.backupType" placeholder="选择备份类型" style="width: 100%">
-                <el-option label="仅数据库" value="database" />
-                <el-option label="完整备份" value="full" disabled title="开发中" />
+                <el-option label="JSON 数据备份" value="json" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -109,7 +108,7 @@
             <input
               ref="importInputRef"
               type="file"
-              accept=".sql,.zip"
+              accept=".zip"
               style="display: none"
               @change="handleImportFile"
             />
@@ -122,8 +121,8 @@
         <el-table-column prop="filename" label="文件名" min-width="200" />
         <el-table-column prop="type" label="类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.type === 'database' ? 'primary' : 'success'" size="small">
-              {{ row.type === 'database' ? '数据库' : '完整' }}
+            <el-tag type="primary" size="small">
+              {{ row.type === 'json' ? 'JSON' : row.type }}
             </el-tag>
           </template>
         </el-table-column>
@@ -182,7 +181,7 @@ const settingsForm = reactive({
   minute: 0,
   dayOfWeek: 0,
   keepCount: 7,
-  backupType: 'database'
+  backupType: 'json'
 })
 
 // 备份时间选择器
@@ -257,7 +256,7 @@ const saveSettings = async () => {
 const handleCreateBackup = async () => {
   creatingBackup.value = true
   try {
-    await createBackup('database', '手动备份')
+    await createBackup('json', '手动备份')
     ElMessage.success('备份创建成功')
     await fetchBackups()
   } catch (error) {
@@ -271,10 +270,10 @@ const handleCreateBackup = async () => {
 // 下载备份
 const handleDownload = async (row) => {
   try {
-    const res = await downloadBackup(row.id)
+    const blob = await downloadBackup(row.id)
 
-    // 创建下载链接
-    const blob = new Blob([res.data], { type: 'application/octet-stream' })
+    // 拦截器对于 responseType: 'blob' 且返回 application/zip 的请求
+    // 直接返回 response.data（即 Blob 对象）
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url

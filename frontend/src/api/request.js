@@ -25,6 +25,11 @@ request.interceptors.request.use(
 // 响应拦截器
 request.interceptors.response.use(
   response => {
+    // 如果是文件下载，直接返回 blob 数据
+    if (response.config.responseType === 'blob') {
+      return response.data
+    }
+
     const res = response.data
 
     // 如果返回的状态码不是 200，说明接口有错误
