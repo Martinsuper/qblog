@@ -266,23 +266,18 @@ onMounted(() => {
 }
 
 .btn-register {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-primary-gradient);
+  padding: 6px 16px;
+  background: var(--color-primary);
   color: white;
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: 500;
-  border-radius: var(--border-radius);
-  transition: all var(--transition-fast);
-  border: none;
+  border-radius: var(--border-radius-sm);
+  transition: background var(--transition-fast);
 }
 
 .btn-register:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  background: var(--color-primary-dark);
 }
 
 @media (max-width: 640px) {
