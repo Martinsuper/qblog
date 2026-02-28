@@ -1,6 +1,7 @@
 package com.qblog.controller;
 
 import com.qblog.common.Result;
+import com.qblog.model.dto.ChangePasswordDTO;
 import com.qblog.model.dto.LoginDTO;
 import com.qblog.model.dto.RegisterDTO;
 import com.qblog.model.vo.UserVO;
@@ -51,6 +52,15 @@ public class AuthController {
     @PostMapping("/logout")
     public Result<Void> logout() {
         // JWT 无状态，前端删除 token 即可
+        return Result.success();
+    }
+
+    /**
+     * 修改密码
+     */
+    @PutMapping("/password")
+    public Result<Void> changePassword(@Valid @RequestBody ChangePasswordDTO changePasswordDTO) {
+        userService.changePassword(changePasswordDTO);
         return Result.success();
     }
 }

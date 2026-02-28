@@ -32,3 +32,11 @@ export function logout() {
     method: 'post'
   })
 }
+
+export function changePassword(data) {
+  return request({
+    url: '/auth/password',
+    method: 'put',
+    data
+  })
+}

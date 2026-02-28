@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.qblog.common.JwtUtil;
 import com.qblog.entity.User;
 import com.qblog.mapper.UserMapper;
+import com.qblog.model.dto.ChangePasswordDTO;
 import com.qblog.model.dto.LoginDTO;
 import com.qblog.model.dto.RegisterDTO;
 import com.qblog.model.vo.UserVO;
@@ -75,6 +76,33 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public UserVO getUserById(Long id) {
         User user = getById(id);
         return convertToVO(user);
+    }
+
+    @Override
+    public void changePassword(ChangePasswordDTO changePasswordDTO) {
+        Long userId = getCurrentUserId();
+        if (userId == null) {
+            throw new RuntimeException("用户未登录");
+        }
+
+        User user = getById(userId);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+
+        // 验证旧密码
+        if (!passwordEncoder.matches(changePasswordDTO.getOldPassword(), user.getPassword())) {
+            throw new RuntimeException("旧密码错误");
+        }
+
+        // 验证新旧密码不能相同
+        if (changePasswordDTO.getOldPassword().equals(changePasswordDTO.getNewPassword())) {
+            throw new RuntimeException("新密码不能与旧密码相同");
+        }
+
+        // 更新密码
+        user.setPassword(passwordEncoder.encode(changePasswordDTO.getNewPassword()));
+        updateById(user);
     }
 
     private Long getCurrentUserId() {

@@ -2,6 +2,7 @@ package com.qblog.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.qblog.entity.User;
+import com.qblog.model.dto.ChangePasswordDTO;
 import com.qblog.model.dto.LoginDTO;
 import com.qblog.model.dto.RegisterDTO;
 import com.qblog.model.vo.UserVO;
@@ -30,4 +31,9 @@ public interface UserService extends IService<User> {
      * 根据 ID 获取用户信息
      */
     UserVO getUserById(Long id);
+
+    /**
+     * 修改密码
+     */
+    void changePassword(ChangePasswordDTO changePasswordDTO);
 }
