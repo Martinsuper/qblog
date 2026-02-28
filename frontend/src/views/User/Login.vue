@@ -1,34 +1,52 @@
 <template>
-  <div class="min-h-[calc(100vh-140px)] flex items-center justify-center p-4 bg-gradient-custom">
-    <div class="login-card animate-fade-in-up w-full max-w-md p-8 md:p-10 bg-glass backdrop-blur-md rounded-xl shadow-xl border border-glass-stroke">
-      <h2 class="text-2xl font-bold text-center mb-8" style="color: var(--text-primary)">
-        用户登录
-      </h2>
-      <el-form ref="formRef" :model="loginForm" :rules="rules" label-width="80px">
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="loginForm.username" placeholder="请输入用户名" clearable />
+  <div class="login-container">
+    <div class="login-card animate-fade-in-up">
+      <h2 class="login-title">用户登录</h2>
+
+      <el-form ref="formRef" :model="loginForm" :rules="rules" class="login-form">
+        <el-form-item prop="username">
+          <el-input
+            v-model="loginForm.username"
+            placeholder="用户名"
+            clearable
+            size="large"
+          >
+            <template #prefix>
+              <el-icon><User /></el-icon>
+            </template>
+          </el-input>
         </el-form-item>
-        <el-form-item label="密码" prop="password">
+
+        <el-form-item prop="password">
           <el-input
             v-model="loginForm.password"
             type="password"
-            placeholder="请输入密码"
+            placeholder="密码"
             show-password
+            size="large"
             @keyup.enter="handleLogin"
-          />
+          >
+            <template #prefix>
+              <el-icon><Lock /></el-icon>
+            </template>
+          </el-input>
         </el-form-item>
+
         <el-form-item>
-          <el-checkbox v-model="loginForm.remember">记住我</el-checkbox>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" :loading="loading" class="login-btn" @click="handleLogin">
-            登录
+          <el-button
+            type="primary"
+            :loading="loading"
+            class="login-btn"
+            size="large"
+            @click="handleLogin"
+          >
+            登 录
           </el-button>
         </el-form-item>
-        <div class="text-center mt-4">
-          <router-link to="/register" class="text-sm register-link hover-underline">
-            还没有账号？立即注册
-          </router-link>
+
+        <div class="form-footer">
+          <el-checkbox v-model="loginForm.remember" label="记住我" />
+          <router-link to="/register" class="register-link">注册账号</router-link>
         </div>
       </el-form>
     </div>
@@ -39,6 +57,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { User, Lock } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
@@ -69,7 +88,6 @@ const handleLogin = async () => {
       try {
         await userStore.userLogin(loginForm)
         ElMessage.success('登录成功')
-        // 强制刷新页面以确保状态更新
         window.location.href = '/'
       } catch (error) {
         console.error('登录失败:', error)
@@ -82,81 +100,101 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-.w-full {
-  width: 100%;
-}
-.bg-gradient-custom {
-  background:
-    linear-gradient(135deg, #667eea 0%, #764ba2 100%),
-    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 40%),
-    radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.1) 0%, transparent 40%);
+.login-container {
   min-height: calc(100vh - 140px);
-  position: relative;
-  overflow: hidden;
-}
-.border-glass-stroke {
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.bg-glass {
-  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  background: var(--bg-primary);
 }
 
 .login-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 40px;
+  background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-xl);
-  transition: all var(--transition-normal);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
 }
 
-.login-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-xl);
-  border-color: rgba(255, 255, 255, 0.3);
+:global([data-theme="dark"]) .login-card {
+  background: rgba(31, 41, 55, 0.8);
+}
+
+.login-title {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 32px;
+}
+
+.login-form :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+
+.login-form :deep(.el-input__wrapper) {
+  border-radius: var(--border-radius);
+  background: var(--bg-secondary);
+}
+
+.login-form :deep(.el-input__prefix) {
+  color: var(--text-tertiary);
 }
 
 .login-btn {
   width: 100%;
-  background: var(--color-primary-gradient);
-  border: none;
-  border-radius: var(--border-radius);
-  color: white;
-  padding: var(--spacing-md) var(--spacing-lg);
+  height: 44px;
+  font-size: 0.95rem;
   font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
+  border-radius: var(--border-radius);
 }
 
-.login-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+.form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.form-footer :deep(.el-checkbox__label) {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
 }
 
 .register-link {
   color: var(--color-primary);
   text-decoration: none;
-  transition: color var(--transition-normal);
-  display: inline-block;
+  font-size: 0.875rem;
+  transition: color var(--transition-fast);
 }
 
 .register-link:hover {
-  color: var(--color-primary-light);
-  transform: translateX(2px);
+  color: var(--color-primary-dark);
 }
 
 @keyframes slideInUp {
-  0% {
-    transform: translateY(30px);
+  from {
+    transform: translateY(20px);
     opacity: 0;
   }
-  100% {
+  to {
     transform: translateY(0);
     opacity: 1;
   }
 }
 
 .animate-fade-in-up {
-  animation: slideInUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation: slideInUp 0.4s ease-out;
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 32px 24px;
+  }
 }
 </style>
