@@ -135,6 +135,20 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
+            <el-divider direction="vertical" />
+            <el-dropdown trigger="click">
+              <el-button link title="插入容器">
+                <el-icon><MessageBox /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="insertContainer('tip')">💡 提示容器</el-dropdown-item>
+                  <el-dropdown-item @click="insertContainer('warning')">⚠️ 警告容器</el-dropdown-item>
+                  <el-dropdown-item @click="insertContainer('danger')">🚨 危险容器</el-dropdown-item>
+                  <el-dropdown-item @click="insertContainer('info')">ℹ️ 信息容器</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
           <div class="toolbar-right">
             <el-button link :class="{ active: showPreview }" @click="togglePreview">
@@ -160,7 +174,7 @@
             />
           </div>
           <div v-if="showPreview" class="preview-wrapper" ref="previewRef">
-            <div class="preview-content" v-html="renderedContent"></div>
+            <div :class="markdownClass" v-html="renderedContent"></div>
           </div>
         </div>
 
@@ -183,8 +197,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import MarkdownIt from 'markdown-it'
-import plantumlEncoder from 'plantuml-encoder'
+import { useMarkdown } from '@/composables/useMarkdown'
 import {
   ArrowLeft,
   Check,
@@ -197,7 +210,8 @@ import {
   InfoFilled,
   Edit as EditIcon,
   FullScreen,
-  Connection
+  Connection,
+  MessageBox
 } from '@element-plus/icons-vue'
 import { createArticle, updateArticle, getArticleDetail } from '@/api/article'
 import { getCategoryList } from '@/api/category'
@@ -205,39 +219,7 @@ import { getTagList } from '@/api/tag'
 
 const route = useRoute()
 const router = useRouter()
-
-// PlantUML 渲染函数
-const renderPlantUML = (code) => {
-  try {
-    const encoded = plantumlEncoder.encode(code)
-    return `<div class="plantuml-diagram"><img src="https://www.plantuml.com/plantuml/svg/${encoded}" alt="PlantUML Diagram" /></div>`
-  } catch (error) {
-    console.error('PlantUML 渲染失败:', error)
-    return `<div class="plantuml-error">PlantUML 渲染失败：${error.message}</div>`
-  }
-}
-
-// 创建 Markdown 实例并配置插件
-const md = new MarkdownIt({
-  breaks: true,
-  linkify: true,
-  typographer: true
-})
-
-// 重写代码块渲染，支持 PlantUML
-const defaultFenceRenderer = md.renderer.rules.fence
-md.renderer.rules.fence = (tokens, idx, options, env, self) => {
-  const token = tokens[idx]
-  const info = token.info ? token.info.trim() : ''
-  
-  // 检查是否是 PlantUML 代码块
-  if (info === 'plantuml' || info === 'puml') {
-    return renderPlantUML(token.content)
-  }
-  
-  // 默认代码块渲染
-  return defaultFenceRenderer(tokens, idx, options, env, self)
-}
+const { render, getThemeClass } = useMarkdown()
 
 const editorRef = ref(null)
 const previewRef = ref(null)
@@ -261,9 +243,13 @@ const articleForm = reactive({
   status: 1
 })
 
+// 渲染后的内容
 const renderedContent = computed(() => {
-  return articleForm.content ? md.render(articleForm.content) : ''
+  return render(articleForm.content)
 })
+
+// Markdown 样式类
+const markdownClass = computed(() => getThemeClass())
 
 const wordCount = computed(() => {
   return articleForm.content.replace(/\s/g, '').length
@@ -406,13 +392,13 @@ const insertPlantUML = (type) => {
 
   // 保存当前滚动位置
   const scrollTop = textarea.scrollTop
-  
+
   const start = textarea.selectionStart
   const end = textarea.selectionEnd
-  
+
   // 在光标位置插入 PlantUML 代码块
   const plantumlBlock = `\n\`\`\`plantuml\n${template}\n\`\`\`\n`
-  
+
   const newText = articleForm.content.substring(0, start) + plantumlBlock + articleForm.content.substring(end)
   articleForm.content = newText
 
@@ -423,6 +409,27 @@ const insertPlantUML = (type) => {
     // 将光标定位到代码块开始位置（在 plantuml 关键字后面）
     const newCursorPos = start + 12 // \n\`\`\`plantuml\n 的长度
     textarea.setSelectionRange(newCursorPos, newCursorPos)
+  })
+}
+
+// 插入容器
+const insertContainer = (type) => {
+  const textarea = editorRef.value
+  if (!textarea) return
+
+  const scrollTop = textarea.scrollTop
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  const selectedText = articleForm.content.substring(start, end) || '在这里写内容'
+
+  const containerBlock = `\n::: ${type}\n${selectedText}\n:::\n`
+
+  const newText = articleForm.content.substring(0, start) + containerBlock + articleForm.content.substring(end)
+  articleForm.content = newText
+
+  nextTick(() => {
+    textarea.focus()
+    textarea.scrollTop = scrollTop
   })
 }
 
@@ -639,7 +646,7 @@ onMounted(() => {
     height: 36px;
     border-radius: 50%;
     color: var(--text-secondary);
-    
+
     &:hover {
       background: var(--bg-tertiary);
       color: var(--text-primary);
@@ -866,7 +873,7 @@ onMounted(() => {
   .toolbar-right {
     .el-button {
       color: var(--text-secondary);
-      
+
       &.active {
         color: var(--color-primary);
         background: rgba(59, 130, 246, 0.1);
@@ -927,169 +934,8 @@ onMounted(() => {
     overflow-y: auto;
     background: var(--bg-primary);
 
-    .preview-content {
+    .markdown-body {
       padding: 20px;
-      font-size: 15px;
-      line-height: 1.8;
-      color: var(--text-primary);
-
-      :deep(h1) {
-        font-size: 2em;
-        margin: 1.5em 0 0.5em;
-        font-weight: 700;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 0.3em;
-      }
-
-      :deep(h2) {
-        font-size: 1.5em;
-        margin: 1.5em 0 0.5em;
-        font-weight: 600;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 0.3em;
-      }
-
-      :deep(h3) {
-        font-size: 1.25em;
-        margin: 1.2em 0 0.5em;
-        font-weight: 600;
-      }
-
-      :deep(h4),
-      :deep(h5),
-      :deep(h6) {
-        font-size: 1em;
-        margin: 1em 0 0.5em;
-        font-weight: 600;
-      }
-
-      :deep(p) {
-        margin: 1em 0;
-      }
-
-      :deep(a) {
-        color: var(--color-primary);
-        text-decoration: none;
-
-        &:hover {
-          text-decoration: underline;
-        }
-      }
-
-      :deep(code) {
-        background: var(--bg-tertiary);
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
-        font-size: 0.9em;
-        color: #e83e8c;
-      }
-
-      // PlantUML 图表样式
-      :deep(.plantuml-diagram) {
-        margin: 1.5em 0;
-        padding: 20px;
-        background: var(--bg-secondary);
-        border-radius: var(--border-radius);
-        border: 1px solid var(--border-color);
-        text-align: center;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-
-        img {
-          max-width: 100%;
-          height: auto;
-          border-radius: 4px;
-        }
-      }
-
-      :deep(.plantuml-error) {
-        margin: 1em 0;
-        padding: 12px 16px;
-        background: #fef0f0;
-        border: 1px solid #fde2e2;
-        border-radius: var(--border-radius);
-        color: #f56c6c;
-        font-size: 14px;
-      }
-
-      :deep(pre) {
-        background: #1e1e1e;
-        color: #d4d4d4;
-        padding: 16px;
-        border-radius: var(--border-radius);
-        overflow-x: auto;
-        margin: 1em 0;
-        font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
-        font-size: 13px;
-        line-height: 1.6;
-
-        code {
-          background: transparent;
-          padding: 0;
-          color: inherit;
-        }
-      }
-
-      :deep(blockquote) {
-        margin: 1em 0;
-        padding: 12px 16px;
-        border-left: 4px solid var(--color-primary);
-        background: var(--bg-tertiary);
-        color: var(--text-secondary);
-        border-radius: 0 var(--border-radius) var(--border-radius) 0;
-
-        p {
-          margin: 0;
-        }
-      }
-
-      :deep(ul),
-      :deep(ol) {
-        padding-left: 2em;
-        margin: 1em 0;
-
-        li {
-          margin: 0.5em 0;
-        }
-      }
-
-      :deep(img) {
-        max-width: 100%;
-        border-radius: var(--border-radius);
-        margin: 1em 0;
-      }
-
-      :deep(hr) {
-        border: none;
-        border-top: 1px solid var(--border-color);
-        margin: 2em 0;
-      }
-
-      :deep(table) {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 1em 0;
-        overflow: hidden;
-        border-radius: var(--border-radius);
-
-        th,
-        td {
-          border: 1px solid var(--border-color);
-          padding: 10px 14px;
-          text-align: left;
-        }
-
-        th {
-          background: var(--bg-tertiary);
-          font-weight: 600;
-        }
-
-        tr:nth-child(even) {
-          background: var(--bg-tertiary);
-        }
-      }
     }
   }
 }

@@ -5,7 +5,7 @@
         <!-- 文章头部 -->
         <div class="article-header">
           <h1 class="article-title">{{ article.title }}</h1>
-          
+
           <div class="article-meta">
             <div class="author-info">
               <el-avatar :size="32" :src="article.author?.avatar">
@@ -37,7 +37,7 @@
         </div>
 
         <!-- 文章内容 -->
-        <div class="article-body markdown-body" v-html="renderedContent"></div>
+        <div :class="markdownClass" v-html="renderedContent"></div>
 
         <!-- 标签 -->
         <div v-if="article.tags && article.tags.length > 0" class="article-tags">
@@ -69,56 +69,21 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import MarkdownIt from 'markdown-it'
-import plantumlEncoder from 'plantuml-encoder'
+import { useMarkdown } from '@/composables/useMarkdown'
 import { getArticleDetail, likeArticle } from '@/api/article'
 
 const route = useRoute()
-
-// PlantUML 渲染函数
-const renderPlantUML = (code) => {
-  try {
-    const encoded = plantumlEncoder.encode(code)
-    return `<div class="plantuml-diagram"><img src="https://www.plantuml.com/plantuml/svg/${encoded}" alt="PlantUML Diagram" /></div>`
-  } catch (error) {
-    console.error('PlantUML 渲染失败:', error)
-    return `<div class="plantuml-error">PlantUML 渲染失败</div>`
-  }
-}
-
-// 创建 Markdown 实例
-const md = new MarkdownIt({
-  html: true,
-  linkify: true,
-  typographer: true,
-  highlight: function(str, lang) {
-    return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>'
-  }
-})
-
-// 重写代码块渲染，支持 PlantUML
-const defaultFenceRenderer = md.renderer.rules.fence
-md.renderer.rules.fence = (tokens, idx, options, env, self) => {
-  const token = tokens[idx]
-  const info = token.info ? token.info.trim() : ''
-  
-  // 检查是否是 PlantUML 代码块
-  if (info === 'plantuml' || info === 'puml') {
-    return renderPlantUML(token.content)
-  }
-  
-  // 默认代码块渲染
-  return defaultFenceRenderer(tokens, idx, options, env, self)
-}
+const { render, getThemeClass } = useMarkdown()
 
 const article = ref(null)
 
+// 计算属性：渲染后的内容
 const renderedContent = computed(() => {
-  if (!article.value?.content) {
-    return '<p>暂无内容</p>'
-  }
-  return md.render(article.value.content)
+  return render(article.value?.content)
 })
+
+// 计算属性：Markdown 样式类
+const markdownClass = computed(() => getThemeClass())
 
 const fetchArticle = async () => {
   try {
@@ -152,7 +117,6 @@ const formatTime = (time) => {
   const seconds = date.getSeconds().toString().padStart(2, '0')
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
-
 
 onMounted(() => {
   fetchArticle()
@@ -223,136 +187,6 @@ onMounted(() => {
     width: 100%;
     max-height: 400px;
     object-fit: cover;
-  }
-}
-
-.article-body {
-  font-size: 16px;
-  line-height: 1.8;
-  color: var(--text-primary);
-
-  :deep(h1), :deep(h2), :deep(h3), :deep(h4), :deep(h5), :deep(h6) {
-    margin-top: 24px;
-    margin-bottom: 16px;
-    font-weight: 600;
-    line-height: 1.25;
-    color: var(--text-primary);
-  }
-
-  :deep(h1) {
-    font-size: 24px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 0.3em;
-  }
-
-  :deep(h2) {
-    font-size: 20px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 0.3em;
-  }
-
-  :deep(h3) {
-    font-size: 16px;
-  }
-
-  :deep(p) {
-    margin-bottom: 16px;
-  }
-
-  :deep(code) {
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    background: var(--bg-tertiary);
-    padding: 0.2em 0.4em;
-    border-radius: 3px;
-    font-size: 85%;
-  }
-
-  :deep(pre) {
-    background: var(--bg-tertiary);
-    padding: 16px;
-    border-radius: 6px;
-    overflow-x: auto;
-    margin-bottom: 16px;
-
-    code {
-      background: none;
-      padding: 0;
-      font-size: 14px;
-      line-height: 1.45;
-    }
-  }
-
-  // PlantUML 图表样式
-  :deep(.plantuml-diagram) {
-    margin: 24px 0;
-    padding: 20px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    text-align: center;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    img {
-      max-width: 100%;
-      height: auto;
-    }
-  }
-
-  :deep(.plantuml-error) {
-    margin: 16px 0;
-    padding: 12px 16px;
-    background: #fef0f0;
-    border: 1px solid #fde2e2;
-    border-radius: 6px;
-    color: #f56c6c;
-    font-size: 14px;
-  }
-
-  :deep(a) {
-    color: var(--color-primary);
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-
-  :deep(ul), :deep(ol) {
-    padding-left: 2em;
-    margin-bottom: 16px;
-  }
-
-  :deep(li) {
-    margin-bottom: 8px;
-  }
-
-  :deep(blockquote) {
-    padding: 0 1em;
-    color: var(--text-secondary);
-    border-left: 0.25em solid var(--border-color);
-    margin-bottom: 16px;
-  }
-
-  :deep(img) {
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-
-  :deep(table) {
-    border-collapse: collapse;
-    width: 100%;
-    margin-bottom: 16px;
-
-    th, td {
-      border: 1px solid var(--border-color);
-      padding: 6px 13px;
-    }
-
-    tr:nth-child(2n) {
-      background-color: var(--bg-tertiary);
-    }
   }
 }
 

@@ -1,0 +1,343 @@
+/* ========================================
+   GitHub 风格样式
+   ======================================== */
+
+/* GitHub 风格的标题 - 简洁 */
+.markdown-body.github-theme h1 {
+  font-size: 2em;
+  font-weight: 600;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border-color);
+  margin-top: 0;
+  margin-bottom: 24px;
+}
+
+.markdown-body.github-theme h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border-color);
+  margin-top: 32px;
+  margin-bottom: 16px;
+}
+
+.markdown-body.github-theme h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 16px;
+}
+
+.markdown-body.github-theme h4 {
+  font-size: 1em;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 16px;
+}
+
+/* GitHub 风格的标题锚点 */
+.markdown-body.github-theme .header-anchor {
+  color: var(--color-primary);
+  opacity: 0;
+  font-size: 1em;
+  font-weight: 400;
+}
+
+.markdown-body.github-theme h1:hover .header-anchor,
+.markdown-body.github-theme h2:hover .header-anchor,
+.markdown-body.github-theme h3:hover .header-anchor,
+.markdown-body.github-theme h4:hover .header-anchor,
+.markdown-body.github-theme h5:hover .header-anchor,
+.markdown-body.github-theme h6:hover .header-anchor {
+  opacity: 0.6;
+}
+
+/* GitHub 风格的代码块 */
+.markdown-body.github-theme .code-block-wrapper {
+  margin: 16px 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.markdown-body.github-theme .code-block-header {
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.markdown-body.github-theme .code-lang {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.markdown-body.github-theme .code-copy-btn {
+  color: var(--text-secondary);
+}
+
+.markdown-body.github-theme .code-copy-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.markdown-body.github-theme .code-block-wrapper pre {
+  background: #f6f8fa;
+  margin: 0;
+  padding: 16px;
+  border: none;
+}
+
+.markdown-body.github-theme .code-block-wrapper pre code {
+  background: transparent;
+  color: #24292f;
+}
+
+/* GitHub 风格的引用块 */
+.markdown-body.github-theme blockquote {
+  margin: 16px 0;
+  padding: 0 16px;
+  border-left: 4px solid #d0d7de;
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+.markdown-body.github-theme blockquote p {
+  margin: 8px 0;
+  font-size: 15px;
+}
+
+/* GitHub 风格的表格 */
+.markdown-body.github-theme table {
+  border: none;
+  margin: 16px 0;
+}
+
+.markdown-body.github-theme th,
+.markdown-body.github-theme td {
+  border: 1px solid #d0d7de;
+  padding: 8px 14px;
+}
+
+.markdown-body.github-theme th {
+  background: var(--bg-tertiary);
+  font-weight: 600;
+}
+
+.markdown-body.github-theme tr:nth-child(2n) {
+  background: var(--bg-tertiary);
+}
+
+/* GitHub 风格的链接 */
+.markdown-body.github-theme a {
+  color: var(--color-primary);
+  text-decoration: none;
+  border-bottom: none;
+}
+
+.markdown-body.github-theme a:hover {
+  text-decoration: underline;
+}
+
+/* GitHub 风格的行内代码 */
+.markdown-body.github-theme code:not(.hljs) {
+  background: rgba(175, 184, 193, 0.2);
+  color: #24292f;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 85%;
+  font-weight: 400;
+}
+
+/* GitHub 风格的列表 */
+.markdown-body.github-theme ul {
+  margin: 16px 0;
+  padding-left: 2em;
+  list-style: disc;
+}
+
+.markdown-body.github-theme ol {
+  margin: 16px 0;
+  padding-left: 2em;
+  list-style: decimal;
+}
+
+/* 嵌套列表样式 */
+.markdown-body.github-theme ul ul {
+  list-style: circle;
+}
+
+.markdown-body.github-theme ul ul ul {
+  list-style: square;
+}
+
+.markdown-body.github-theme ol ol {
+  list-style: lower-alpha;
+}
+
+.markdown-body.github-theme ol ol ol {
+  list-style: lower-roman;
+}
+
+.markdown-body.github-theme li {
+  margin: 4px 0;
+}
+
+.markdown-body.github-theme li + li {
+  margin-top: 4px;
+}
+
+/* GitHub 风格的自定义容器 - 简洁样式 */
+.markdown-body.github-theme .custom-container {
+  margin: 16px 0;
+  padding: 16px;
+  border-radius: 6px;
+  border-left: none;
+  border: 1px solid var(--border-color);
+}
+
+.markdown-body.github-theme .custom-container-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.markdown-body.github-theme .custom-container.tip {
+  background: #f0fff4;
+  border-color: #42b983;
+}
+
+.markdown-body.github-theme .custom-container.tip .custom-container-title {
+  color: #22863a;
+}
+
+.markdown-body.github-theme .custom-container.warning {
+  background: #fffbdd;
+  border-color: #e7c000;
+}
+
+.markdown-body.github-theme .custom-container.warning .custom-container-title {
+  color: #b08800;
+}
+
+.markdown-body.github-theme .custom-container.danger {
+  background: #ffeef0;
+  border-color: #cc0000;
+}
+
+.markdown-body.github-theme .custom-container.danger .custom-container-title {
+  color: #cb2431;
+}
+
+.markdown-body.github-theme .custom-container.info {
+  background: #f1f8ff;
+  border-color: #3b82f6;
+}
+
+.markdown-body.github-theme .custom-container.info .custom-container-title {
+  color: #0366d6;
+}
+
+/* GitHub 风格的图片 */
+.markdown-body.github-theme img {
+  max-width: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 16px 0;
+}
+
+/* GitHub 风格的 PlantUML */
+.markdown-body.github-theme .plantuml-diagram {
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  box-shadow: none;
+  padding: 16px;
+}
+
+/* GitHub 风格的水平线 */
+.markdown-body.github-theme hr {
+  height: 2px;
+  padding: 0;
+  margin: 24px 0;
+  background-color: #d0d7de;
+  border: 0;
+}
+
+/* GitHub 深色模式适配 */
+[data-theme="dark"] .markdown-body.github-theme h1,
+[data-theme="dark"] .markdown-body.github-theme h2 {
+  border-bottom-color: #30363d;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .code-block-wrapper {
+  border-color: #30363d;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .code-block-header {
+  background: #161b22;
+  border-bottom-color: #30363d;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .code-block-wrapper pre {
+  background: #161b22;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .code-block-wrapper pre code {
+  color: #c9d1d9;
+}
+
+[data-theme="dark"] .markdown-body.github-theme code:not(.hljs) {
+  background: rgba(110, 118, 129, 0.4);
+  color: #c9d1d9;
+}
+
+[data-theme="dark"] .markdown-body.github-theme blockquote {
+  border-left-color: #3b3b3b;
+}
+
+[data-theme="dark"] .markdown-body.github-theme th,
+[data-theme="dark"] .markdown-body.github-theme td {
+  border-color: #30363d;
+}
+
+[data-theme="dark"] .markdown-body.github-theme hr {
+  background-color: #21262d;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .custom-container.tip {
+  background: rgba(46, 160, 67, 0.15);
+  border-color: #238636;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .custom-container.tip .custom-container-title {
+  color: #3fb950;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .custom-container.warning {
+  background: rgba(210, 153, 34, 0.15);
+  border-color: #9e6a03;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .custom-container.warning .custom-container-title {
+  color: #d29922;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .custom-container.danger {
+  background: rgba(248, 81, 73, 0.15);
+  border-color: #da3633;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .custom-container.danger .custom-container-title {
+  color: #f85149;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .custom-container.info {
+  background: rgba(56, 139, 253, 0.15);
+  border-color: #1f6feb;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .custom-container.info .custom-container-title {
+  color: #58a6ff;
+}

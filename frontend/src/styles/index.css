@@ -1,6 +1,7 @@
 @import './variables.css';
 @import './reset.css';
 @import './typography.css';
+@import './markdown/index.css';
 
 /* ========================================
    App Layout
