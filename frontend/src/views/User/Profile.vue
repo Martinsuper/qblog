@@ -254,8 +254,18 @@ onMounted(() => {
   color: white;
 }
 
+:deep(.el-radio-group) {
+  display: flex;
+  width: 100%;
+}
+
+:deep(.el-radio-button) {
+  flex: 1;
+}
+
 :deep(.el-radio-button__inner) {
   padding: 12px 24px;
   height: auto;
+  width: 100%;
 }
 </style>
