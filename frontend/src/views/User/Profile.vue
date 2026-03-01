@@ -46,12 +46,6 @@
             </el-radio-group>
           </el-form-item>
         </el-form>
-
-        <!-- 预览区域 -->
-        <div class="preview-section">
-          <h4 class="preview-title">效果预览</h4>
-          <div :class="markdownClass" v-html="previewContent"></div>
-        </div>
       </div>
 
       <!-- 修改密码折叠区域 -->
@@ -106,12 +100,10 @@ import { reactive, ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { useSettingsStore } from '@/stores/settings'
-import { useMarkdown } from '@/composables/useMarkdown'
 import { changePassword } from '@/api/auth'
 
 const userStore = useUserStore()
 const settingsStore = useSettingsStore()
-const { render, getThemeClass } = useMarkdown()
 
 const userForm = reactive({
   username: '',
@@ -133,40 +125,6 @@ const passwordForm = reactive({
 const markdownTheme = computed({
   get: () => settingsStore.markdownTheme,
   set: (value) => settingsStore.setMarkdownTheme(value)
-})
-
-// Markdown 样式类
-const markdownClass = computed(() => getThemeClass())
-
-// 预览内容
-const previewContent = computed(() => {
-  const content = `# 标题示例
-
-这是一段普通文本，支持 **加粗** 和 *斜体*。
-
-## 代码示例
-
-\`\`\`javascript
-function hello() {
-  console.log('Hello, World!')
-}
-\`\`\`
-
-## 提示容器
-
-::: tip
-这是一个提示信息
-:::
-
-::: warning
-这是一个警告信息
-:::
-
-## 引用块
-
-> 这是一段引用文字
-`
-  return render(content)
 })
 
 // 处理主题变更
@@ -299,19 +257,5 @@ onMounted(() => {
 :deep(.el-radio-button__inner) {
   padding: 12px 24px;
   height: auto;
-}
-
-/* 预览区域 */
-.preview-section {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border-color);
-}
-
-.preview-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  margin-bottom: 16px;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard" v-loading="loading">
+  <div class="dashboard">
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="mb-6">
       <el-col :xs="24" :sm="12" :md="6">
@@ -92,7 +92,6 @@ import { getArticleList } from '@/api/article'
 import { getCategoryList } from '@/api/category'
 
 const dateRange = ref('week')
-const loading = ref(false)
 
 // 统计数据
 const stats = ref({

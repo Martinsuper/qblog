@@ -26,7 +26,9 @@
       </div>
 
       <div v-if="loading" class="flex justify-center py-10">
-        <el-loading />
+        <el-icon class="is-loading" :size="32">
+          <Loading />
+        </el-icon>
       </div>
       
       <el-empty v-if="!loading && groupedArticles.length === 0" description="暂无文章" />
@@ -41,6 +43,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { Loading } from '@element-plus/icons-vue'
 import { getArticleList } from '@/api/article'
 
 const articles = ref([])
