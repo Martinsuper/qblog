@@ -25,6 +25,35 @@
         </el-form>
       </div>
 
+      <!-- 阅读设置卡片 -->
+      <div class="card p-6 md:p-8 mb-4">
+        <h3 class="text-xl font-semibold mb-6" style="color: var(--text-primary)">阅读设置</h3>
+        <el-form label-width="100px">
+          <el-form-item label="渲染风格">
+            <el-radio-group v-model="markdownTheme" @change="handleThemeChange">
+              <el-radio-button label="vuepress">
+                <div class="theme-option">
+                  <span class="theme-name">VuePress</span>
+                  <span class="theme-desc">文档风格，适合技术文章</span>
+                </div>
+              </el-radio-button>
+              <el-radio-button label="github">
+                <div class="theme-option">
+                  <span class="theme-name">GitHub</span>
+                  <span class="theme-desc">简洁风格，类似 GitHub README</span>
+                </div>
+              </el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+        </el-form>
+
+        <!-- 预览区域 -->
+        <div class="preview-section">
+          <h4 class="preview-title">效果预览</h4>
+          <div :class="markdownClass" v-html="previewContent"></div>
+        </div>
+      </div>
+
       <!-- 修改密码折叠区域 -->
       <el-collapse class="card">
         <el-collapse-item title="修改密码" name="password">
@@ -73,12 +102,16 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { useSettingsStore } from '@/stores/settings'
+import { useMarkdown } from '@/composables/useMarkdown'
 import { changePassword } from '@/api/auth'
 
 const userStore = useUserStore()
+const settingsStore = useSettingsStore()
+const { render, getThemeClass } = useMarkdown()
 
 const userForm = reactive({
   username: '',
@@ -95,6 +128,52 @@ const passwordForm = reactive({
   newPassword: '',
   confirmPassword: ''
 })
+
+// Markdown 主题
+const markdownTheme = computed({
+  get: () => settingsStore.markdownTheme,
+  set: (value) => settingsStore.setMarkdownTheme(value)
+})
+
+// Markdown 样式类
+const markdownClass = computed(() => getThemeClass())
+
+// 预览内容
+const previewContent = computed(() => {
+  const content = `# 标题示例
+
+这是一段普通文本，支持 **加粗** 和 *斜体*。
+
+## 代码示例
+
+\`\`\`javascript
+function hello() {
+  console.log('Hello, World!')
+}
+\`\`\`
+
+## 提示容器
+
+::: tip
+这是一个提示信息
+:::
+
+::: warning
+这是一个警告信息
+:::
+
+## 引用块
+
+> 这是一段引用文字
+`
+  return render(content)
+})
+
+// 处理主题变更
+const handleThemeChange = (value) => {
+  settingsStore.setMarkdownTheme(value)
+  ElMessage.success(`已切换到 ${value === 'vuepress' ? 'VuePress' : 'GitHub'} 风格`)
+}
 
 // 验证新密码与确认密码一致
 const validateConfirmPassword = (rule, value, callback) => {
@@ -190,5 +269,49 @@ onMounted(() => {
 
 :deep(.el-collapse-item__content) {
   padding: 0;
+}
+
+/* 主题选择样式 */
+.theme-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 8px 0;
+}
+
+.theme-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.theme-desc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+/* 选中状态下的文字颜色 */
+:deep(.el-radio-button.is-active .theme-name),
+:deep(.el-radio-button.is-active .theme-desc) {
+  color: white;
+}
+
+:deep(.el-radio-button__inner) {
+  padding: 12px 24px;
+  height: auto;
+}
+
+/* 预览区域 */
+.preview-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.preview-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
 }
 </style>
