@@ -34,6 +34,10 @@
                     <el-icon><User /></el-icon>
                     个人中心
                   </el-dropdown-item>
+                  <el-dropdown-item v-if="isAdmin" command="write">
+                    <el-icon><EditPen /></el-icon>
+                    写文章
+                  </el-dropdown-item>
                   <el-dropdown-item v-if="isAdmin" command="admin" divided>
                     <el-icon><Setting /></el-icon>
                     管理后台
@@ -109,6 +113,9 @@ const handleCommand = (command) => {
   switch (command) {
     case 'profile':
       router.push('/user/profile')
+      break
+    case 'write':
+      router.push('/admin/create')
       break
     case 'admin':
       router.push('/admin/dashboard')
