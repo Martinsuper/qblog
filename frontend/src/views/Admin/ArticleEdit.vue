@@ -171,7 +171,41 @@
               class="markdown-editor"
               placeholder="开始写作，支持 Markdown 语法..."
               @scroll="handleScroll"
+              @input="handleEditorInput"
+              @keydown="handleEditorKeydown"
             />
+            <!-- 快捷命令菜单 -->
+            <div
+              v-if="showCommandMenu"
+              class="command-menu"
+              :style="commandMenuStyle"
+              ref="commandMenuRef"
+            >
+              <div class="command-menu-header">
+                <span class="command-menu-title">快捷命令</span>
+                <span class="command-menu-hint">↑↓ 选择 · Enter 确认 · Esc 关闭</span>
+              </div>
+              <div class="command-menu-list">
+                <div
+                  v-for="(cmd, index) in filteredCommands"
+                  :key="cmd.name"
+                  class="command-item"
+                  :class="{ active: index === selectedCommandIndex }"
+                  @click="executeCommand(cmd)"
+                  @mouseenter="selectedCommandIndex = index"
+                >
+                  <span class="command-icon">{{ cmd.icon }}</span>
+                  <div class="command-info">
+                    <span class="command-name">{{ cmd.label }}</span>
+                    <span class="command-desc">{{ cmd.description }}</span>
+                  </div>
+                  <span class="command-shortcut">/{{ cmd.name }}</span>
+                </div>
+                <div v-if="filteredCommands.length === 0" class="command-empty">
+                  未找到匹配的命令
+                </div>
+              </div>
+            </div>
           </div>
           <div v-if="showPreview" class="preview-wrapper" ref="previewRef">
             <div :class="markdownClass" v-html="renderedContent"></div>
@@ -182,7 +216,7 @@
         <div class="editor-footer">
           <span class="footer-tip">
             <el-icon><InfoFilled /></el-icon>
-            支持 Markdown 语法
+            支持 Markdown 语法 · 输入 <kbd>/</kbd> 唤起快捷命令
           </span>
           <span class="word-count">
             {{ wordCount }} 字
@@ -223,6 +257,7 @@ const { render, getThemeClass } = useMarkdown()
 
 const editorRef = ref(null)
 const previewRef = ref(null)
+const commandMenuRef = ref(null)
 const isEdit = ref(false)
 const categories = ref([])
 const tags = ref([])
@@ -231,6 +266,62 @@ const saving = ref(false)
 const publishing = ref(false)
 const isFullscreen = ref(false)
 const editorPanelRef = ref(null)
+
+// 快捷命令菜单状态
+const showCommandMenu = ref(false)
+const commandMenuStyle = ref({ top: '0px', left: '0px' })
+const commandQuery = ref('')
+const selectedCommandIndex = ref(0)
+const commandStartPosition = ref(0)
+
+// 快捷命令配置
+const commands = [
+  // 标题
+  { name: 'h1', label: '一级标题', description: '大标题', icon: 'H1', action: () => insertText('# ', '') },
+  { name: 'h2', label: '二级标题', description: '中标题', icon: 'H2', action: () => insertText('## ', '') },
+  { name: 'h3', label: '三级标题', description: '小标题', icon: 'H3', action: () => insertText('### ', '') },
+  { name: 'h4', label: '四级标题', description: '更小标题', icon: 'H4', action: () => insertText('#### ', '') },
+  { name: 'h5', label: '五级标题', description: '小标题', icon: 'H5', action: () => insertText('##### ', '') },
+  { name: 'h6', label: '六级标题', description: '最小标题', icon: 'H6', action: () => insertText('###### ', '') },
+  // 文本格式
+  { name: 'code', label: '代码块', description: '插入代码块', icon: '💻', action: () => insertCodeBlock() },
+  { name: 'inline', label: '行内代码', description: '行内代码', icon: '`', action: () => insertText('`', '`') },
+  { name: 'bold', label: '加粗', description: '粗体文字', icon: 'B', action: () => insertText('**', '**') },
+  { name: 'italic', label: '斜体', description: '斜体文字', icon: 'I', action: () => insertText('*', '*') },
+  { name: 'strike', label: '删除线', description: '删除线文字', icon: 'S', action: () => insertText('~~', '~~') },
+  // 列表
+  { name: 'list', label: '无序列表', description: '项目列表', icon: '•', action: () => insertText('- ', '') },
+  { name: 'olist', label: '有序列表', description: '编号列表', icon: '1.', action: () => insertText('1. ', '') },
+  { name: 'task', label: '任务列表', description: '待办事项', icon: '☑', action: () => insertText('- [ ] ', '') },
+  // 引用和分割线
+  { name: 'quote', label: '引用', description: '引用块', icon: '"', action: () => insertText('> ', '') },
+  { name: 'hr', label: '分割线', description: '水平分割线', icon: '—', action: () => insertText('\n---\n', '') },
+  // 链接和媒体
+  { name: 'link', label: '链接', description: '超链接', icon: '🔗', action: () => insertText('[', '](url)') },
+  { name: 'image', label: '图片', description: '插入图片', icon: '🖼', action: () => insertText('![', '](url)') },
+  // 表格
+  { name: 'table', label: '表格', description: 'Markdown 表格', icon: '📊', action: () => insertTable() },
+  // 容器
+  { name: 'tip', label: '提示容器', description: '提示信息框', icon: '💡', action: () => insertContainer('tip') },
+  { name: 'warning', label: '警告容器', description: '警告信息框', icon: '⚠️', action: () => insertContainer('warning') },
+  { name: 'danger', label: '危险容器', description: '危险警告框', icon: '🚨', action: () => insertContainer('danger') },
+  { name: 'info', label: '信息容器', description: '信息提示框', icon: 'ℹ️', action: () => insertContainer('info') },
+  // 图表
+  { name: 'plantuml', label: 'PlantUML', description: 'UML 图表', icon: '📈', action: () => insertPlantUML('sequence') },
+  { name: 'sequence', label: '时序图', description: '时序图', icon: '⏱', action: () => insertPlantUML('sequence') },
+  { name: 'class', label: '类图', description: '类图', icon: '📦', action: () => insertPlantUML('class') },
+]
+
+// 过滤后的命令列表
+const filteredCommands = computed(() => {
+  if (!commandQuery.value) return commands
+  const query = commandQuery.value.toLowerCase()
+  return commands.filter(cmd =>
+    cmd.name.includes(query) ||
+    cmd.label.toLowerCase().includes(query) ||
+    cmd.description.toLowerCase().includes(query)
+  )
+})
 
 const articleForm = reactive({
   id: null,
@@ -306,6 +397,131 @@ const syncScroll = () => {
   previewRef.value.scrollTop = editorRef.value.scrollTop * ratio
 }
 
+// 处理编辑器输入事件
+const handleEditorInput = (e) => {
+  const textarea = editorRef.value
+  if (!textarea) return
+
+  const cursorPos = textarea.selectionStart
+  const textBeforeCursor = articleForm.content.substring(0, cursorPos)
+
+  // 查找当前行中最近的 / 符号
+  const lastNewLine = textBeforeCursor.lastIndexOf('\n')
+  const currentLine = textBeforeCursor.substring(lastNewLine + 1)
+
+  // 检查是否有 / 触发命令菜单
+  const slashIndex = currentLine.lastIndexOf('/')
+
+  if (slashIndex !== -1) {
+    // 确保斜杠后面没有空格（避免误触发）
+    const textAfterSlash = currentLine.substring(slashIndex + 1)
+    if (!textAfterSlash.includes(' ')) {
+      commandStartPosition.value = lastNewLine + 1 + slashIndex
+      commandQuery.value = textAfterSlash
+      selectedCommandIndex.value = 0
+      updateCommandMenuPosition()
+      showCommandMenu.value = true
+      return
+    }
+  }
+
+  // 没有 / 则关闭菜单
+  showCommandMenu.value = false
+}
+
+// 更新命令菜单位置
+const updateCommandMenuPosition = () => {
+  const textarea = editorRef.value
+  if (!textarea) return
+
+  // 简单定位：使用光标位置估算
+  const cursorPos = textarea.selectionStart
+  const textBeforeCursor = articleForm.content.substring(0, cursorPos)
+  const lines = textBeforeCursor.split('\n')
+  const currentLineIndex = lines.length - 1
+  const currentCol = lines[lines.length - 1].length
+
+  // 基于行数和列数估算位置
+  const lineHeight = 25 // 与 CSS 中的 line-height 1.8 和 font-size 14px 对应
+  const charWidth = 8.4 // 等宽字体大约宽度
+
+  const top = Math.min(currentLineIndex * lineHeight + 60, textarea.clientHeight - 300)
+  const left = Math.min(currentCol * charWidth + 20, textarea.clientWidth - 250)
+
+  commandMenuStyle.value = {
+    top: `${top}px`,
+    left: `${left}px`
+  }
+}
+
+// 处理编辑器键盘事件
+const handleEditorKeydown = (e) => {
+  if (!showCommandMenu.value) return
+
+  switch (e.key) {
+    case 'ArrowDown':
+      e.preventDefault()
+      selectedCommandIndex.value = Math.min(
+        selectedCommandIndex.value + 1,
+        filteredCommands.value.length - 1
+      )
+      scrollToSelectedCommand()
+      break
+    case 'ArrowUp':
+      e.preventDefault()
+      selectedCommandIndex.value = Math.max(selectedCommandIndex.value - 1, 0)
+      scrollToSelectedCommand()
+      break
+    case 'Enter':
+      e.preventDefault()
+      if (filteredCommands.value.length > 0) {
+        executeCommand(filteredCommands.value[selectedCommandIndex.value])
+      }
+      break
+    case 'Escape':
+      e.preventDefault()
+      showCommandMenu.value = false
+      break
+  }
+}
+
+// 滚动到选中的命令
+const scrollToSelectedCommand = () => {
+  nextTick(() => {
+    const menuList = document.querySelector('.command-menu-list')
+    const activeItem = document.querySelector('.command-item.active')
+    if (menuList && activeItem) {
+      activeItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  })
+}
+
+// 执行命令
+const executeCommand = (cmd) => {
+  // 先移除命令文本（包括 / 和查询内容）
+  const textarea = editorRef.value
+  if (!textarea) return
+
+  const start = commandStartPosition.value
+  const end = start + 1 + commandQuery.value.length // +1 是 /
+
+  // 移除命令文本
+  articleForm.content =
+    articleForm.content.substring(0, start) +
+    articleForm.content.substring(end)
+
+  // 关闭菜单
+  showCommandMenu.value = false
+
+  // 更新光标位置
+  nextTick(() => {
+    textarea.selectionStart = start
+    textarea.selectionEnd = start
+    // 执行命令动作
+    cmd.action()
+  })
+}
+
 const insertText = (before, after = '') => {
   const textarea = editorRef.value
   if (!textarea) return
@@ -325,6 +541,50 @@ const insertText = (before, after = '') => {
     // 恢复滚动位置
     textarea.scrollTop = scrollTop
     textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length)
+  })
+}
+
+// 插入代码块
+const insertCodeBlock = () => {
+  const textarea = editorRef.value
+  if (!textarea) return
+
+  const scrollTop = textarea.scrollTop
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  const selectedText = articleForm.content.substring(start, end) || '代码'
+
+  const codeBlock = '\n```\n' + selectedText + '\n```\n'
+  const newText = articleForm.content.substring(0, start) + codeBlock + articleForm.content.substring(end)
+  articleForm.content = newText
+
+  nextTick(() => {
+    textarea.focus()
+    textarea.scrollTop = scrollTop
+    const newCursorPos = start + 5 // 定位到代码块内部
+    textarea.setSelectionRange(newCursorPos, newCursorPos + selectedText.length)
+  })
+}
+
+// 插入表格
+const insertTable = () => {
+  const textarea = editorRef.value
+  if (!textarea) return
+
+  const scrollTop = textarea.scrollTop
+  const start = textarea.selectionStart
+
+  const table = `
+| 列1 | 列2 | 列3 |
+|-----|-----|-----|
+| 内容 | 内容 | 内容 |
+`
+  const newText = articleForm.content.substring(0, start) + table + articleForm.content.substring(start)
+  articleForm.content = newText
+
+  nextTick(() => {
+    textarea.focus()
+    textarea.scrollTop = scrollTop
   })
 }
 
@@ -619,6 +879,11 @@ onMounted(() => {
   // 确保 dropdown 菜单在全屏模式下也能正常显示
   .el-dropdown__popper {
     z-index: 10000 !important;
+  }
+
+  // 确保命令菜单在全屏模式下正常显示
+  .command-menu {
+    z-index: 10001 !important;
   }
 }
 </style>
@@ -927,6 +1192,121 @@ onMounted(() => {
         color: var(--text-tertiary);
       }
     }
+
+    // 快捷命令菜单
+    .command-menu {
+      position: absolute;
+      z-index: 100;
+      width: 280px;
+      max-height: 320px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+
+      .command-menu-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background: var(--bg-tertiary);
+        border-bottom: 1px solid var(--border-color);
+        font-size: 12px;
+
+        .command-menu-title {
+          font-weight: 600;
+          color: var(--text-primary);
+        }
+
+        .command-menu-hint {
+          color: var(--text-tertiary);
+          font-size: 11px;
+        }
+      }
+
+      .command-menu-list {
+        max-height: 270px;
+        overflow-y: auto;
+
+        &::-webkit-scrollbar {
+          width: 4px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+          background: var(--border-color);
+          border-radius: 2px;
+        }
+      }
+
+      .command-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+
+        &:hover,
+        &.active {
+          background: rgba(59, 130, 246, 0.1);
+        }
+
+        &.active {
+          .command-name {
+            color: var(--color-primary);
+          }
+        }
+
+        .command-icon {
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--bg-tertiary);
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text-primary);
+        }
+
+        .command-info {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+
+          .command-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+          }
+
+          .command-desc {
+            font-size: 11px;
+            color: var(--text-tertiary);
+          }
+        }
+
+        .command-shortcut {
+          font-size: 11px;
+          color: var(--text-tertiary);
+          font-family: 'SF Mono', Monaco, monospace;
+          background: var(--bg-tertiary);
+          padding: 2px 6px;
+          border-radius: 4px;
+        }
+      }
+
+      .command-empty {
+        padding: 20px;
+        text-align: center;
+        color: var(--text-tertiary);
+        font-size: 13px;
+      }
+    }
   }
 
   .preview-wrapper {
@@ -958,6 +1338,18 @@ onMounted(() => {
 
     .el-icon {
       font-size: 14px;
+    }
+
+    kbd {
+      display: inline-block;
+      padding: 2px 6px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
     }
   }
 

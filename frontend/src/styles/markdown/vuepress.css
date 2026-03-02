@@ -68,30 +68,31 @@
 /* VuePress 风格的代码块 */
 .markdown-body.vuepress-theme .code-block-wrapper {
   margin: 20px 0;
-  background: #282c34;
+  background: #f8f9fa;
   border-radius: 6px;
   overflow: hidden;
+  border: 1px solid var(--border-color);
 }
 
 .markdown-body.vuepress-theme .code-block-wrapper pre {
-  background: #282c34;
+  background: #f8f9fa;
   padding: 16px 20px;
   margin: 0;
   overflow-x: auto;
 }
 
 .markdown-body.vuepress-theme .code-block-wrapper pre code {
-  color: #abb2bf;
+  color: #24292f;
   background: transparent;
 }
 
 .markdown-body.vuepress-theme .code-block-header {
-  background: #21252b;
-  border-bottom: 1px solid #333;
+  background: #f3f4f5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .markdown-body.vuepress-theme .code-lang {
-  color: #abb2bf;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -270,14 +271,102 @@
 }
 
 /* VuePress 深色模式适配 */
+[data-theme="dark"] .markdown-body.vuepress-theme .code-block-wrapper {
+  border-color: #30363d;
+}
+
 [data-theme="dark"] .markdown-body.vuepress-theme .code-block-wrapper,
 [data-theme="dark"] .markdown-body.vuepress-theme .code-block-wrapper pre {
-  background: #1e1e1e;
+  background: #1f2937;
 }
 
 [data-theme="dark"] .markdown-body.vuepress-theme .code-block-header {
-  background: #252526;
-  border-bottom-color: #333;
+  background: #161b22;
+  border-bottom-color: #30363d;
+}
+
+[data-theme="dark"] .markdown-body.vuepress-theme .code-block-wrapper pre code {
+  color: #c9d1d9;
+}
+
+/* VuePress 深色模式代码高亮 - Atom One Dark 风格 */
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs {
+  color: #abb2bf;
+  background: #1f2937;
+}
+
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-comment,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-quote {
+  color: #5c6370;
+  font-style: italic;
+}
+
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-doctag,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-keyword,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-formula {
+  color: #c678dd;
+}
+
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-section,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-name,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-selector-tag,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-deletion,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-subst {
+  color: #e06c75;
+}
+
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-literal {
+  color: #56b6c2;
+}
+
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-string,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-regexp,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-addition,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-attribute,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-meta .hljs-string {
+  color: #98c379;
+}
+
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-attr,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-variable,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-template-variable,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-type,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-selector-class,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-selector-attr,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-selector-pseudo,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-number {
+  color: #d19a66;
+}
+
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-symbol,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-bullet,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-link,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-meta,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-selector-id,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-title {
+  color: #61aeee;
+}
+
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-built_in,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-title.class_,
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-class .hljs-title {
+  color: #e6c07b;
+}
+
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-emphasis {
+  font-style: italic;
+}
+
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-strong {
+  font-weight: bold;
+}
+
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-addition {
+  background-color: rgba(163, 190, 140, 0.1);
+}
+
+[data-theme="dark"] .markdown-body.vuepress-theme .hljs-deletion {
+  background-color: rgba(190, 80, 70, 0.1);
 }
 
 [data-theme="dark"] .markdown-body.vuepress-theme blockquote {

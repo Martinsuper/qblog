@@ -288,6 +288,71 @@
   color: #c9d1d9;
 }
 
+/* GitHub 深色模式代码高亮 - 类似 GitHub Dark 主题 */
+[data-theme="dark"] .markdown-body.github-theme .hljs {
+  color: #c9d1d9;
+  background: #161b22;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .hljs-comment,
+[data-theme="dark"] .markdown-body.github-theme .hljs-quote {
+  color: #8b949e;
+  font-style: italic;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .hljs-keyword,
+[data-theme="dark"] .markdown-body.github-theme .hljs-selector-tag,
+[data-theme="dark"] .markdown-body.github-theme .hljs-addition {
+  color: #ff7b72;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .hljs-number,
+[data-theme="dark"] .markdown-body.github-theme .hljs-string,
+[data-theme="dark"] .markdown-body.github-theme .hljs-meta .hljs-meta-string,
+[data-theme="dark"] .markdown-body.github-theme .hljs-regexp,
+[data-theme="dark"] .markdown-body.github-theme .hljs-link {
+  color: #a5d6ff;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .hljs-title,
+[data-theme="dark"] .markdown-body.github-theme .hljs-section {
+  color: #d2a8ff;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .hljs-attr,
+[data-theme="dark"] .markdown-body.github-theme .hljs-variable,
+[data-theme="dark"] .markdown-body.github-theme .hljs-template-variable,
+[data-theme="dark"] .markdown-body.github-theme .hljs-type {
+  color: #ffa657;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .hljs-symbol,
+[data-theme="dark"] .markdown-body.github-theme .hljs-bullet,
+[data-theme="dark"] .markdown-body.github-theme .hljs-meta,
+[data-theme="dark"] .markdown-body.github-theme .hljs-selector-id,
+[data-theme="dark"] .markdown-body.github-theme .hljs-selector-class,
+[data-theme="dark"] .markdown-body.github-theme .hljs-built_in {
+  color: #79c0ff;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .hljs-deletion {
+  color: #ffdcd7;
+  background-color: #67060c;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .hljs-addition {
+  color: #aff5b4;
+  background-color: #033a16;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .hljs-emphasis {
+  font-style: italic;
+}
+
+[data-theme="dark"] .markdown-body.github-theme .hljs-strong {
+  font-weight: bold;
+}
+
 [data-theme="dark"] .markdown-body.github-theme code:not(.hljs) {
   background: rgba(110, 118, 129, 0.4);
   color: #c9d1d9;
