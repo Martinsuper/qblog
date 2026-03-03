@@ -14,11 +14,6 @@
         router
         @select="handleMenuSelect"
       >
-        <el-menu-item index="/admin/dashboard" route="/admin/dashboard">
-          <el-icon><DataBoard /></el-icon>
-          <template #title>控制台</template>
-        </el-menu-item>
-
         <el-menu-item index="/admin/articles" route="/admin/articles">
           <el-icon><Document /></el-icon>
           <template #title>文章管理</template>
@@ -100,7 +95,6 @@ import {
   Edit,
   Folder,
   HomeFilled,
-  DataBoard,
   Download
 } from '@element-plus/icons-vue'
 
@@ -118,7 +112,6 @@ const breadcrumb = computed(() => {
     '/admin/articles': '文章管理',
     '/admin/categories': '分类管理',
     '/admin/create': '写文章',
-    '/admin/dashboard': '控制台',
     '/admin/backup': '备份管理'
   }
   return menuMap[route.path] || ''
