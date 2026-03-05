@@ -118,7 +118,7 @@ const handleCommand = (command) => {
       router.push('/admin/create')
       break
     case 'admin':
-      router.push('/admin/dashboard')
+      router.push('/admin/articles')
       break
     case 'logout':
       localStorage.removeItem('token')
