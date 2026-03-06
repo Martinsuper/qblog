@@ -24,6 +24,11 @@
           <template #title>分类管理</template>
         </el-menu-item>
 
+        <el-menu-item index="/admin/tags" route="/admin/tags">
+          <el-icon><PriceTag /></el-icon>
+          <template #title>标签管理</template>
+        </el-menu-item>
+
         <el-menu-item index="/admin/create" route="/admin/create">
           <el-icon><Edit /></el-icon>
           <template #title>写文章</template>
@@ -95,7 +100,8 @@ import {
   Edit,
   Folder,
   HomeFilled,
-  Download
+  Download,
+  PriceTag
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -111,6 +117,7 @@ const breadcrumb = computed(() => {
   const menuMap = {
     '/admin/articles': '文章管理',
     '/admin/categories': '分类管理',
+    '/admin/tags': '标签管理',
     '/admin/create': '写文章',
     '/admin/backup': '备份管理'
   }

@@ -89,6 +89,11 @@ const router = createRouter({
           component: () => import('@/views/Admin/CategoryManage.vue')
         },
         {
+          path: 'tags',
+          name: 'admin-tags',
+          component: () => import('@/views/Admin/TagManage.vue')
+        },
+        {
           path: 'backup',
           name: 'admin-backup',
           component: () => import('@/views/Admin/BackupManage.vue')
