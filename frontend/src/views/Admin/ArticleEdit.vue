@@ -734,7 +734,10 @@ const fetchArticle = async () => {
       articleForm.content = data.content || ''
       articleForm.coverImage = data.coverImage || ''
       articleForm.categoryId = data.categoryId || data.category?.id || null
-      articleForm.tagIds = data.tagIds || data.tags?.map(t => t.id) || []
+      // 修复：确保 tagIds 正确提取并过滤无效值，转换为数字类型
+      articleForm.tagIds = (data.tags || [])
+        .map(t => Number(t.id))
+        .filter(id => !isNaN(id) && id > 0)
       articleForm.status = data.status || 1
 
       // 验证内容是否真的填充了
