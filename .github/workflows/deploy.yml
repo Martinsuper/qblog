@@ -37,6 +37,13 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Copy index.html to 404.html
+        # GitHub Pages SPA 路由支持: 404.html 内容与 index.html 相同
+        # 当访问不存在的路径时，GitHub Pages 会返回 404.html
+        # 其中的脚本会恢复原始路径，让 Vue Router 接管路由
+        working-directory: frontend/dist
+        run: cp index.html 404.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
