@@ -29,7 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -56,6 +58,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
         if (categoryId != null) {
             wrapper.eq(Article::getCategoryId, categoryId);
+        }
+        if (tagId != null) {
+            // 通过 article_tag 关联表筛选指定标签的文章
+            wrapper.inSql(Article::getId,
+                "SELECT article_id FROM article_tag WHERE tag_id = " + tagId);
         }
         if (StrUtil.isNotBlank(keyword)) {
             wrapper.and(w -> w.like(Article::getTitle, keyword)
@@ -200,19 +207,28 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Transactional(rollbackFor = Exception.class)
     public Article createArticle(ArticleDTO articleDTO) {
         Article article = BeanUtil.copyProperties(articleDTO, Article.class);
-        
+
         // 设置作者 ID（从当前登录用户获取）
         // article.setAuthorId(getCurrentUserId());
         article.setAuthorId(1L);
-        
+
         if (articleDTO.getStatus() == 1) {
             article.setPublishTime(LocalDateTime.now());
         }
-        
+
         save(article);
-        
-        // TODO: 处理文章标签关联
-        
+
+        // 处理文章标签关联
+        if (articleDTO.getTagIds() != null && !articleDTO.getTagIds().isEmpty()) {
+            List<ArticleTag> articleTags = articleDTO.getTagIds().stream().map(tagId -> {
+                ArticleTag articleTag = new ArticleTag();
+                articleTag.setArticleId(article.getId());
+                articleTag.setTagId(tagId);
+                return articleTag;
+            }).collect(Collectors.toList());
+            articleTagService.saveBatch(articleTags);
+        }
+
         return article;
     }
 
@@ -223,17 +239,29 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (article == null) {
             throw new RuntimeException("文章不存在");
         }
-        
+
         BeanUtil.copyProperties(articleDTO, article);
-        
+
         if (articleDTO.getStatus() == 1 && article.getPublishTime() == null) {
             article.setPublishTime(LocalDateTime.now());
         }
-        
+
         updateById(article);
-        
-        // TODO: 处理文章标签关联
-        
+
+        // 处理文章标签关联：先删除旧的，再添加新的
+        articleTagService.remove(new LambdaQueryWrapper<ArticleTag>()
+            .eq(ArticleTag::getArticleId, id));
+
+        if (articleDTO.getTagIds() != null && !articleDTO.getTagIds().isEmpty()) {
+            List<ArticleTag> articleTags = articleDTO.getTagIds().stream().map(tagId -> {
+                ArticleTag articleTag = new ArticleTag();
+                articleTag.setArticleId(id);
+                articleTag.setTagId(tagId);
+                return articleTag;
+            }).collect(Collectors.toList());
+            articleTagService.saveBatch(articleTags);
+        }
+
         return article;
     }
 
@@ -274,10 +302,120 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         // TODO: 实现取消点赞逻辑
     }
 
+    @Override
+    public List<ArticleListItemVO> getRelatedArticles(Long articleId, Integer limit) {
+        // 获取当前文章的标签
+        List<ArticleTag> currentArticleTags = articleTagService.list(
+            new LambdaQueryWrapper<ArticleTag>().eq(ArticleTag::getArticleId, articleId)
+        );
+
+        if (currentArticleTags.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Long> tagIds = currentArticleTags.stream()
+            .map(ArticleTag::getTagId)
+            .collect(Collectors.toList());
+
+        // 查询有共同标签的其他文章，按共同标签数排序
+        // 使用原生 SQL 实现高效的关联查询
+        String tagIdList = tagIds.stream()
+            .map(String::valueOf)
+            .collect(Collectors.joining(","));
+
+        // 查询有共同标签的文章ID及共同标签数
+        List<Article> relatedArticles = baseMapper.selectList(
+            new LambdaQueryWrapper<Article>()
+                .eq(Article::getStatus, 1)  // 只查询已发布文章
+                .ne(Article::getId, articleId)  // 排除当前文章
+                .inSql(Article::getId,
+                    "SELECT at.article_id FROM article_tag at " +
+                    "WHERE at.tag_id IN (" + tagIdList + ") " +
+                    "GROUP BY at.article_id " +
+                    "ORDER BY COUNT(at.tag_id) DESC " +
+                    "LIMIT " + limit)
+        );
+
+        return convertToListItemVO(relatedArticles);
+    }
+
     private List<ArticleListItemVO> convertToListItemVO(List<Article> articles) {
+        if (articles.isEmpty()) {
+            return new ArrayList<>();
+        }
+
         List<ArticleListItemVO> list = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+        // 批量收集所有需要查询的 ID
+        List<Long> authorIds = articles.stream()
+            .map(Article::getAuthorId)
+            .filter(id -> id != null)
+            .distinct()
+            .collect(Collectors.toList());
+
+        List<Long> categoryIds = articles.stream()
+            .map(Article::getCategoryId)
+            .filter(id -> id != null)
+            .distinct()
+            .collect(Collectors.toList());
+
+        List<Long> articleIds = articles.stream()
+            .map(Article::getId)
+            .filter(id -> id != null)
+            .collect(Collectors.toList());
+
+        // 批量查询作者、分类、标签
+        Map<Long, User> authorMap = new HashMap<>();
+        if (!authorIds.isEmpty()) {
+            authorMap = userService.listByIds(authorIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+        }
+
+        Map<Long, Category> categoryMap = new HashMap<>();
+        if (!categoryIds.isEmpty()) {
+            categoryMap = categoryService.listByIds(categoryIds).stream()
+                .collect(Collectors.toMap(Category::getId, Function.identity()));
+        }
+
+        // 批量查询文章标签关联和标签
+        Map<Long, List<TagVO>> articleTagMap = new HashMap<>();
+        if (!articleIds.isEmpty()) {
+            // 查询所有文章的标签关联
+            List<ArticleTag> allArticleTags = articleTagService.list(
+                new LambdaQueryWrapper<ArticleTag>().in(ArticleTag::getArticleId, articleIds)
+            );
+
+            if (!allArticleTags.isEmpty()) {
+                // 收集所有标签 ID
+                List<Long> tagIds = allArticleTags.stream()
+                    .map(ArticleTag::getTagId)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+                // 批量查询标签
+                Map<Long, Tag> tagMap = tagService.listByIds(tagIds).stream()
+                    .collect(Collectors.toMap(Tag::getId, Function.identity()));
+
+                // 按文章 ID 分组标签
+                allArticleTags.stream()
+                    .collect(Collectors.groupingBy(ArticleTag::getArticleId))
+                    .forEach((articleId, articleTags) -> {
+                        List<TagVO> tagVOs = articleTags.stream()
+                            .map(at -> tagMap.get(at.getTagId()))
+                            .filter(tag -> tag != null)
+                            .map(tag -> {
+                                TagVO tagVO = new TagVO();
+                                BeanUtil.copyProperties(tag, tagVO);
+                                return tagVO;
+                            })
+                            .collect(Collectors.toList());
+                        articleTagMap.put(articleId, tagVOs);
+                    });
+            }
+        }
+
+        // 组装 VO
         for (Article article : articles) {
             ArticleListItemVO vo = BeanUtil.copyProperties(article, ArticleListItemVO.class);
 
@@ -291,7 +429,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
             // 填充作者信息
             if (article.getAuthorId() != null) {
-                User author = userService.getById(article.getAuthorId());
+                User author = authorMap.get(article.getAuthorId());
                 if (author != null) {
                     UserVO authorVO = new UserVO();
                     BeanUtil.copyProperties(author, authorVO);
@@ -304,7 +442,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
             // 填充分类信息
             if (article.getCategoryId() != null) {
-                Category category = categoryService.getById(article.getCategoryId());
+                Category category = categoryMap.get(article.getCategoryId());
                 if (category != null) {
                     CategoryVO categoryVO = new CategoryVO();
                     BeanUtil.copyProperties(category, categoryVO);
@@ -316,24 +454,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             }
 
             // 填充标签信息
-            vo.setTags(new ArrayList<>());
-            if (article.getId() != null) {
-                List<ArticleTag> articleTags = articleTagService.list(
-                    new LambdaQueryWrapper<ArticleTag>().eq(ArticleTag::getArticleId, article.getId())
-                );
-                if (!articleTags.isEmpty()) {
-                    List<Long> tagIds = articleTags.stream()
-                        .map(ArticleTag::getTagId)
-                        .collect(Collectors.toList());
-                    List<Tag> tags = tagService.listByIds(tagIds);
-                    List<TagVO> tagVOs = tags.stream().map(tag -> {
-                        TagVO tagVO = new TagVO();
-                        BeanUtil.copyProperties(tag, tagVO);
-                        return tagVO;
-                    }).collect(Collectors.toList());
-                    vo.setTags(tagVOs);
-                }
-            }
+            vo.setTags(articleTagMap.getOrDefault(article.getId(), new ArrayList<>()));
 
             list.add(vo);
         }

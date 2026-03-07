@@ -41,14 +41,15 @@
 
         <!-- 标签 -->
         <div v-if="article.tags && article.tags.length > 0" class="article-tags">
-          <el-tag
+          <router-link
             v-for="tag in article.tags"
             :key="tag.id"
-            size="small"
-            style="margin-right: 10px; margin-bottom: 10px;"
+            :to="`/articles?tagId=${tag.id}`"
           >
-            {{ tag.name }}
-          </el-tag>
+            <el-tag size="small" style="margin-right: 10px; margin-bottom: 10px; cursor: pointer;">
+              {{ tag.name }}
+            </el-tag>
+          </router-link>
         </div>
 
         <!-- 操作按钮 -->
@@ -62,6 +63,27 @@
     </article>
 
     <el-empty v-else description="文章不存在" />
+
+    <!-- 相关文章 -->
+    <el-card v-if="relatedArticles.length > 0" class="related-articles-card">
+      <template #header>
+        <span class="related-title">相关文章</span>
+      </template>
+      <div class="related-list">
+        <router-link
+          v-for="related in relatedArticles"
+          :key="related.id"
+          :to="`/article/${related.id}`"
+          class="related-item"
+        >
+          <div class="related-item-title">{{ related.title }}</div>
+          <div class="related-item-meta">
+            <span><el-icon><View /></el-icon> {{ related.viewCount }}</span>
+            <span>{{ formatTime(related.publishTime) }}</span>
+          </div>
+        </router-link>
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -70,12 +92,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useMarkdown } from '@/composables/useMarkdown'
-import { getArticleDetail, likeArticle } from '@/api/article'
+import { getArticleDetail, likeArticle, getRelatedArticles } from '@/api/article'
 
 const route = useRoute()
 const { render, getThemeClass } = useMarkdown()
 
 const article = ref(null)
+const relatedArticles = ref([])
 
 // 计算属性：渲染后的内容
 const renderedContent = computed(() => {
@@ -89,9 +112,20 @@ const fetchArticle = async () => {
   try {
     const res = await getArticleDetail(route.params.id)
     article.value = res.data
+    // 获取相关文章
+    fetchRelatedArticles()
   } catch (error) {
     console.error('获取文章失败:', error)
     ElMessage.error('获取文章失败')
+  }
+}
+
+const fetchRelatedArticles = async () => {
+  try {
+    const res = await getRelatedArticles(route.params.id, { limit: 5 })
+    relatedArticles.value = res.data
+  } catch (error) {
+    console.error('获取相关文章失败:', error)
   }
 }
 
@@ -202,5 +236,56 @@ onMounted(() => {
   border-top: 1px solid var(--border-color);
   display: flex;
   gap: 10px;
+}
+
+.related-articles-card {
+  margin-top: 20px;
+
+  .related-title {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .related-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .related-item {
+    display: block;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    text-decoration: none;
+    transition: all 0.2s;
+
+    &:hover {
+      background: var(--bg-hover);
+      transform: translateX(4px);
+    }
+
+    .related-item-title {
+      color: var(--text-primary);
+      font-weight: 500;
+      margin-bottom: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .related-item-meta {
+      display: flex;
+      gap: 16px;
+      color: var(--text-secondary);
+      font-size: 12px;
+
+      span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+    }
+  }
 }
 </style>

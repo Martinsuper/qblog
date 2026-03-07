@@ -126,4 +126,14 @@ public class ArticleController {
         articleService.unlikeArticle(id);
         return Result.success();
     }
+
+    /**
+     * 获取相关文章（基于共同标签）
+     */
+    @GetMapping("/{id}/related")
+    public Result<List<ArticleListItemVO>> getRelatedArticles(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "5") Integer limit) {
+        return Result.success(articleService.getRelatedArticles(id, limit));
+    }
 }

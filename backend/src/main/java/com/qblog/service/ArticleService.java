@@ -65,4 +65,12 @@ public interface ArticleService extends IService<Article> {
      * 取消点赞
      */
     void unlikeArticle(Long id);
+
+    /**
+     * 获取相关文章（基于共同标签）
+     * @param articleId 当前文章 ID
+     * @param limit 返回数量
+     * @return 相关文章列表
+     */
+    List<ArticleListItemVO> getRelatedArticles(Long articleId, Integer limit);
 }

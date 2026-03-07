@@ -59,7 +59,7 @@ public class TagController {
      */
     @DeleteMapping("/{id}")
     public Result<Void> deleteTag(@PathVariable Long id) {
-        tagService.removeById(id);
+        tagService.deleteTagWithRelations(id);
         return Result.success();
     }
 }

@@ -81,3 +81,11 @@ export function unlikeArticle(id) {
     method: 'delete'
   })
 }
+
+export function getRelatedArticles(id, params) {
+  return request({
+    url: `/articles/${id}/related`,
+    method: 'get',
+    params
+  })
+}
