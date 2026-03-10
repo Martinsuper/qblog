@@ -19,19 +19,23 @@ import com.qblog.model.vo.TagVO;
 import com.qblog.model.vo.UserVO;
 import com.qblog.service.ArticleService;
 import com.qblog.service.ArticleTagService;
+import com.qblog.service.CacheService;
 import com.qblog.service.CategoryService;
 import com.qblog.service.TagService;
 import com.qblog.service.UserService;
+import com.qblog.service.ViewCountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -46,6 +50,16 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private final CategoryService categoryService;
     private final TagService tagService;
     private final ArticleTagService articleTagService;
+    private final CacheService cacheService;
+    private final ViewCountService viewCountService;
+
+    // 缓存 Key 前缀
+    private static final String CACHE_ARTICLE_DETAIL = "article:detail:";
+    private static final String CACHE_ARTICLE_HOT = "article:hot";
+    private static final String CACHE_ARTICLE_LATEST = "article:latest";
+    private static final Duration TTL_DETAIL = Duration.ofMinutes(10);
+    private static final Duration TTL_HOT = Duration.ofMinutes(30);
+    private static final Duration TTL_LATEST = Duration.ofMinutes(5);
 
     @Override
     public Page<ArticleListItemVO> getArticleList(Integer page, Integer size, Long categoryId,
@@ -60,9 +74,21 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             wrapper.eq(Article::getCategoryId, categoryId);
         }
         if (tagId != null) {
-            // 通过 article_tag 关联表筛选指定标签的文章
-            wrapper.inSql(Article::getId,
-                "SELECT article_id FROM article_tag WHERE tag_id = " + tagId);
+            // 安全：先查询关联的文章ID，再使用 in 查询，避免 SQL 注入
+            List<Long> articleIds = articleTagService.list(
+                new LambdaQueryWrapper<ArticleTag>()
+                    .select(ArticleTag::getArticleId)
+                    .eq(ArticleTag::getTagId, tagId)
+            ).stream()
+             .map(ArticleTag::getArticleId)
+             .collect(Collectors.toList());
+
+            if (!articleIds.isEmpty()) {
+                wrapper.in(Article::getId, articleIds);
+            } else {
+                // 没有匹配的文章，返回空结果
+                wrapper.apply("1 = 0");
+            }
         }
         if (StrUtil.isNotBlank(keyword)) {
             wrapper.and(w -> w.like(Article::getTitle, keyword)
@@ -141,20 +167,28 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public ArticleVO getArticleDetail(Long id) {
+        // 尝试从缓存获取
+        String cacheKey = CACHE_ARTICLE_DETAIL + id;
+        ArticleVO cachedVo = cacheService.get(cacheKey, ArticleVO.class);
+        if (cachedVo != null) {
+            // 使用 ViewCountService 增加浏览量
+            viewCountService.incrementViewCount(id);
+            return cachedVo;
+        }
+
         Article article = getById(id);
         if (article == null) {
             throw new RuntimeException("文章不存在");
         }
-        
+
         // 只检查已删除的文章（status=2），允许访问草稿（status=0）和已发布（status=1）
         if (article.getStatus() == 2) {
             throw new RuntimeException("文章不存在");
         }
 
-        // 增加浏览量（仅已发布文章）
+        // 使用 ViewCountService 增加浏览量（仅已发布文章）
         if (article.getStatus() == 1) {
-            article.setViewCount(article.getViewCount() + 1);
-            updateById(article);
+            viewCountService.incrementViewCount(id);
         }
 
         ArticleVO vo = BeanUtil.copyProperties(article, ArticleVO.class);
@@ -199,6 +233,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
 
         // TODO: 填充是否点赞、收藏状态
+
+        // 缓存结果（仅缓存已发布文章）
+        if (article.getStatus() == 1) {
+            cacheService.set(cacheKey, vo, TTL_DETAIL);
+        }
 
         return vo;
     }
@@ -262,6 +301,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             articleTagService.saveBatch(articleTags);
         }
 
+        // 清除文章缓存
+        clearArticleCache(id);
+
         return article;
     }
 
@@ -271,25 +313,52 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (article != null) {
             article.setStatus(2); // 标记为已删除
             updateById(article);
+
+            // 清除文章缓存
+            clearArticleCache(id);
         }
     }
 
     @Override
     public List<ArticleListItemVO> getHotArticles(Integer limit) {
+        // 尝试从缓存获取
+        String cacheKey = CACHE_ARTICLE_HOT + ":" + limit;
+        List<ArticleListItemVO> cachedList = cacheService.getList(cacheKey, ArticleListItemVO.class);
+        if (cachedList != null) {
+            return cachedList;
+        }
+
         List<Article> articles = list(new LambdaQueryWrapper<Article>()
                 .eq(Article::getStatus, 1)
                 .orderByDesc(Article::getViewCount)
                 .last("LIMIT " + limit));
-        return convertToListItemVO(articles);
+        List<ArticleListItemVO> result = convertToListItemVO(articles);
+
+        // 缓存结果
+        cacheService.set(cacheKey, result, TTL_HOT);
+
+        return result;
     }
 
     @Override
     public List<ArticleListItemVO> getLatestArticles(Integer limit) {
+        // 尝试从缓存获取
+        String cacheKey = CACHE_ARTICLE_LATEST + ":" + limit;
+        List<ArticleListItemVO> cachedList = cacheService.getList(cacheKey, ArticleListItemVO.class);
+        if (cachedList != null) {
+            return cachedList;
+        }
+
         List<Article> articles = list(new LambdaQueryWrapper<Article>()
                 .eq(Article::getStatus, 1)
                 .orderByDesc(Article::getPublishTime)
                 .last("LIMIT " + limit));
-        return convertToListItemVO(articles);
+        List<ArticleListItemVO> result = convertToListItemVO(articles);
+
+        // 缓存结果
+        cacheService.set(cacheKey, result, TTL_LATEST);
+
+        return result;
     }
 
     @Override
@@ -317,26 +386,49 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             .map(ArticleTag::getTagId)
             .collect(Collectors.toList());
 
-        // 查询有共同标签的其他文章，按共同标签数排序
-        // 使用原生 SQL 实现高效的关联查询
-        String tagIdList = tagIds.stream()
-            .map(String::valueOf)
-            .collect(Collectors.joining(","));
-
-        // 查询有共同标签的文章ID及共同标签数
-        List<Article> relatedArticles = baseMapper.selectList(
-            new LambdaQueryWrapper<Article>()
-                .eq(Article::getStatus, 1)  // 只查询已发布文章
-                .ne(Article::getId, articleId)  // 排除当前文章
-                .inSql(Article::getId,
-                    "SELECT at.article_id FROM article_tag at " +
-                    "WHERE at.tag_id IN (" + tagIdList + ") " +
-                    "GROUP BY at.article_id " +
-                    "ORDER BY COUNT(at.tag_id) DESC " +
-                    "LIMIT " + limit)
+        // 安全：使用参数化查询替代 inSql
+        List<ArticleTag> relatedArticleTags = articleTagService.list(
+            new LambdaQueryWrapper<ArticleTag>()
+                .in(ArticleTag::getTagId, tagIds)
+                .ne(ArticleTag::getArticleId, articleId)
         );
 
-        return convertToListItemVO(relatedArticles);
+        if (relatedArticleTags.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 按文章ID分组，计算共同标签数
+        Map<Long, Long> articleTagCount = relatedArticleTags.stream()
+            .collect(Collectors.groupingBy(ArticleTag::getArticleId, Collectors.counting()));
+
+        // 取 top N 文章ID
+        List<Long> relatedArticleIds = articleTagCount.entrySet().stream()
+            .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
+            .limit(limit)
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
+
+        if (relatedArticleIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 查询文章详情
+        List<Article> relatedArticles = list(
+            new LambdaQueryWrapper<Article>()
+                .in(Article::getId, relatedArticleIds)
+                .eq(Article::getStatus, 1)
+        );
+
+        // 按共同标签数排序返回
+        Map<Long, Article> articleMap = relatedArticles.stream()
+            .collect(Collectors.toMap(Article::getId, Function.identity()));
+
+        List<Article> sortedArticles = relatedArticleIds.stream()
+            .map(articleMap::get)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+
+        return convertToListItemVO(sortedArticles);
     }
 
     private List<ArticleListItemVO> convertToListItemVO(List<Article> articles) {
@@ -469,5 +561,19 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             case "likeCount" -> "like_count";
             default -> "publish_time";
         };
+    }
+
+    /**
+     * 清除文章相关缓存
+     */
+    private void clearArticleCache(Long articleId) {
+        // 清除文章详情缓存
+        cacheService.delete(CACHE_ARTICLE_DETAIL + articleId);
+
+        // 清除热门文章缓存（使用通配符删除所有热门文章缓存）
+        cacheService.deleteByPattern(CACHE_ARTICLE_HOT + "*");
+
+        // 清除最新文章缓存（使用通配符删除所有最新文章缓存）
+        cacheService.deleteByPattern(CACHE_ARTICLE_LATEST + "*");
     }
 }
