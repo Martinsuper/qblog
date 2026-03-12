@@ -57,16 +57,6 @@ public interface ArticleService extends IService<Article> {
     List<ArticleListItemVO> getLatestArticles(Integer limit);
 
     /**
-     * 点赞文章
-     */
-    void likeArticle(Long id);
-
-    /**
-     * 取消点赞
-     */
-    void unlikeArticle(Long id);
-
-    /**
      * 获取相关文章（基于共同标签）
      * @param articleId 当前文章 ID
      * @param limit 返回数量
