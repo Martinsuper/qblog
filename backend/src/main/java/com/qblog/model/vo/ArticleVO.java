@@ -29,10 +29,6 @@ public class ArticleVO {
 
     private Integer viewCount;
 
-    private Integer likeCount;
-
-    private Integer commentCount;
-
     private Integer top;
 
     private Boolean isLiked;
