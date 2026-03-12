@@ -57,12 +57,6 @@ public class Article implements Serializable {
     private Integer viewCount;
 
     /**
-     * 点赞数
-     */
-    private Integer likeCount;
-
-
-    /**
      * 状态：0-草稿 1-已发布 2-已删除
      */
     private Integer status;
