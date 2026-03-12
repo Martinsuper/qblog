@@ -27,6 +27,12 @@ spring:
     port: ${SPRING_REDIS_PORT:6379}
     password: ${SPRING_REDIS_PASSWORD:}
     timeout: 10s
+    lettuce:
+      pool:
+        max-active: 50      # 生产环境更大的连接池
+        max-idle: 20
+        min-idle: 10
+        max-wait: 3000ms
 
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss

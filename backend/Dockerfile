@@ -7,9 +7,9 @@ COPY src ./src
 RUN mvn clean package -DskipTests -B
 
 # 运行阶段
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre
 WORKDIR /app
-RUN addgroup -S qblog && adduser -S qblog -G qblog
+RUN groupadd -r qblog && useradd -r -g qblog qblog
 USER qblog
 COPY --from=builder /app/target/*.jar app.jar
 EXPOSE 8081

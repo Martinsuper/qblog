@@ -1,6 +1,7 @@
 package com.qblog.controller;
 
 import com.qblog.common.Result;
+import com.qblog.common.annotation.RateLimit;
 import com.qblog.model.dto.ChangePasswordDTO;
 import com.qblog.model.dto.LoginDTO;
 import com.qblog.model.dto.RegisterDTO;
@@ -24,6 +25,7 @@ public class AuthController {
      * 用户登录
      */
     @PostMapping("/login")
+    @RateLimit(key = "login", period = 60, count = 5, limitType = RateLimit.LimitType.IP)
     public Result<String> login(@Valid @RequestBody LoginDTO loginDTO) {
         String token = userService.login(loginDTO);
         return Result.success(token);
@@ -33,6 +35,7 @@ public class AuthController {
      * 用户注册
      */
     @PostMapping("/register")
+    @RateLimit(key = "register", period = 3600, count = 3, limitType = RateLimit.LimitType.IP)
     public Result<Void> register(@Valid @RequestBody RegisterDTO registerDTO) {
         userService.register(registerDTO);
         return Result.success();
