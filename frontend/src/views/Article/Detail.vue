@@ -23,10 +23,6 @@
                 <el-icon><View /></el-icon>
                 {{ article.viewCount }}
               </span>
-              <span class="meta-item">
-                <el-icon><Star /></el-icon>
-                {{ article.likeCount }}
-              </span>
             </div>
           </div>
         </div>
@@ -50,14 +46,6 @@
               {{ tag.name }}
             </el-tag>
           </router-link>
-        </div>
-
-        <!-- 操作按钮 -->
-        <div class="article-actions">
-          <el-button type="primary" @click="handleLike">
-            <el-icon><Star /></el-icon>
-            点赞 ({{ article.likeCount }})
-          </el-button>
         </div>
       </el-card>
     </article>
@@ -92,7 +80,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useMarkdown } from '@/composables/useMarkdown'
-import { getArticleDetail, likeArticle, getRelatedArticles } from '@/api/article'
+import { getArticleDetail, getRelatedArticles } from '@/api/article'
 
 const route = useRoute()
 const { render, getThemeClass } = useMarkdown()
@@ -126,16 +114,6 @@ const fetchRelatedArticles = async () => {
     relatedArticles.value = res.data
   } catch (error) {
     console.error('获取相关文章失败:', error)
-  }
-}
-
-const handleLike = async () => {
-  try {
-    await likeArticle(article.value.id)
-    article.value.likeCount++
-    ElMessage.success('点赞成功')
-  } catch (error) {
-    console.error('点赞失败:', error)
   }
 }
 
@@ -228,14 +206,6 @@ onMounted(() => {
   margin-top: 30px;
   padding-top: 20px;
   border-top: 1px solid var(--border-color);
-}
-
-.article-actions {
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  gap: 10px;
 }
 
 .related-articles-card {
