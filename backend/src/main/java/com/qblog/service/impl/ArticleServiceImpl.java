@@ -102,21 +102,20 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             switch (sortBy) {
                 case "createTime" -> wrapper.orderBy(true, isAsc, Article::getCreateTime);
                 case "viewCount" -> wrapper.orderBy(true, isAsc, Article::getViewCount);
-                case "likeCount" -> wrapper.orderBy(true, isAsc, Article::getLikeCount);
                 default -> wrapper.orderBy(true, isAsc, Article::getPublishTime);
             }
         } else {
             wrapper.orderByDesc(true, Article::getTop);
             wrapper.orderByDesc(true, Article::getPublishTime);
         }
-        
+
         Page<Article> resultPage = page(articlePage, wrapper);
-        
+
         // 转换为 VO
         Page<ArticleListItemVO> voPage = new Page<>();
         voPage.setTotal(resultPage.getTotal());
         voPage.setRecords(convertToListItemVO(resultPage.getRecords()));
-        
+
         return voPage;
     }
 
@@ -149,7 +148,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             switch (sortBy) {
                 case "createTime" -> wrapper.orderBy(true, isAsc, Article::getCreateTime);
                 case "viewCount" -> wrapper.orderBy(true, isAsc, Article::getViewCount);
-                case "likeCount" -> wrapper.orderBy(true, isAsc, Article::getLikeCount);
                 default -> wrapper.orderBy(true, isAsc, Article::getPublishTime);
             }
         } else {
@@ -533,7 +531,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         return switch (sortBy) {
             case "createTime" -> "create_time";
             case "viewCount" -> "view_count";
-            case "likeCount" -> "like_count";
             default -> "publish_time";
         };
     }

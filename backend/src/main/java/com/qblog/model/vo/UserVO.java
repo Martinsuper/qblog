@@ -24,7 +24,5 @@ public class UserVO {
 
     private Integer articleCount;
 
-    private Integer likeCount;
-
     private LocalDateTime createTime;
 }
