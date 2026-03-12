@@ -68,20 +68,6 @@ export function getLatestArticles(params) {
   })
 }
 
-export function likeArticle(id) {
-  return request({
-    url: `/articles/${id}/like`,
-    method: 'post'
-  })
-}
-
-export function unlikeArticle(id) {
-  return request({
-    url: `/articles/${id}/like`,
-    method: 'delete'
-  })
-}
-
 export function getRelatedArticles(id, params) {
   return request({
     url: `/articles/${id}/related`,
