@@ -156,11 +156,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
         Page<Article> resultPage = page(articlePage, wrapper);
 
-        // 转换为 VO - 手动设置总数，解决 MyBatis-Plus 分页计数问题
+        // 转换为 VO - 直接使用分页查询返回的总数，避免重复 COUNT 查询
         Page<ArticleListItemVO> voPage = new Page<>(resultPage.getCurrent(), resultPage.getSize());
-        // 使用 count 查询获取总数
-        Long total = count(wrapper);
-        voPage.setTotal(total);
+        voPage.setTotal(resultPage.getTotal());
         voPage.setRecords(convertToListItemVO(resultPage.getRecords()));
 
         return voPage;
@@ -524,15 +522,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             list.add(vo);
         }
         return list;
-    }
-
-    private String getSortColumn(String sortBy) {
-        // 简单的字段映射，防止 SQL 注入
-        return switch (sortBy) {
-            case "createTime" -> "create_time";
-            case "viewCount" -> "view_count";
-            default -> "publish_time";
-        };
     }
 
     /**

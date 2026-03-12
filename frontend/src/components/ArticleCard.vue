@@ -5,7 +5,7 @@
     @click="$router.push(`/article/${article.id}`)"
   >
     <div v-if="article.coverImage && horizontal" class="w-full md:w-60 flex-shrink-0">
-      <img :src="article.coverImage" alt="封面" class="w-full h-40 md:h-full object-cover" />
+      <LazyImage :src="article.coverImage" alt="封面" height="160" class="w-full h-40 md:h-full" />
     </div>
     
     <div class="flex-1" :class="horizontal ? 'p-4 md:p-5' : ''">
@@ -40,6 +40,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import LazyImage from '@/components/LazyImage.vue'
 
 const props = defineProps({
   article: {
