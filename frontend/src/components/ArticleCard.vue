@@ -33,10 +33,6 @@
           <el-icon><View /></el-icon>
           {{ article.viewCount }}
         </span>
-        <span class="flex items-center gap-1">
-          <el-icon><Star /></el-icon>
-          {{ article.likeCount }}
-        </span>
       </div>
     </div>
   </div>
