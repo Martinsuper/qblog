@@ -24,10 +24,6 @@ public class ArticleListItemVO {
 
     private Integer viewCount;
 
-    private Integer likeCount;
-
-    private Integer commentCount;
-
     private Integer status;
 
     private Integer top;
