@@ -37,8 +37,6 @@
           </template>
         </el-table-column>
         <el-table-column prop="viewCount" label="浏览" width="80" />
-        <el-table-column prop="likeCount" label="点赞" width="80" />
-        <el-table-column prop="commentCount" label="评论" width="80" />
         <el-table-column prop="status" label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'">
