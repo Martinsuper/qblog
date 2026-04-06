@@ -269,7 +269,6 @@ import {
   Check,
   Plus,
   Document,
-  List,
   Link as LinkIcon,
   Picture as PictureIcon,
   View,
@@ -827,36 +826,6 @@ const handleCoverSuccess = (response) => {
   if (response.code === 200) {
     articleForm.coverImage = response.data.url
     ElMessage.success('封面上传成功')
-  }
-}
-
-const handleSubmit = async () => {
-  if (!articleForm.title.trim()) {
-    ElMessage.warning('请输入文章标题')
-    return
-  }
-  if (!articleForm.content.trim()) {
-    ElMessage.warning('请输入文章内容')
-    return
-  }
-
-  try {
-    publishing.value = true
-    articleForm.status = 1
-    // 如果有 ID 且是编辑模式，才调用更新接口
-    if (isEdit.value && articleForm.id) {
-      await updateArticle(articleForm.id, articleForm)
-      ElMessage.success('文章更新成功')
-    } else {
-      await createArticle(articleForm)
-      ElMessage.success('文章发布成功')
-    }
-    router.push('/admin/articles')
-  } catch (error) {
-    console.error('发布文章失败:', error)
-    ElMessage.error('发布文章失败：' + (error.message || '未知错误'))
-  } finally {
-    publishing.value = false
   }
 }
 
