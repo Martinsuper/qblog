@@ -290,7 +290,6 @@ const router = useRouter()
 const { render, getThemeClass } = useMarkdown()
 
 const editorRef = ref(null)
-const previewRef = ref(null)
 const commandMenuRef = ref(null)
 const isEdit = ref(false)
 const categories = ref([])
@@ -437,11 +436,6 @@ const goBack = () => {
 
 const togglePreview = () => {
   showPreview.value = !showPreview.value
-  if (showPreview.value) {
-    nextTick(() => {
-      syncScroll()
-    })
-  }
 }
 
 const toggleFullscreen = () => {
@@ -474,18 +468,6 @@ onUnmounted(() => {
   document.documentElement.classList.remove('editor-fullscreen')
   stopAutoSave()
 })
-
-const handleScroll = () => {
-  if (showPreview.value && previewRef.value) {
-    syncScroll()
-  }
-}
-
-const syncScroll = () => {
-  if (!editorRef.value || !previewRef.value) return
-  const ratio = previewRef.value.scrollHeight / editorRef.value.scrollHeight
-  previewRef.value.scrollTop = editorRef.value.scrollTop * ratio
-}
 
 // 处理编辑器输入事件
 const handleEditorInput = (e) => {
