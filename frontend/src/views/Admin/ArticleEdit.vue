@@ -913,76 +913,7 @@ onMounted(() => {
   height: 100vh;
   background: var(--bg-primary);
 }
-</style>
 
-<style lang="scss">
-// 全屏模式 - 不使用 scoped
-.editor-fullscreen {
-  .article-editor {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 9999;
-    background: var(--bg-primary);
-  }
-
-  .editor-header {
-    display: none !important;
-  }
-
-  .form-panel {
-    display: none !important;
-  }
-
-  .editor-body {
-    padding: 0 !important;
-    gap: 0 !important;
-    height: 100vh !important;
-  }
-
-  .editor-panel {
-    width: 100% !important;
-    height: 100vh !important;
-    border-radius: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-  }
-
-  .editor-container {
-    height: calc(100vh - 41px) !important;
-  }
-
-  .editor-wrapper,
-  .preview-wrapper {
-    height: 100% !important;
-  }
-
-  .markdown-editor {
-    height: 100% !important;
-  }
-
-  .toolbar-right {
-    .el-button:last-child {
-      color: #409EFF !important;
-      background: rgba(64, 158, 255, 0.1) !important;
-    }
-  }
-
-  // 确保 dropdown 菜单在全屏模式下也能正常显示
-  .el-dropdown__popper {
-    z-index: 10000 !important;
-  }
-
-  // 确保命令菜单在全屏模式下正常显示
-  .command-menu {
-    z-index: 10001 !important;
-  }
-}
-</style>
-
-<style lang="scss" scoped>
 // 顶部 header
 .editor-header {
   display: flex;
@@ -1018,6 +949,11 @@ onMounted(() => {
     color: var(--text-primary);
     margin: 0;
   }
+
+  .auto-save-status {
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
 }
 
 .header-right {
@@ -1025,162 +961,68 @@ onMounted(() => {
   gap: 12px;
 }
 
-// 主体区域
-.editor-body {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-  gap: 20px;
-  padding: 20px;
-}
+// 标题区域
+.title-area {
+  padding: 24px 32px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
 
-// 左侧表单区
-.form-panel {
-  width: 320px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  overflow-y: auto;
-  padding-right: 8px;
+  .title-input-wrapper {
+    position: relative;
 
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 3px;
-  }
-}
-
-// 标题输入
-.title-section {
-  position: relative;
-
-  .title-input {
-    width: 100%;
-    padding: 14px 16px;
-    font-size: 20px;
-    font-weight: 600;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    outline: none;
-    transition: all var(--transition-fast);
-
-    &:focus {
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-
-    &::placeholder {
-      color: var(--text-tertiary);
-    }
-  }
-
-  .char-count {
-    position: absolute;
-    right: 12px;
-    bottom: -20px;
-    font-size: 12px;
-    color: var(--text-tertiary);
-  }
-}
-
-// 元信息
-.meta-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-
-  .meta-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-
-    label {
-      width: 50px;
-      font-size: 14px;
-      color: var(--text-secondary);
-      font-weight: 500;
-    }
-
-    .meta-select {
-      flex: 1;
-    }
-  }
-}
-
-// 封面图
-.cover-section {
-  .section-label {
-    display: block;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-primary);
-    margin-bottom: 12px;
-  }
-
-  .cover-uploader {
-    width: 100%;
-    height: 160px;
-    border: 2px dashed var(--border-color);
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    background: var(--bg-tertiary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &:hover {
-      border-color: var(--color-primary);
-      background: rgba(59, 130, 246, 0.05);
-    }
-
-    .cover-img {
+    .title-input {
       width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border-radius: var(--border-radius);
+      padding: 12px 0;
+      font-size: 24px;
+      font-weight: 600;
+      border: none;
+      border-bottom: 2px solid var(--border-color);
+      background: transparent;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color var(--transition-fast);
+
+      &:focus {
+        border-bottom-color: var(--color-primary);
+      }
+
+      &::placeholder {
+        color: var(--text-tertiary);
+      }
     }
 
-    .cover-placeholder {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
+    .char-count {
+      position: absolute;
+      right: 0;
+      bottom: -20px;
+      font-size: 12px;
       color: var(--text-tertiary);
-
-      .cover-icon {
-        font-size: 40px;
-      }
-
-      span {
-        font-size: 13px;
-      }
     }
   }
-}
 
-// 摘要
-.summary-section {
-  .section-label {
-    display: block;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-primary);
-    margin-bottom: 12px;
-  }
+  .meta-tags {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
 
-  .summary-input {
-    :deep(.el-textarea__inner) {
-      border-radius: var(--border-radius);
-      font-size: 14px;
-      line-height: 1.6;
-      resize: none;
+    .meta-tag {
+      cursor: pointer;
+      transition: all var(--transition-fast);
+
+      &:hover {
+        transform: scale(1.05);
+      }
+    }
+
+    .meta-empty {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      cursor: pointer;
+
+      &:hover {
+        color: var(--color-primary);
+      }
     }
   }
 }
@@ -1191,10 +1033,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background: var(--bg-secondary);
-  border-radius: var(--border-radius-lg);
-  border: 1px solid var(--border-color);
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
 }
 
 // 工具栏
@@ -1248,42 +1087,29 @@ onMounted(() => {
 // 编辑器容器
 .editor-container {
   flex: 1;
-  display: flex;
   overflow: hidden;
   position: relative;
 
-  &.show-preview {
-    .editor-wrapper {
-      width: 50%;
-      border-right: 1px solid var(--border-color);
-    }
-
-    .preview-wrapper {
-      display: block;
-      width: 50%;
-    }
-  }
-
   .editor-wrapper {
-    flex: 1;
+    height: 100%;
     overflow: hidden;
     position: relative;
 
     .markdown-editor {
       width: 100%;
       height: 100%;
-      padding: 20px;
+      padding: 20px 32px;
       border: none;
       outline: none;
       resize: none;
       font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
       font-size: 14px;
       line-height: 1.8;
-      background: transparent;
-      color: var(--text-primary);
+      background: #1a1a2e;
+      color: #d4d4d4;
 
       &::placeholder {
-        color: var(--text-tertiary);
+        color: #6b6b8d;
       }
     }
 
@@ -1404,12 +1230,14 @@ onMounted(() => {
   }
 
   .preview-wrapper {
-    display: none;
+    height: 100%;
     overflow-y: auto;
     background: var(--bg-primary);
+    padding: 32px;
 
     .markdown-body {
-      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
     }
   }
 }
@@ -1452,65 +1280,149 @@ onMounted(() => {
   }
 }
 
-// 响应式
-@media (max-width: 1024px) {
-  .editor-body {
-    flex-direction: column;
-    padding: 12px;
+// 设置模态框样式
+.settings-dialog {
+  :deep(.el-dialog__body) {
+    padding: 20px 24px;
   }
 
-  .form-panel {
-    width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-    overflow: visible;
+  :deep(.el-form-item__label) {
+    font-weight: 500;
+    color: var(--text-primary);
   }
 
-  .title-section {
+  .full-width {
     width: 100%;
   }
 
-  .meta-section {
-    width: calc(50% - 10px);
-  }
+  .cover-uploader {
+    width: 100%;
+    height: 160px;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-  .cover-section,
-  .summary-section {
-    width: calc(50% - 10px);
+    &:hover {
+      border-color: var(--color-primary);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .cover-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: var(--border-radius);
+    }
+
+    .cover-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-tertiary);
+
+      .cover-icon {
+        font-size: 40px;
+      }
+
+      span {
+        font-size: 13px;
+      }
+    }
   }
 }
 
+// 响应式
 @media (max-width: 768px) {
   .editor-header {
     padding: 0 16px;
   }
 
-  .page-title {
-    font-size: 16px !important;
+  .header-left .page-title {
+    font-size: 16px;
   }
 
   .header-right .el-button span {
     display: none;
   }
 
-  .meta-section,
-  .cover-section,
-  .summary-section {
-    width: 100%;
+  .title-area {
+    padding: 16px;
+
+    .title-input {
+      font-size: 18px;
+    }
   }
 
-  .editor-container.show-preview {
-    flex-direction: column;
+  .editor-container .editor-wrapper .markdown-editor {
+    padding: 16px;
+  }
 
-    .editor-wrapper,
-    .preview-wrapper {
-      width: 100%;
-    }
+  .settings-dialog {
+    width: 90% !important;
+  }
+}
+</style>
 
-    .editor-wrapper {
-      border-right: none;
-      border-bottom: 1px solid var(--border-color);
+<style lang="scss">
+// 全屏模式 - 不使用 scoped
+.editor-fullscreen {
+  .article-editor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background: var(--bg-primary);
+  }
+
+  .editor-header {
+    display: none !important;
+  }
+
+  .title-area {
+    display: none !important;
+  }
+
+  .editor-panel {
+    width: 100% !important;
+    height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .editor-container {
+    height: calc(100vh - 41px) !important;
+  }
+
+  .editor-wrapper {
+    height: 100% !important;
+  }
+
+  .markdown-editor {
+    height: 100% !important;
+  }
+
+  .toolbar-right {
+    .el-button:last-child {
+      color: #409EFF !important;
+      background: rgba(64, 158, 255, 0.1) !important;
     }
+  }
+
+  .el-dropdown__popper {
+    z-index: 10000 !important;
+  }
+
+  .command-menu {
+    z-index: 10001 !important;
   }
 }
 </style>
