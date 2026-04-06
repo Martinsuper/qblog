@@ -305,6 +305,42 @@ const editorPanelRef = ref(null)
 const showSettingsModal = ref(false)
 const autoSaveStatus = ref('')
 
+// 自动保存
+const AUTO_SAVE_INTERVAL = 60000 // 60 秒
+let autoSaveTimer = null
+
+const startAutoSave = () => {
+  if (autoSaveTimer) return
+
+  autoSaveTimer = setInterval(async () => {
+    if (!articleForm.title.trim() && !articleForm.content.trim()) return
+
+    try {
+      articleForm.status = 0
+      if (isEdit.value && articleForm.id) {
+        await updateArticle(articleForm.id, articleForm)
+      } else {
+        const res = await createArticle(articleForm)
+        if (res.data?.id) {
+          articleForm.id = res.data.id
+          isEdit.value = true
+        }
+      }
+      const now = new Date()
+      autoSaveStatus.value = `自动保存 · ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
+    } catch (error) {
+      console.error('自动保存失败:', error)
+    }
+  }, AUTO_SAVE_INTERVAL)
+}
+
+const stopAutoSave = () => {
+  if (autoSaveTimer) {
+    clearInterval(autoSaveTimer)
+    autoSaveTimer = null
+  }
+}
+
 // 计算属性：已选分类和标签
 const selectedCategory = computed(() => {
   if (!articleForm.categoryId) return null
@@ -432,6 +468,7 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('keydown', handleEscKey)
   document.documentElement.classList.remove('editor-fullscreen')
+  stopAutoSave()
 })
 
 const handleScroll = () => {
@@ -903,6 +940,7 @@ onMounted(() => {
   fetchCategories()
   fetchTags()
   fetchArticle()
+  startAutoSave()
 })
 </script>
 
