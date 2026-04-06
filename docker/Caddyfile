@@ -1,0 +1,28 @@
+# QBlog 后端 API 反向代理
+bqlog.younote.top {
+    encode gzip
+
+    # API 反向代理
+    reverse_proxy /api/* qblog-backend:8081 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # 健康检查端点
+    reverse_proxy /api/health qblog-backend:8081
+
+    # 日志
+    log {
+        output file /var/log/caddy/bqlog-access.log
+        format json
+    }
+}
+
+# 可选：如果前端也部署在同一服务器，可以添加前端域名配置
+# yourdomain.com {
+#     root * /var/www/html
+#     file_server
+#     encode gzip
+# }
