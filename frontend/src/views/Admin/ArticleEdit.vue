@@ -1,75 +1,203 @@
 <template>
   <div class="article-editor">
-    <!-- 顶部操作栏 -->
+    <!-- 顶部导航栏 -->
     <header class="editor-header">
       <div class="header-left">
         <el-button link @click="goBack" class="back-btn">
           <el-icon><ArrowLeft /></el-icon>
         </el-button>
         <h1 class="page-title">{{ isEdit ? '编辑文章' : '写文章' }}</h1>
+        <span v-if="autoSaveStatus" class="auto-save-status">{{ autoSaveStatus }}</span>
       </div>
       <div class="header-right">
+        <el-button v-if="!showPreview" @click="togglePreview">
+          <el-icon><View /></el-icon>
+          预览
+        </el-button>
+        <el-button v-else @click="togglePreview" type="primary">
+          <el-icon><Edit /></el-icon>
+          返回编辑
+        </el-button>
         <el-button @click="handleSaveDraft" :loading="saving">
           <el-icon><Document /></el-icon>
           存草稿
         </el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="publishing">
+        <el-button type="primary" @click="openSettingsModal">
           <el-icon><Check /></el-icon>
-          发布文章
+          发布
         </el-button>
       </div>
     </header>
 
-    <div class="editor-body">
-      <!-- 左侧表单区 -->
-      <div class="form-panel">
-        <!-- 标题输入 -->
-        <div class="title-section">
-          <input
-            v-model="articleForm.title"
-            class="title-input"
-            placeholder="输入文章标题..."
-            maxlength="200"
+    <!-- 标题区域 -->
+    <div class="title-area">
+      <div class="title-input-wrapper">
+        <input
+          v-model="articleForm.title"
+          class="title-input"
+          placeholder="请输入文章标题（5-100字）"
+          maxlength="100"
+        />
+        <span class="char-count">{{ articleForm.title.length }}/100</span>
+      </div>
+      <div class="meta-tags">
+        <el-tag
+          v-if="selectedCategory"
+          class="meta-tag"
+          @click="openSettingsModal"
+        >
+          📁 {{ selectedCategory.name }}
+        </el-tag>
+        <el-tag
+          v-for="tag in selectedTags"
+          :key="tag.id"
+          class="meta-tag"
+          @click="openSettingsModal"
+        >
+          🏷️ {{ tag.name }}
+        </el-tag>
+        <span v-if="!selectedCategory && selectedTags.length === 0" class="meta-empty" @click="openSettingsModal">
+          点击设置分类和标签
+        </span>
+      </div>
+    </div>
+
+    <!-- 编辑器面板 -->
+    <div class="editor-panel" ref="editorPanelRef">
+      <!-- 工具栏 -->
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <el-button link @click="insertText('# ', '标题')" title="标题">
+            <el-icon><Document /></el-icon>
+          </el-button>
+          <el-button link @click="insertText('**', '**')" title="加粗">
+            <el-icon><EditIcon /></el-icon>
+          </el-button>
+          <el-button link @click="insertText('*', '*')" title="斜体">
+            <el-icon><EditIcon /></el-icon>
+          </el-button>
+          <el-button link @click="insertText('[', '](url)')" title="链接">
+            <el-icon><LinkIcon /></el-icon>
+          </el-button>
+          <el-button link @click="insertText('![', '](url)')" title="图片">
+            <el-icon><PictureIcon /></el-icon>
+          </el-button>
+          <el-button link @click="insertCodeBlock()" title="代码块">
+            <el-icon><Document /></el-icon>
+          </el-button>
+          <el-button link @click="insertTable()" title="表格">
+            <el-icon><Grid /></el-icon>
+          </el-button>
+          <el-divider direction="vertical" />
+          <el-dropdown trigger="click">
+            <el-button link title="插入图表">
+              <el-icon><Connection /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="insertPlantUML('sequence')">时序图</el-dropdown-item>
+                <el-dropdown-item @click="insertPlantUML('class')">类图</el-dropdown-item>
+                <el-dropdown-item @click="insertPlantUML('usecase')">用例图</el-dropdown-item>
+                <el-dropdown-item @click="insertPlantUML('activity')">活动图</el-dropdown-item>
+                <el-dropdown-item @click="insertPlantUML('component')">组件图</el-dropdown-item>
+                <el-dropdown-item @click="insertPlantUML('deployment')">部署图</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          <el-dropdown trigger="click">
+            <el-button link title="插入容器">
+              <el-icon><MessageBox /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="insertContainer('tip')">💡 提示容器</el-dropdown-item>
+                <el-dropdown-item @click="insertContainer('warning')">⚠️ 警告容器</el-dropdown-item>
+                <el-dropdown-item @click="insertContainer('danger')">🚨 危险容器</el-dropdown-item>
+                <el-dropdown-item @click="insertContainer('info')">ℹ️ 信息容器</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+        <div class="toolbar-right">
+          <el-button link :class="{ active: isFullscreen }" @click="toggleFullscreen" title="全屏">
+            <el-icon><FullScreen /></el-icon>
+          </el-button>
+        </div>
+      </div>
+
+      <!-- 编辑/预览区域 -->
+      <div class="editor-container">
+        <!-- 编辑模式 -->
+        <div v-if="!showPreview" class="editor-wrapper">
+          <textarea
+            ref="editorRef"
+            v-model="articleForm.content"
+            class="markdown-editor"
+            placeholder="开始写作，支持 Markdown 语法..."
+            @input="handleEditorInput"
+            @keydown="handleEditorKeydown"
           />
-          <span class="char-count">{{ articleForm.title.length }}/200</span>
-        </div>
-
-        <!-- 元信息 -->
-        <div class="meta-section">
-          <div class="meta-row">
-            <label>分类</label>
-            <el-select v-model="articleForm.categoryId" placeholder="选择分类" class="meta-select">
-              <el-option
-                v-for="cat in categories"
-                :key="cat.id"
-                :label="cat.name"
-                :value="cat.id"
-              />
-            </el-select>
-          </div>
-          <div class="meta-row">
-            <label>标签</label>
-            <el-select
-              v-model="articleForm.tagIds"
-              multiple
-              placeholder="添加标签"
-              allow-create
-              filterable
-              class="meta-select"
-            >
-              <el-option
-                v-for="tag in tags"
-                :key="tag.id"
-                :label="tag.name"
-                :value="tag.id"
-              />
-            </el-select>
+          <!-- 快捷命令菜单 -->
+          <div
+            v-if="showCommandMenu"
+            class="command-menu"
+            :style="commandMenuStyle"
+            ref="commandMenuRef"
+          >
+            <div class="command-menu-header">
+              <span class="command-menu-title">快捷命令</span>
+              <span class="command-menu-hint">↑↓ 选择 · Enter 确认 · Esc 关闭</span>
+            </div>
+            <div class="command-menu-list">
+              <div
+                v-for="(cmd, index) in filteredCommands"
+                :key="cmd.name"
+                class="command-item"
+                :class="{ active: index === selectedCommandIndex }"
+                @click="executeCommand(cmd)"
+                @mouseenter="selectedCommandIndex = index"
+              >
+                <span class="command-icon">{{ cmd.icon }}</span>
+                <div class="command-info">
+                  <span class="command-name">{{ cmd.label }}</span>
+                  <span class="command-desc">{{ cmd.description }}</span>
+                </div>
+                <span class="command-shortcut">/{{ cmd.name }}</span>
+              </div>
+              <div v-if="filteredCommands.length === 0" class="command-empty">
+                未找到匹配的命令
+              </div>
+            </div>
           </div>
         </div>
+        <!-- 预览模式 -->
+        <div v-else class="preview-wrapper">
+          <div :class="markdownClass" v-html="renderedContent"></div>
+        </div>
+      </div>
 
-        <!-- 封面图 -->
-        <div class="cover-section">
-          <label class="section-label">封面图片</label>
+      <!-- 底部状态栏 -->
+      <div class="editor-footer">
+        <span class="footer-tip">
+          <el-icon><InfoFilled /></el-icon>
+          支持 Markdown 语法 · 输入 <kbd>/</kbd> 唤起快捷命令
+        </span>
+        <span class="word-count">
+          {{ wordCount }} 字
+        </span>
+      </div>
+    </div>
+
+    <!-- 设置模态框 -->
+    <el-dialog
+      v-model="showSettingsModal"
+      title="文章设置"
+      width="480px"
+      :close-on-click-modal="false"
+      class="settings-dialog"
+    >
+      <el-form label-position="top">
+        <el-form-item label="封面图片">
           <el-upload
             class="cover-uploader"
             action="/api/v1/upload/image"
@@ -82,148 +210,52 @@
               <span>上传封面</span>
             </div>
           </el-upload>
-        </div>
-
-        <!-- 摘要 -->
-        <div class="summary-section">
-          <label class="section-label">文章摘要</label>
+        </el-form-item>
+        <el-form-item label="分类">
+          <el-select v-model="articleForm.categoryId" placeholder="选择分类" class="full-width">
+            <el-option
+              v-for="cat in categories"
+              :key="cat.id"
+              :label="cat.name"
+              :value="cat.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="标签">
+          <el-select
+            v-model="articleForm.tagIds"
+            multiple
+            placeholder="添加标签"
+            allow-create
+            filterable
+            class="full-width"
+          >
+            <el-option
+              v-for="tag in tags"
+              :key="tag.id"
+              :label="tag.name"
+              :value="tag.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="文章摘要">
           <el-input
             v-model="articleForm.summary"
             type="textarea"
-            :rows="3"
+            :rows="4"
             placeholder="写一段文章摘要..."
             maxlength="500"
             show-word-limit
-            class="summary-input"
           />
-        </div>
-      </div>
-
-      <!-- 编辑器区域 -->
-      <div class="editor-panel" ref="editorPanelRef">
-        <!-- 工具栏 -->
-        <div class="toolbar">
-          <div class="toolbar-left">
-            <el-button link @click="insertText('# ', '标题')" title="标题">
-              <el-icon><Document /></el-icon>
-            </el-button>
-            <el-button link @click="insertText('**', '**')" title="加粗">
-              <el-icon><EditIcon /></el-icon>
-            </el-button>
-            <el-button link @click="insertText('- ', '列表项')" title="列表">
-              <el-icon><List /></el-icon>
-            </el-button>
-            <el-button link @click="insertText('[', '](url)')" title="链接">
-              <el-icon><LinkIcon /></el-icon>
-            </el-button>
-            <el-button link @click="insertText('![', '](url)')" title="图片">
-              <el-icon><PictureIcon /></el-icon>
-            </el-button>
-            <el-divider direction="vertical" />
-            <el-dropdown trigger="click">
-              <el-button link title="插入图表">
-                <el-icon><Connection /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="insertPlantUML('sequence')">时序图</el-dropdown-item>
-                  <el-dropdown-item @click="insertPlantUML('class')">类图</el-dropdown-item>
-                  <el-dropdown-item @click="insertPlantUML('usecase')">用例图</el-dropdown-item>
-                  <el-dropdown-item @click="insertPlantUML('activity')">活动图</el-dropdown-item>
-                  <el-dropdown-item @click="insertPlantUML('component')">组件图</el-dropdown-item>
-                  <el-dropdown-item @click="insertPlantUML('deployment')">部署图</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-            <el-divider direction="vertical" />
-            <el-dropdown trigger="click">
-              <el-button link title="插入容器">
-                <el-icon><MessageBox /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="insertContainer('tip')">💡 提示容器</el-dropdown-item>
-                  <el-dropdown-item @click="insertContainer('warning')">⚠️ 警告容器</el-dropdown-item>
-                  <el-dropdown-item @click="insertContainer('danger')">🚨 危险容器</el-dropdown-item>
-                  <el-dropdown-item @click="insertContainer('info')">ℹ️ 信息容器</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </div>
-          <div class="toolbar-right">
-            <el-button link :class="{ active: showPreview }" @click="togglePreview">
-              <el-icon><View /></el-icon>
-              {{ showPreview ? '编辑' : '预览' }}
-            </el-button>
-            <el-divider direction="vertical" />
-            <el-button link :class="{ active: isFullscreen }" @click="toggleFullscreen" title="全屏">
-              <el-icon><FullScreen /></el-icon>
-            </el-button>
-          </div>
-        </div>
-
-        <!-- 编辑区 -->
-        <div class="editor-container" :class="{ 'show-preview': showPreview }">
-          <div class="editor-wrapper">
-            <textarea
-              ref="editorRef"
-              v-model="articleForm.content"
-              class="markdown-editor"
-              placeholder="开始写作，支持 Markdown 语法..."
-              @scroll="handleScroll"
-              @input="handleEditorInput"
-              @keydown="handleEditorKeydown"
-            />
-            <!-- 快捷命令菜单 -->
-            <div
-              v-if="showCommandMenu"
-              class="command-menu"
-              :style="commandMenuStyle"
-              ref="commandMenuRef"
-            >
-              <div class="command-menu-header">
-                <span class="command-menu-title">快捷命令</span>
-                <span class="command-menu-hint">↑↓ 选择 · Enter 确认 · Esc 关闭</span>
-              </div>
-              <div class="command-menu-list">
-                <div
-                  v-for="(cmd, index) in filteredCommands"
-                  :key="cmd.name"
-                  class="command-item"
-                  :class="{ active: index === selectedCommandIndex }"
-                  @click="executeCommand(cmd)"
-                  @mouseenter="selectedCommandIndex = index"
-                >
-                  <span class="command-icon">{{ cmd.icon }}</span>
-                  <div class="command-info">
-                    <span class="command-name">{{ cmd.label }}</span>
-                    <span class="command-desc">{{ cmd.description }}</span>
-                  </div>
-                  <span class="command-shortcut">/{{ cmd.name }}</span>
-                </div>
-                <div v-if="filteredCommands.length === 0" class="command-empty">
-                  未找到匹配的命令
-                </div>
-              </div>
-            </div>
-          </div>
-          <div v-if="showPreview" class="preview-wrapper" ref="previewRef">
-            <div :class="markdownClass" v-html="renderedContent"></div>
-          </div>
-        </div>
-
-        <!-- 底部状态栏 -->
-        <div class="editor-footer">
-          <span class="footer-tip">
-            <el-icon><InfoFilled /></el-icon>
-            支持 Markdown 语法 · 输入 <kbd>/</kbd> 唤起快捷命令
-          </span>
-          <span class="word-count">
-            {{ wordCount }} 字
-          </span>
-        </div>
-      </div>
-    </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeSettingsModal">取消</el-button>
+        <el-button type="primary" @click="handlePublish" :loading="publishing">
+          保存并发布
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -245,7 +277,9 @@ import {
   Edit as EditIcon,
   FullScreen,
   Connection,
-  MessageBox
+  MessageBox,
+  Grid,
+  Edit
 } from '@element-plus/icons-vue'
 import { createArticle, updateArticle, getArticleDetail } from '@/api/article'
 import { getCategoryList } from '@/api/category'
@@ -266,6 +300,21 @@ const saving = ref(false)
 const publishing = ref(false)
 const isFullscreen = ref(false)
 const editorPanelRef = ref(null)
+
+// 新增状态
+const showSettingsModal = ref(false)
+const autoSaveStatus = ref('')
+
+// 计算属性：已选分类和标签
+const selectedCategory = computed(() => {
+  if (!articleForm.categoryId) return null
+  return categories.value.find(c => c.id === articleForm.categoryId)
+})
+
+const selectedTags = computed(() => {
+  if (!articleForm.tagIds || articleForm.tagIds.length === 0) return []
+  return tags.value.filter(t => articleForm.tagIds.includes(t.id))
+})
 
 // 快捷命令菜单状态
 const showCommandMenu = ref(false)
@@ -805,6 +854,48 @@ const handleSaveDraft = async () => {
     ElMessage.error('保存草稿失败：' + (error.message || '未知错误'))
   } finally {
     saving.value = false
+  }
+}
+
+// 打开设置模态框
+const openSettingsModal = () => {
+  showSettingsModal.value = true
+}
+
+// 关闭设置模态框
+const closeSettingsModal = () => {
+  showSettingsModal.value = false
+}
+
+// 发布文章（从模态框调用）
+const handlePublish = async () => {
+  if (!articleForm.title.trim()) {
+    ElMessage.warning('请输入文章标题')
+    return
+  }
+  if (!articleForm.content.trim()) {
+    ElMessage.warning('请输入文章内容')
+    return
+  }
+
+  closeSettingsModal()
+
+  try {
+    publishing.value = true
+    articleForm.status = 1
+    if (isEdit.value && articleForm.id) {
+      await updateArticle(articleForm.id, articleForm)
+      ElMessage.success('文章更新成功')
+    } else {
+      await createArticle(articleForm)
+      ElMessage.success('文章发布成功')
+    }
+    router.push('/admin/articles')
+  } catch (error) {
+    console.error('发布文章失败:', error)
+    ElMessage.error('发布文章失败：' + (error.message || '未知错误'))
+  } finally {
+    publishing.value = false
   }
 }
 
