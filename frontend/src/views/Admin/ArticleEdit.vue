@@ -463,6 +463,10 @@ const handleEscKey = (e) => {
 
 onMounted(() => {
   document.addEventListener('keydown', handleEscKey)
+  fetchCategories()
+  fetchTags()
+  fetchArticle()
+  startAutoSave()
 })
 
 onUnmounted(() => {
@@ -935,13 +939,6 @@ const handlePublish = async () => {
     publishing.value = false
   }
 }
-
-onMounted(() => {
-  fetchCategories()
-  fetchTags()
-  fetchArticle()
-  startAutoSave()
-})
 </script>
 
 <style lang="scss" scoped>
