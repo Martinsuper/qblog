@@ -309,25 +309,26 @@ const startAutoSave = () => {
   if (autoSaveTimer) return
 
   autoSaveTimer = setInterval(async () => {
-    if (!articleForm.title.trim() && !articleForm.content.trim()) return
+      // 标题和内容都不为空才自动保存
+      if (!articleForm.title.trim() || !articleForm.content.trim()) return
 
-    try {
-      articleForm.status = 0
-      if (isEdit.value && articleForm.id) {
-        await updateArticle(articleForm.id, articleForm)
-      } else {
-        const res = await createArticle(articleForm)
-        if (res.data?.id) {
-          articleForm.id = res.data.id
-          isEdit.value = true
+      try {
+        articleForm.status = 0
+        if (isEdit.value && articleForm.id) {
+          await updateArticle(articleForm.id, articleForm)
+        } else {
+          const res = await createArticle(articleForm)
+          if (res.data?.id) {
+            articleForm.id = res.data.id
+            isEdit.value = true
+          }
         }
+        const now = new Date()
+        autoSaveStatus.value = `自动保存 · ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
+      } catch (error) {
+        console.error('自动保存失败:', error)
       }
-      const now = new Date()
-      autoSaveStatus.value = `自动保存 · ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
-    } catch (error) {
-      console.error('自动保存失败:', error)
-    }
-  }, AUTO_SAVE_INTERVAL)
+    }, AUTO_SAVE_INTERVAL)
 }
 
 const stopAutoSave = () => {
@@ -842,6 +843,16 @@ const handleCoverSuccess = (response) => {
 }
 
 const handleSaveDraft = async () => {
+  // 验证标题和内容
+  if (!articleForm.title.trim()) {
+    ElMessage.warning('请输入文章标题')
+    return
+  }
+  if (!articleForm.content.trim()) {
+    ElMessage.warning('请输入文章内容')
+    return
+  }
+
   try {
     saving.value = true
     articleForm.status = 0
@@ -850,7 +861,12 @@ const handleSaveDraft = async () => {
       await updateArticle(articleForm.id, articleForm)
     } else {
       // 否则调用创建接口
-      await createArticle(articleForm)
+      const res = await createArticle(articleForm)
+      // 新建草稿后保存返回的 ID，后续更新使用
+      if (res.data?.id) {
+        articleForm.id = res.data.id
+        isEdit.value = true
+      }
     }
     ElMessage.success('草稿保存成功')
   } catch (error) {
