@@ -10,13 +10,9 @@
         <span v-if="autoSaveStatus" class="auto-save-status">{{ autoSaveStatus }}</span>
       </div>
       <div class="header-right">
-        <el-button v-if="!showPreview" @click="togglePreview">
+        <el-button :type="showPreview ? 'primary' : 'default'" @click="togglePreview">
           <el-icon><View /></el-icon>
-          预览
-        </el-button>
-        <el-button v-else @click="togglePreview" type="primary">
-          <el-icon><Edit /></el-icon>
-          返回编辑
+          {{ showPreview ? '关闭预览' : '分屏预览' }}
         </el-button>
         <el-button @click="handleSaveDraft" :loading="saving">
           <el-icon><Document /></el-icon>
@@ -126,9 +122,9 @@
       </div>
 
       <!-- 编辑/预览区域 -->
-      <div class="editor-container">
-        <!-- 编辑模式 -->
-        <div v-if="!showPreview" class="editor-wrapper">
+      <div class="editor-container" :class="{ 'split-mode': showPreview }">
+        <!-- 编辑区 -->
+        <div class="editor-wrapper">
           <textarea
             ref="editorRef"
             v-model="articleForm.content"
@@ -136,6 +132,7 @@
             placeholder="开始写作，支持 Markdown 语法..."
             @input="handleEditorInput"
             @keydown="handleEditorKeydown"
+            @scroll="handleScroll"
           />
           <!-- 快捷命令菜单 -->
           <div
@@ -170,8 +167,8 @@
             </div>
           </div>
         </div>
-        <!-- 预览模式 -->
-        <div v-else class="preview-wrapper">
+        <!-- 预览区（分屏时显示） -->
+        <div v-if="showPreview" class="preview-wrapper" ref="previewRef">
           <div :class="markdownClass" v-html="renderedContent"></div>
         </div>
       </div>
@@ -289,6 +286,7 @@ const router = useRouter()
 const { render, getThemeClass } = useMarkdown()
 
 const editorRef = ref(null)
+const previewRef = ref(null)
 const commandMenuRef = ref(null)
 const isEdit = ref(false)
 const categories = ref([])
@@ -435,6 +433,20 @@ const goBack = () => {
 
 const togglePreview = () => {
   showPreview.value = !showPreview.value
+}
+
+// 滚动同步
+const handleScroll = () => {
+  if (!showPreview.value || !editorRef.value || !previewRef.value) return
+
+  const editorElement = editorRef.value
+  const previewElement = previewRef.value
+
+  // 计算滚动比例
+  const scrollRatio = editorElement.scrollTop / (editorElement.scrollHeight - editorElement.clientHeight)
+
+  // 同步预览区滚动
+  previewElement.scrollTop = scrollRatio * (previewElement.scrollHeight - previewElement.clientHeight)
 }
 
 const toggleFullscreen = () => {
@@ -1073,13 +1085,29 @@ const handlePublish = async () => {
 // 编辑器容器
 .editor-container {
   flex: 1;
+  display: flex;
   overflow: hidden;
   position: relative;
 
+  // 分屏模式
+  &.split-mode {
+    .editor-wrapper {
+      width: 50%;
+      border-right: 1px solid var(--border-color);
+    }
+
+    .markdown-editor {
+      overflow-y: auto;
+    }
+  }
+
   .editor-wrapper {
+    flex: 1;
     height: 100%;
     overflow: hidden;
     position: relative;
+    display: flex;
+    flex-direction: column;
 
     .markdown-editor {
       width: 100%;
@@ -1093,6 +1121,7 @@ const handlePublish = async () => {
       line-height: 1.8;
       background: #1a1a2e;
       color: #d4d4d4;
+      overflow-y: auto;
 
       &::placeholder {
         color: #6b6b8d;
@@ -1216,13 +1245,14 @@ const handlePublish = async () => {
   }
 
   .preview-wrapper {
+    width: 50%;
     height: 100%;
     overflow-y: auto;
     background: var(--bg-primary);
-    padding: 32px;
+    padding: 20px 32px;
 
     .markdown-body {
-      max-width: 800px;
+      max-width: 100%;
       margin: 0 auto;
     }
   }
