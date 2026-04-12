@@ -2,7 +2,7 @@ package com.qblog.controller;
 
 import com.qblog.common.Result;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,7 +22,9 @@ import java.util.Map;
 public class HealthController {
 
     private final DataSource dataSource;
-    private final RedisConnectionFactory redisConnectionFactory;
+
+    @Autowired(required = false)
+    private RedisConnectionFactory redisConnectionFactory;
 
     /**
      * 存活探针 - 检查服务是否运行
@@ -54,13 +56,17 @@ public class HealthController {
             status.put("status", "DOWN");
         }
 
-        // 检查 Redis 连接
-        try (RedisConnection conn = redisConnectionFactory.getConnection()) {
-            conn.ping();
-            status.put("redis", "UP");
-        } catch (Exception e) {
-            status.put("redis", "DOWN: " + e.getMessage());
-            // Redis 不可用不影响服务运行
+        // 检查 Redis 连接（如果启用）
+        if (redisConnectionFactory != null) {
+            try (var conn = redisConnectionFactory.getConnection()) {
+                conn.ping();
+                status.put("redis", "UP");
+            } catch (Exception e) {
+                status.put("redis", "DOWN: " + e.getMessage());
+                // Redis 不可用不影响服务运行
+            }
+        } else {
+            status.put("redis", "DISABLED");
         }
 
         if (!status.containsKey("status")) {

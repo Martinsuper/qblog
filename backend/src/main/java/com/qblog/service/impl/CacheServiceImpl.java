@@ -4,6 +4,7 @@ import cn.hutool.json.JSONUtil;
 import com.qblog.service.CacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -17,10 +18,12 @@ import java.util.function.Supplier;
 
 /**
  * Redis 缓存服务实现
+ * 仅在 redis.enabled=true 时生效
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "spring.redis.enabled", havingValue = "true", matchIfMissing = true)
 public class CacheServiceImpl implements CacheService {
 
     private final StringRedisTemplate redisTemplate;

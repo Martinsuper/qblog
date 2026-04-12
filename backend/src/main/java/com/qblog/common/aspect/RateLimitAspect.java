@@ -3,37 +3,43 @@ package com.qblog.common.aspect;
 import com.qblog.common.annotation.RateLimit;
 import com.qblog.common.exception.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.reflect.Method;
-import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 /**
  * 限流切面
+ * Redis 启用时使用 Redis 实现滑动窗口限流
+ * Redis 禁用时跳过限流检查
  */
 @Slf4j
 @Aspect
 @Component
-@RequiredArgsConstructor
 public class RateLimitAspect {
 
-    private final StringRedisTemplate redisTemplate;
+    @Autowired(required = false)
+    private StringRedisTemplate redisTemplate;
 
     private static final String RATE_LIMIT_KEY_PREFIX = "rate_limit:";
 
     @Before("@annotation(com.qblog.common.annotation.RateLimit)")
     public void doBefore(JoinPoint joinPoint) {
+        // Redis 未启用，跳过限流检查
+        if (redisTemplate == null) {
+            log.debug("Redis disabled, skipping rate limit check");
+            return;
+        }
+
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
         RateLimit rateLimit = method.getAnnotation(RateLimit.class);

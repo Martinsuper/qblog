@@ -13,7 +13,7 @@
 - **框架**: Spring Boot 3.2.0
 - **ORM**: MyBatis-Plus 3.5.5
 - **数据库**: MySQL 8.0+
-- **缓存**: Redis
+- **缓存**: Redis (可选，可通过配置禁用)
 - **认证**: JWT + Spring Security
 - **API 文档**: Knife4j (Swagger)
 - **工具**: Lombok, Hutool
@@ -163,10 +163,39 @@ qblog/
 ## 性能优化
 
 ### 缓存策略
+
+Redis 为可选依赖，可通过配置控制是否启用：
+
+**启用 Redis（默认）**：
+```yaml
+spring:
+  redis:
+    enabled: true
+    host: localhost
+    port: 6379
+```
+
+**禁用 Redis（使用本地缓存）**：
+```yaml
+spring:
+  redis:
+    enabled: false
+```
+
+或通过环境变量设置：`REDIS_ENABLED=false`
+
+**Redis 启用时**：
 - 文章详情：Redis 缓存 10 分钟
 - 热门文章：Redis 缓存 30 分钟
 - 最新文章：Redis 缓存 5 分钟
 - 分类/标签列表：Redis 缓存 1 小时
+- 浏览量计数：Redis 计数器，定时同步到数据库
+- 限流：Redis 滑动窗口限流
+
+**Redis 禁用时**：
+- 使用本地内存缓存（ConcurrentHashMap）
+- 浏览量直接写入数据库
+- 限流功能跳过检查
 
 ### 数据库优化
 - 文章列表复合索引 `(status, top, publish_time)`

@@ -53,3 +53,4 @@ CLAUDE.md
 qblog-backup*
 deploy.sh
 redeploy.sh
+deploy-backend.sh

@@ -21,8 +21,9 @@ spring:
       max-lifetime: 1800000
       connection-timeout: 30000
 
-  # Redis 配置
+  # Redis 配置（可选）
   redis:
+    enabled: ${REDIS_ENABLED:true}  # Redis 开关，默认启用。设为 false 时使用本地缓存
     host: ${SPRING_REDIS_HOST:localhost}
     port: ${SPRING_REDIS_PORT:6379}
     password: ${SPRING_REDIS_PASSWORD:}
