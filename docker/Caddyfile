@@ -1,28 +1,36 @@
-# QBlog 后端 API 反向代理
+# QBlog 前端静态资源
+qlog.younote.top {
+    encode gzip
+
+    root * /var/www/html
+    try_files {path} {path}/ /index.html
+    file_server
+
+    # 静态资源缓存 30 天
+    @static {
+        path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+    }
+    header @static Cache-Control "public, max-age=2592000, immutable"
+
+    log {
+        output file /var/log/caddy/qlog-access.log
+        format json
+    }
+}
+
+# QBlog 后端 API
 bqlog.younote.top {
     encode gzip
 
-    # API 反向代理
-    reverse_proxy /api/* qblog-backend:8081 {
+    reverse_proxy qblog-backend:8081 {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
     }
 
-    # 健康检查端点
-    reverse_proxy /api/health qblog-backend:8081
-
-    # 日志
     log {
         output file /var/log/caddy/bqlog-access.log
         format json
     }
 }
-
-# 可选：如果前端也部署在同一服务器，可以添加前端域名配置
-# yourdomain.com {
-#     root * /var/www/html
-#     file_server
-#     encode gzip
-# }
