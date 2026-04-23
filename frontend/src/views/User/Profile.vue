@@ -43,6 +43,12 @@
                   <span class="theme-desc">简洁风格，类似 GitHub README</span>
                 </div>
               </el-radio-button>
+              <el-radio-button label="astro">
+                <div class="theme-option">
+                  <span class="theme-name">Astro</span>
+                  <span class="theme-desc">清爽风格，专注于阅读体验</span>
+                </div>
+              </el-radio-button>
             </el-radio-group>
           </el-form-item>
         </el-form>
@@ -130,7 +136,12 @@ const markdownTheme = computed({
 // 处理主题变更
 const handleThemeChange = (value) => {
   settingsStore.setMarkdownTheme(value)
-  ElMessage.success(`已切换到 ${value === 'vuepress' ? 'VuePress' : 'GitHub'} 风格`)
+  const themeNames = {
+    vuepress: 'VuePress',
+    github: 'GitHub',
+    astro: 'Astro'
+  }
+  ElMessage.success(`已切换到 ${themeNames[value]} 风格`)
 }
 
 // 验证新密码与确认密码一致
