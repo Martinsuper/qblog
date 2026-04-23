@@ -238,36 +238,36 @@ onMounted(() => {
 .theme-radio-group {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
-.theme-radio-group :deep(.el-radio) {
+:deep(.theme-radio-group .el-radio) {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  height: auto;
   margin-right: 0;
+  height: auto;
 }
 
-.theme-radio-group :deep(.el-radio__input) {
-  margin-top: 2px;
+:deep(.theme-radio-group .el-radio__input) {
+  margin-top: 3px;
 }
 
-.theme-radio-group :deep(.el-radio__label) {
+:deep(.theme-radio-group .el-radio__label) {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding-left: 4px;
+  padding-left: 8px;
 }
 
 .theme-name {
   font-weight: 500;
   color: var(--text-primary);
   font-size: 14px;
+  line-height: 1.4;
 }
 
 .theme-desc {
   font-size: 12px;
   color: var(--text-tertiary);
+  line-height: 1.4;
 }
 </style>
