@@ -30,25 +30,19 @@
         <h3 class="text-xl font-semibold mb-6" style="color: var(--text-primary)">阅读设置</h3>
         <el-form label-width="100px">
           <el-form-item label="渲染风格">
-            <el-radio-group v-model="markdownTheme" @change="handleThemeChange">
-              <el-radio-button label="vuepress">
-                <div class="theme-option">
-                  <span class="theme-name">VuePress</span>
-                  <span class="theme-desc">文档风格，适合技术文章</span>
-                </div>
-              </el-radio-button>
-              <el-radio-button label="github">
-                <div class="theme-option">
-                  <span class="theme-name">GitHub</span>
-                  <span class="theme-desc">简洁风格，类似 GitHub README</span>
-                </div>
-              </el-radio-button>
-              <el-radio-button label="astro">
-                <div class="theme-option">
-                  <span class="theme-name">Astro</span>
-                  <span class="theme-desc">清爽风格，专注于阅读体验</span>
-                </div>
-              </el-radio-button>
+            <el-radio-group v-model="markdownTheme" @change="handleThemeChange" class="theme-radio-group">
+              <el-radio label="vuepress">
+                <span class="theme-name">VuePress</span>
+                <span class="theme-desc">文档风格，适合技术文章</span>
+              </el-radio>
+              <el-radio label="github">
+                <span class="theme-name">GitHub</span>
+                <span class="theme-desc">简洁风格，类似 GitHub README</span>
+              </el-radio>
+              <el-radio label="astro">
+                <span class="theme-name">Astro</span>
+                <span class="theme-desc">清爽风格，专注于阅读体验</span>
+              </el-radio>
             </el-radio-group>
           </el-form-item>
         </el-form>
@@ -240,43 +234,40 @@ onMounted(() => {
   padding: 0;
 }
 
-/* 主题选择样式 */
-.theme-option {
+/* 主题单选样式 */
+.theme-radio-group {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+.theme-radio-group :deep(.el-radio) {
+  display: flex;
   align-items: flex-start;
-  padding: 8px 0;
+  gap: 8px;
+  height: auto;
+  margin-right: 0;
+}
+
+.theme-radio-group :deep(.el-radio__input) {
+  margin-top: 2px;
+}
+
+.theme-radio-group :deep(.el-radio__label) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 4px;
 }
 
 .theme-name {
   font-weight: 500;
   color: var(--text-primary);
+  font-size: 14px;
 }
 
 .theme-desc {
   font-size: 12px;
   color: var(--text-tertiary);
-  margin-top: 2px;
-}
-
-/* 选中状态下的文字颜色 */
-:deep(.el-radio-button.is-active .theme-name),
-:deep(.el-radio-button.is-active .theme-desc) {
-  color: white;
-}
-
-:deep(.el-radio-group) {
-  display: flex;
-  width: 100%;
-}
-
-:deep(.el-radio-button) {
-  flex: 1;
-}
-
-:deep(.el-radio-button__inner) {
-  padding: 12px 24px;
-  height: auto;
-  width: 100%;
 }
 </style>
