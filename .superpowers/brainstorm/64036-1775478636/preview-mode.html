@@ -1,0 +1,109 @@
+<h2>预览模式设计</h2>
+<p class="subtitle">编辑器预览方式 - 左右分栏实时预览 vs 可切换预览</p>
+
+<div class="cards">
+  <div class="card" data-choice="split" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-body" style="background: #fff;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 10px 16px; display: flex; justify-content: space-between;">
+            <span style="color: #fff;">← 写文章</span>
+            <div style="display: flex; gap: 6px;">
+              <button style="background: rgba(255,255,255,0.2); color: #fff; padding: 5px 12px; border-radius: 5px; font-size: 11px;">草稿</button>
+              <button style="background: #fff; color: #667eea; padding: 5px 12px; border-radius: 5px; font-size: 11px;">发布</button>
+            </div>
+          </div>
+          <div style="background: #fff; padding: 16px;">
+            <div style="font-size: 20px; font-weight: 600; color: #333; border-bottom: 2px solid #eee; padding-bottom: 12px;">文章标题</div>
+            <div style="display: flex; gap: 8px; margin-top: 12px; font-size: 12px;">
+              <span style="background: #f0f0f0; padding: 6px 10px; border-radius: 4px;">📁 技术</span>
+              <span style="background: #f0f0f0; padding: 6px 10px; border-radius: 4px;">🏷️ Vue</span>
+            </div>
+          </div>
+          <div style="display: flex; height: 220px;">
+            <div style="flex: 1; background: #1a1a2e; padding: 12px;">
+              <div style="color: #569cd6; font-family: monospace; font-size: 12px;">## 标题</div>
+              <div style="color: #d4d4d4; font-family: monospace; font-size: 12px; margin-top: 8px;">正文内容...</div>
+              <div style="position: absolute; bottom: 8px; right: 55%; font-size: 11px; color: #888; background: #252540; padding: 4px 8px; border-radius: 4px;">编辑</div>
+            </div>
+            <div style="width: 1px; background: #3a3a5a;"></div>
+            <div style="flex: 1; background: #fafafa; padding: 12px;">
+              <div style="font-size: 16px; font-weight: 600; color: #333;">标题</div>
+              <div style="font-size: 13px; color: #666; margin-top: 8px; line-height: 1.6;">正文内容渲染效果...</div>
+              <div style="position: absolute; bottom: 8px; left: 55%; font-size: 11px; color: #888; background: #f0f0f0; padding: 4px 8px; border-radius: 4px;">预览</div>
+            </div>
+          </div>
+          <div style="background: #f5f5f5; padding: 8px 16px; font-size: 11px; color: #888; display: flex; justify-content: space-between;">
+            <span>💡 输入 / 呼起快捷命令</span>
+            <span>已输入 128 字</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>左右分栏实时预览</h3>
+      <p style="color: #666;">编辑区和预览区左右并排，实时同步渲染</p>
+      <ul style="margin-top: 8px; font-size: 13px; color: #666;">
+        <li>✓ 即时看到渲染效果</li>
+        <li>✓ 类 Typora 体验</li>
+        <li>✓ 方便对照调整格式</li>
+        <li>− 占用横向空间</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" data-choice="toggle" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-body" style="background: #fff;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 10px 16px; display: flex; justify-content: space-between;">
+            <span style="color: #fff;">← 写文章</span>
+            <div style="display: flex; gap: 6px;">
+              <button style="background: rgba(255,255,255,0.3); color: #fff; padding: 5px 12px; border-radius: 5px; font-size: 11px;">👁 预览</button>
+              <button style="background: rgba(255,255,255,0.2); color: #fff; padding: 5px 12px; border-radius: 5px; font-size: 11px;">草稿</button>
+              <button style="background: #fff; color: #667eea; padding: 5px 12px; border-radius: 5px; font-size: 11px;">发布</button>
+            </div>
+          </div>
+          <div style="background: #fff; padding: 16px;">
+            <div style="font-size: 20px; font-weight: 600; color: #333; border-bottom: 2px solid #eee; padding-bottom: 12px;">文章标题</div>
+            <div style="display: flex; gap: 8px; margin-top: 12px; font-size: 12px;">
+              <span style="background: #f0f0f0; padding: 6px 10px; border-radius: 4px;">📁 技术</span>
+              <span style="background: #f0f0f0; padding: 6px 10px; border-radius: 4px;">🏷️ Vue</span>
+            </div>
+          </div>
+          <div style="padding: 12px; background: #f8f9fa; border-bottom: 1px solid #e0e0e0; display: flex; gap: 8px;">
+            <button style="background: #3b82f6; color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 11px;">H</button>
+            <button style="background: #f0f0f0; padding: 6px 10px; border-radius: 4px; font-size: 11px;">B</button>
+            <button style="background: #f0f0f0; padding: 6px 10px; border-radius: 4px; font-size: 11px;">I</button>
+            <button style="background: #f0f0f0; padding: 6px 10px; border-radius: 4px; font-size: 11px;">🔗</button>
+            <button style="background: #f0f0f0; padding: 6px 10px; border-radius: 4px; font-size: 11px;">📷</button>
+            <button style="background: #f0f0f0; padding: 6px 10px; border-radius: 4px; font-size: 11px;">📝</button>
+          </div>
+          <div style="height: 200px; padding: 16px; background: #fff;">
+            <div style="font-family: monospace; font-size: 13px; color: #333;">
+              <div style="color: #3b82f6;">## 标题</div>
+              <div style="margin-top: 12px; color: #333;">正文内容...</div>
+              <div style="margin-top: 12px; color: #888;">| 表格 | 列 |</div>
+            </div>
+          </div>
+          <div style="background: #f5f5f5; padding: 8px 16px; font-size: 11px; color: #888; display: flex; justify-content: space-between;">
+            <span>💡 输入 / 呼起快捷命令</span>
+            <span>已输入 128 字</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>可切换预览模式</h3>
+      <p style="color: #666;">点击"预览"按钮切换到预览视图，编辑器全屏显示</p>
+      <ul style="margin-top: 8px; font-size: 13px; color: #666;">
+        <li>✓ 编辑时最大化空间</li>
+        <li>✓ 更专注写作本身</li>
+        <li>✓ 小屏幕适配友好</li>
+        <li>− 预览需切换查看</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top: 24px; color: #666; font-size: 14px; text-align: center;">请点击卡片选择预览模式</p>

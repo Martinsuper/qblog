@@ -1,0 +1,150 @@
+<h2>文章编辑页面布局方案</h2>
+<p class="subtitle">参考 CSDN/掘金后台，优化写作体验</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">方案A: 极简专注模式</div>
+    <div class="mockup-body">
+      <div style="background: #1a1a2e; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; color: #fff;">
+        <span style="font-size: 12px;">← 返回</span>
+        <span style="font-size: 12px;">自动保存 · 3分钟前</span>
+        <div style="display: flex; gap: 8px;">
+          <button class="mock-button" style="background: transparent; border: 1px solid #666; padding: 4px 12px; color: #aaa;">草稿</button>
+          <button class="mock-button" style="background: #3b82f6; padding: 4px 12px;">发布</button>
+        </div>
+      </div>
+      <div style="padding: 24px 32px; background: #fff;">
+        <input class="mock-input" style="width: 100%; border: none; font-size: 24px; font-weight: 600; padding: 8px 0;" placeholder="请输入文章标题（5-100字）">
+        <div style="display: flex; gap: 16px; margin-top: 16px; padding: 12px; background: #f5f5f5; border-radius: 8px;">
+          <select class="mock-input" style="width: 120px;"><option>选择分类</option></select>
+          <select class="mock-input" style="width: 150px;"><option>添加标签</option></select>
+        </div>
+      </div>
+      <div style="display: flex; height: 300px;">
+        <div style="flex: 1; border-right: 1px solid #e5e5e5; padding: 16px;">
+          <div class="placeholder" style="height: 100%; background: #fafafa;">Markdown 编辑器</div>
+        </div>
+        <div style="flex: 1; padding: 16px; background: #fff;">
+          <div class="placeholder" style="height: 100%;">实时预览区</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>极简专注模式</h3>
+      <p>类似掘金风格，标题和元信息紧凑排列在顶部，编辑器左右分栏实时预览</p>
+    </div>
+    <div class="pros-cons" style="margin-top: 12px;">
+      <div class="pros"><h4>优点</h4><ul><li>视线集中，写作专注</li><li>实时预览反馈</li><li>界面简洁清爽</li></ul></div>
+      <div class="cons"><h4>缺点</h4><ul><li>缺少封面/摘要编辑区</li><li>元信息编辑不突出</li></ul></div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">方案B: 三栏布局</div>
+    <div class="mockup-body">
+      <div style="background: #fff; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e5e5;">
+        <span style="font-weight: 600;">写文章</span>
+        <div style="display: flex; gap: 8px;">
+          <button class="mock-button" style="background: #f5f5f5; padding: 4px 12px;">存草稿</button>
+          <button class="mock-button" style="background: #3b82f6; color: #fff; padding: 4px 12px;">发布</button>
+        </div>
+      </div>
+      <div style="display: flex; height: 350px;">
+        <div style="width: 260px; background: #f8f9fa; padding: 16px; overflow-y: auto;">
+          <div style="font-size: 12px; color: #666; margin-bottom: 8px;">文章设置</div>
+          <div style="background: #fff; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+            <div class="placeholder" style="height: 100px; margin-bottom: 8px;">封面图片</div>
+          </div>
+          <select class="mock-input" style="width: 100%; margin-bottom: 8px;"><option>选择分类</option></select>
+          <select class="mock-input" style="width: 100%; margin-bottom: 8px;"><option>添加标签</option></select>
+          <textarea class="mock-input" style="width: 100%; height: 60px;" placeholder="文章摘要"></textarea>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column;">
+          <input class="mock-input" style="width: 100%; border: none; font-size: 20px; font-weight: 600; padding: 16px 20px; border-bottom: 1px solid #e5e5e5;" placeholder="请输入文章标题">
+          <div style="flex: 1; display: flex;">
+            <div style="flex: 1; padding: 16px;">
+              <div class="placeholder" style="height: 100%;">Markdown 编辑区</div>
+            </div>
+            <div style="width: 50%; padding: 16px; background: #fafafa; border-left: 1px solid #e5e5e5;">
+              <div class="placeholder" style="height: 100%;">预览区</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>三栏布局</h3>
+      <p>类似 CSDN 风格，左侧设置面板 + 中间编辑 + 右侧预览</p>
+    </div>
+    <div class="pros-cons" style="margin-top: 12px;">
+      <div class="pros"><h4>优点</h4><ul><li>元信息编辑区独立</li><li>封面/摘要编辑方便</li><li>布局清晰分区</li></ul></div>
+      <div class="cons"><h4>缺点</h4><ul><li>三栏占用空间多</li><li>小屏幕体验不佳</li></ul></div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 24px;">
+  <h3 style="margin-bottom: 16px;">方案C: 可折叠侧边栏</h3>
+  <p class="subtitle">当前布局优化版 - 元信息面板可折叠，最大化编辑区域</p>
+  <div class="mockup" style="max-width: 800px;">
+    <div class="mockup-header">方案C: 可折叠侧边栏（当前优化）</div>
+    <div class="mockup-body">
+      <div style="background: #fff; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e5e5;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="cursor: pointer; color: #666; padding: 4px 8px; background: #f5f5f5; border-radius: 4px;">☰ 设置</span>
+          <input class="mock-input" style="width: 400px; border: none; font-size: 18px; font-weight: 600;" placeholder="请输入文章标题">
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="mock-button" style="background: #f5f5f5; padding: 4px 12px;">预览</button>
+          <button class="mock-button" style="background: #f5f5f5; padding: 4px 12px;">草稿</button>
+          <button class="mock-button" style="background: #3b82f6; color: #fff; padding: 4px 12px;">发布</button>
+        </div>
+      </div>
+      <div style="display: flex; height: 280px;">
+        <div style="width: 300px; background: #f8f9fa; padding: 16px; border-right: 1px solid #e5e5e5;">
+          <div style="font-size: 12px; color: #888; margin-bottom: 12px;">展开设置面板时显示</div>
+          <div class="placeholder" style="height: 80px; margin-bottom: 12px;">封面图片</div>
+          <select class="mock-input" style="width: 100%; margin-bottom: 8px;"><option>分类</option></select>
+          <select class="mock-input" style="width: 100%; margin-bottom: 8px;"><option>标签</option></select>
+          <textarea class="mock-input" style="width: 100%; height: 50px;" placeholder="摘要"></textarea>
+          <div style="font-size: 11px; color: #aaa; margin-top: 8px;">折叠后仅显示标题栏</div>
+        </div>
+        <div style="flex: 1; padding: 16px;">
+          <div class="placeholder" style="height: 100%;">Markdown 编辑器（可切换预览）</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>灵活切换专注/设置模式</li><li>大屏幕空间利用好</li><li>小屏幕可折叠</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>需要额外交互折叠</li><li>状态切换可能打断写作</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="options" style="margin-top: 24px;">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>极简专注模式</h3>
+      <p>标题+元信息紧凑顶栏，左右实时预览</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>三栏布局</h3>
+      <p>左侧设置 + 中间编辑 + 右侧预览</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>可折叠侧边栏</h3>
+      <p>当前布局优化，侧边栏可折叠</p>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top: 16px; color: #666; font-size: 14px;">请点击选择您倾向的布局方案，或告诉我其他想法。</p>

@@ -71,13 +71,15 @@ const titleClass = computed(() => {
 <style scoped>
 .card {
   background: var(--bg-secondary);
-  border-radius: var(--border-radius-lg);
-  transition: all var(--transition-normal);
+  border-radius: var(--border-radius-xl);
+  transition: all var(--transition-bounce);
   box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color-light);
 }
 .card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px) scale(1.005);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--border-color);
 }
 
 

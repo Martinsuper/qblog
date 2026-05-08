@@ -110,13 +110,15 @@ onMounted(fetchData)
 <style scoped>
 .card {
   background: var(--bg-secondary);
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-md);
+  border-radius: var(--border-radius-xl);
+  padding: var(--spacing-lg);
   box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color-light);
   transition: all var(--transition-normal);
 }
 .card:hover {
   box-shadow: var(--shadow-md);
+  border-color: var(--border-color);
 }
 
 .sidebar a:hover {

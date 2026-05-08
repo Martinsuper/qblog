@@ -1,0 +1,203 @@
+<h2>管理后台样式优化方案对比</h2>
+<p class="subtitle">当前布局 vs 紧凑美观的改进方案</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">当前布局</div>
+    <div class="mockup-body" style="background: #f9fafb;">
+      <!-- 模拟侧边栏 -->
+      <div style="display: flex; height: 100%;">
+        <div style="width: 220px; background: #fff; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column;">
+          <div style="height: 60px; background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #3b82f6;">博客管理后台</div>
+          <div style="flex: 1; padding: 8px;">
+            <div style="padding: 12px; margin: 4px 0; border-radius: 10px; background: #3b82f6; color: #fff; display: flex; align-items: center; gap: 10px;">
+              <span>📄</span> 文章管理
+            </div>
+            <div style="padding: 12px; margin: 4px 0; border-radius: 10px; background: #f3f4f6; display: flex; align-items: center; gap: 10px;">
+              <span>📁</span> 分类管理
+            </div>
+            <div style="padding: 12px; margin: 4px 0; border-radius: 10px; background: #f3f4f6; display: flex; align-items: center; gap: 10px;">
+              <span>🏷</span> 标签管理
+            </div>
+            <div style="padding: 12px; margin: 4px 0; border-radius: 10px; background: #f3f4f6; display: flex; align-items: center; gap: 10px;">
+              <span>✏️</span> 写文章
+            </div>
+            <div style="padding: 12px; margin: 4px 0; border-radius: 10px; background: #f3f4f6; display: flex; align-items: center; gap: 10px;">
+              <span>💾</span> 备份管理
+            </div>
+          </div>
+          <div style="padding: 12px; border-top: 1px solid #e5e7eb;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #4b5563;">
+              <span>🏠</span> 返回首页
+            </div>
+          </div>
+        </div>
+        <!-- 主内容区 -->
+        <div style="flex: 1; display: flex; flex-direction: column;">
+          <div style="height: 60px; background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; padding: 0 20px;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <span style="color: #4b5563;">◀</span>
+              <span style="color: #4b5563;">首页 / 文章管理</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: #e5e7eb;"></div>
+              <span style="font-weight: 500;">管理员</span>
+            </div>
+          </div>
+          <div style="flex: 1; padding: 24px; background: #f9fafb;">
+            <div style="background: #fff; border-radius: 14px; border: 1px solid #e5e7eb; padding: 24px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 18px; font-weight: 600;">文章管理</h3>
+                <button style="background: #3b82f6; color: #fff; padding: 8px 16px; border-radius: 10px; border: none;">+ 写文章</button>
+              </div>
+              <!-- 搜索表单 -->
+              <div style="display: flex; gap: 12px; margin-bottom: 20px; align-items: center;">
+                <input style="padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 10px; width: 180px;" placeholder="搜索文章标题">
+                <select style="padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 10px; width: 150px;">
+                  <option>全部分类</option>
+                </select>
+                <button style="padding: 8px 16px; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff;">搜索</button>
+                <button style="padding: 8px 16px; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff;">重置</button>
+              </div>
+              <!-- 表格 -->
+              <div style="border: 1px solid #e5e7eb; border-radius: 10px;">
+                <div style="display: flex; background: #f3f4f6; border-bottom: 1px solid #e5e7eb; font-weight: 600; font-size: 13px; color: #4b5563;">
+                  <div style="width: 80px; padding: 12px;">ID</div>
+                  <div style="min-width: 200px; padding: 12px;">标题</div>
+                  <div style="width: 100px; padding: 12px;">分类</div>
+                  <div style="width: 80px; padding: 12px;">浏览</div>
+                  <div style="width: 80px; padding: 12px;">状态</div>
+                  <div style="width: 160px; padding: 12px;">创建时间</div>
+                  <div style="width: 220px; padding: 12px;">操作</div>
+                </div>
+                <div style="display: flex; border-bottom: 1px solid #e5e7eb; font-size: 14px;">
+                  <div style="width: 80px; padding: 14px;">1</div>
+                  <div style="min-width: 200px; padding: 14px;">Vue3 组合式 API 最佳实践</div>
+                  <div style="width: 100px; padding: 14px;">前端</div>
+                  <div style="width: 80px; padding: 14px;">125</div>
+                  <div style="width: 80px; padding: 14px;"><span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-size: 12px;">已发布</span></div>
+                  <div style="width: 160px; padding: 14px;">2024-01-15</div>
+                  <div style="width: 220px; padding: 14px; color: #3b82f6;">查看 | 编辑 | 删除</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">改进方案 - 更紧凑</div>
+    <div class="mockup-body" style="background: #f9fafb;">
+      <div style="display: flex; height: 100%;">
+        <!-- 更窄的侧边栏 -->
+        <div style="width: 200px; background: #fff; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column;">
+          <div style="height: 48px; background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #3b82f6; font-size: 15px;">博客管理</div>
+          <div style="flex: 1; padding: 6px;">
+            <div style="padding: 10px 12px; margin: 2px 0; border-radius: 8px; background: #3b82f6; color: #fff; display: flex; align-items: center; gap: 8px; font-size: 14px;">
+              <span>📄</span> 文章管理
+            </div>
+            <div style="padding: 10px 12px; margin: 2px 0; border-radius: 8px; background: #f3f4f6; display: flex; align-items: center; gap: 8px; font-size: 14px; color: #4b5563;">
+              <span>📁</span> 分类管理
+            </div>
+            <div style="padding: 10px 12px; margin: 2px 0; border-radius: 8px; background: #f3f4f6; display: flex; align-items: center; gap: 8px; font-size: 14px; color: #4b5563;">
+              <span>🏷</span> 标签管理
+            </div>
+            <div style="padding: 10px 12px; margin: 2px 0; border-radius: 8px; background: #f3f4f6; display: flex; align-items: center; gap: 8px; font-size: 14px; color: #4b5563;">
+              <span>✏️</span> 写文章
+            </div>
+            <div style="padding: 10px 12px; margin: 2px 0; border-radius: 8px; background: #f3f4f6; display: flex; align-items: center; gap: 8px; font-size: 14px; color: #4b5563;">
+              <span>💾</span> 备份管理
+            </div>
+          </div>
+          <div style="padding: 10px; border-top: 1px solid #e5e7eb;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 6px; color: #4b5563; font-size: 14px;">
+              <span>🏠</span> 返回首页
+            </div>
+          </div>
+        </div>
+        <!-- 主内容区 -->
+        <div style="flex: 1; display: flex; flex-direction: column;">
+          <!-- 更矮的头部 -->
+          <div style="height: 48px; background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; padding: 0 16px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="color: #4b5563; font-size: 14px;">◀</span>
+              <span style="color: #4b5563; font-size: 13px;">首页 / 文章管理</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div style="width: 28px; height: 28px; border-radius: 50%; background: #e5e7eb;"></div>
+              <span style="font-weight: 500; font-size: 13px;">管理员</span>
+            </div>
+          </div>
+          <!-- 更紧凑的内容区 -->
+          <div style="flex: 1; padding: 16px; background: #f9fafb;">
+            <div style="background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; padding: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="font-size: 16px; font-weight: 600;">文章管理</h3>
+                <button style="background: #3b82f6; color: #fff; padding: 6px 14px; border-radius: 8px; border: none; font-size: 14px;">+ 写文章</button>
+              </div>
+              <!-- 更紧凑的搜索 -->
+              <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center;">
+                <input style="padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 8px; width: 160px; font-size: 13px;" placeholder="搜索">
+                <select style="padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px;">
+                  <option>分类</option>
+                </select>
+                <button style="padding: 6px 12px; border-radius: 8px; border: none; background: #3b82f6; color: #fff; font-size: 13px;">搜索</button>
+              </div>
+              <!-- 更紧凑的表格 -->
+              <div style="border: 1px solid #e5e7eb; border-radius: 8px;">
+                <div style="display: flex; background: #f3f4f6; border-bottom: 1px solid #e5e7eb; font-weight: 600; font-size: 12px; color: #4b5563;">
+                  <div style="width: 60px; padding: 8px 10px;">ID</div>
+                  <div style="flex: 1; padding: 8px 10px;">标题</div>
+                  <div style="width: 70px; padding: 8px 10px;">分类</div>
+                  <div style="width: 50px; padding: 8px 10px;">浏览</div>
+                  <div style="width: 60px; padding: 8px 10px;">状态</div>
+                  <div style="width: 130px; padding: 8px 10px;">时间</div>
+                  <div style="width: 100px; padding: 8px 10px;">操作</div>
+                </div>
+                <div style="display: flex; border-bottom: 1px solid #e5e7eb; font-size: 13px;">
+                  <div style="width: 60px; padding: 10px;">1</div>
+                  <div style="flex: 1; padding: 10px;">Vue3 组合式 API</div>
+                  <div style="width: 70px; padding: 10px;">前端</div>
+                  <div style="width: 50px; padding: 10px;">125</div>
+                  <div style="width: 60px; padding: 10px;"><span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 11px;">已发布</span></div>
+                  <div style="width: 130px; padding: 10px;">01-15</div>
+                  <div style="width: 100px; padding: 10px; color: #3b82f6; font-size: 12px;">查看 | 编辑</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>改进要点</h3>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>紧凑优化</h4>
+      <ul>
+        <li>侧边栏宽度: 220px → 200px</li>
+        <li>头部高度: 60px → 48px</li>
+        <li>内容区 padding: 24px → 16px</li>
+        <li>卡片 padding: 24px → 16px</li>
+        <li>表格单元格 padding: 12px → 8px</li>
+        <li>按钮尺寸更小巧</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>移动端适配</h4>
+      <ul>
+        <li>侧边栏隐藏，顶部添加汉堡菜单</li>
+        <li>表格横向滚动或卡片式布局</li>
+        <li>搜索表单堆叠排列</li>
+        <li>操作按钮更紧凑</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top: 16px;">请查看浏览器预览，告诉我你的想法或需要调整的地方。</p>
