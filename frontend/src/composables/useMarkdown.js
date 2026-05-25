@@ -19,7 +19,7 @@ const rendererCache = new Map()
  */
 function createRenderer(theme) {
   const md = new MarkdownIt({
-    html: true,
+    html: false,  // 禁用原始HTML，防止XSS
     linkify: true,
     typographer: true,
     breaks: true,
@@ -36,6 +36,12 @@ function createRenderer(theme) {
       return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`
     }
   })
+
+  // 添加安全链接校验（只允许 http/https/mailto 协议）
+  md.validateLink = (url) => {
+    const allowed = /^https?:\/|mailto:/
+    return allowed.test(url)
+  }
 
   // 应用插件
   plantumlPlugin(md)

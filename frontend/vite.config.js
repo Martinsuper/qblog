@@ -14,6 +14,20 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vue-vendor': ['vue', 'vue-router', 'pinia'],
+          'element-plus': ['element-plus', '@element-plus/icons-vue'],
+          'markdown': ['markdown-it', 'highlight.js'],
+          'utils': ['axios', 'dayjs']
+        }
+      }
+    },
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 500
+  },
   server: {
     port: 3001,
     proxy: {

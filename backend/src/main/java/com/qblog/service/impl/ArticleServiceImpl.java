@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -61,6 +62,18 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private static final Duration TTL_DETAIL = Duration.ofMinutes(10);
     private static final Duration TTL_HOT = Duration.ofMinutes(30);
     private static final Duration TTL_LATEST = Duration.ofMinutes(5);
+    // 随机数生成器，用于防止缓存雪崩
+    private static final Random random = new Random();
+
+    /**
+     * 获取随机化 TTL（防止缓存雪崩）
+     * 在基础 TTL 上添加 ±10% 的随机偏移
+     */
+    private Duration getRandomizedTTL(Duration baseTtl) {
+        long baseMillis = baseTtl.toMillis();
+        long offset = (long) (baseMillis * 0.1 * (random.nextDouble() - 0.5) * 2);
+        return Duration.ofMillis(baseMillis + offset);
+    }
 
     @Override
     public Page<ArticleListItemVO> getArticleList(Integer page, Integer size, Long categoryId,
@@ -170,8 +183,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     public ArticleVO getArticleDetail(Long id) {
         String cacheKey = CACHE_ARTICLE_DETAIL + id;
 
-        // 使用缓存击穿保护的方法获取文章详情
-        ArticleVO vo = cacheService.getOrLoad(cacheKey, ArticleVO.class, TTL_DETAIL, () -> {
+        // 使用缓存击穿保护的方法获取文章详情（带随机TTL防止雪崩）
+        ArticleVO vo = cacheService.getOrLoad(cacheKey, ArticleVO.class, getRandomizedTTL(TTL_DETAIL), () -> {
             Article article = getById(id);
             if (article == null) {
                 throw new ResourceNotFoundException("文章", id);
@@ -316,8 +329,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     public List<ArticleListItemVO> getHotArticles(Integer limit) {
         String cacheKey = CACHE_ARTICLE_HOT + ":" + limit;
 
-        // 使用缓存击穿保护的方法获取热门文章
-        return cacheService.getOrLoadList(cacheKey, ArticleListItemVO.class, TTL_HOT, () -> {
+        // 使用缓存击穿保护的方法获取热门文章（带随机TTL防止雪崩）
+        return cacheService.getOrLoadList(cacheKey, ArticleListItemVO.class, getRandomizedTTL(TTL_HOT), () -> {
             // 使用 Page 对象实现 LIMIT，避免 SQL 注入
             Page<Article> page = new Page<>(1, limit);
             List<Article> articles = page(page, new LambdaQueryWrapper<Article>()
@@ -332,8 +345,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     public List<ArticleListItemVO> getLatestArticles(Integer limit) {
         String cacheKey = CACHE_ARTICLE_LATEST + ":" + limit;
 
-        // 使用缓存击穿保护的方法获取最新文章
-        return cacheService.getOrLoadList(cacheKey, ArticleListItemVO.class, TTL_LATEST, () -> {
+        // 使用缓存击穿保护的方法获取最新文章（带随机TTL防止雪崩）
+        return cacheService.getOrLoadList(cacheKey, ArticleListItemVO.class, getRandomizedTTL(TTL_LATEST), () -> {
             // 使用 Page 对象实现 LIMIT，避免 SQL 注入
             Page<Article> page = new Page<>(1, limit);
             List<Article> articles = page(page, new LambdaQueryWrapper<Article>()

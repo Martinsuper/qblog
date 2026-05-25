@@ -3,6 +3,8 @@ package com.qblog.common;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +15,7 @@ import java.util.Date;
 /**
  * JWT 工具类
  */
+@Slf4j
 @Component
 public class JwtUtil {
 
@@ -21,6 +24,14 @@ public class JwtUtil {
 
     @Value("${jwt.expiration}")
     private Long expiration;
+
+    @PostConstruct
+    public void validateSecretKey() {
+        if (secret == null || secret.length() < 32) {
+            log.warn("JWT secret key is too short ({} chars). Recommended minimum: 32 chars for HS256",
+                secret == null ? 0 : secret.length());
+        }
+    }
 
     private SecretKey getSigningKey() {
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);

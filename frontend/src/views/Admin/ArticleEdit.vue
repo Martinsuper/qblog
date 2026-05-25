@@ -200,6 +200,7 @@
             action="/api/v1/upload/image"
             :show-file-list="false"
             :on-success="handleCoverSuccess"
+            :before-upload="beforeCoverUpload"
           >
             <img v-if="articleForm.coverImage" :src="articleForm.coverImage" class="cover-img" />
             <div v-else class="cover-placeholder">
@@ -303,32 +304,50 @@ const autoSaveStatus = ref('')
 
 // 自动保存
 const AUTO_SAVE_INTERVAL = 60000 // 60 秒
+const AUTO_SAVE_DELAY = 30000 // 30 秒防抖延迟
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024 // 2MB
 let autoSaveTimer = null
+let debounceTimer = null
+
+// 防抖保存函数
+const debouncedSave = async () => {
+  if (!articleForm.title.trim() || !articleForm.content.trim()) return
+
+  try {
+    articleForm.status = 0
+    if (isEdit.value && articleForm.id) {
+      await updateArticle(articleForm.id, articleForm)
+    } else {
+      const res = await createArticle(articleForm)
+      if (res.data?.id) {
+        articleForm.id = res.data.id
+        isEdit.value = true
+      }
+    }
+    const now = new Date()
+    autoSaveStatus.value = `自动保存 · ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
+  } catch (error) {
+    console.error('自动保存失败:', error)
+  }
+}
+
+// 触发防抖保存
+const triggerDebouncedSave = () => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(debouncedSave, AUTO_SAVE_DELAY)
+}
 
 const startAutoSave = () => {
   if (autoSaveTimer) return
 
-  autoSaveTimer = setInterval(async () => {
-      // 标题和内容都不为空才自动保存
-      if (!articleForm.title.trim() || !articleForm.content.trim()) return
-
-      try {
-        articleForm.status = 0
-        if (isEdit.value && articleForm.id) {
-          await updateArticle(articleForm.id, articleForm)
-        } else {
-          const res = await createArticle(articleForm)
-          if (res.data?.id) {
-            articleForm.id = res.data.id
-            isEdit.value = true
-          }
-        }
-        const now = new Date()
-        autoSaveStatus.value = `自动保存 · ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
-      } catch (error) {
-        console.error('自动保存失败:', error)
-      }
-    }, AUTO_SAVE_INTERVAL)
+  autoSaveTimer = setInterval(() => {
+    // 强制执行防抖保存
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = null
+    }
+    debouncedSave()
+  }, AUTO_SAVE_INTERVAL)
 }
 
 const stopAutoSave = () => {
@@ -336,6 +355,24 @@ const stopAutoSave = () => {
     clearInterval(autoSaveTimer)
     autoSaveTimer = null
   }
+  if (debounceTimer) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
+}
+
+// 图片上传校验
+const beforeCoverUpload = (file) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    ElMessage.error('只能上传 JPG/PNG/GIF/WebP 格式的图片')
+    return false
+  }
+  if (file.size > MAX_IMAGE_SIZE) {
+    ElMessage.error(`图片大小不能超过 ${MAX_IMAGE_SIZE / 1024 / 1024}MB`)
+    return false
+  }
+  return true
 }
 
 // 计算属性：已选分类和标签

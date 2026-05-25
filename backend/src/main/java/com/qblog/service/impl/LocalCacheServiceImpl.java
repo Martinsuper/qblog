@@ -4,6 +4,7 @@ import cn.hutool.json.JSONUtil;
 import com.qblog.service.CacheService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -174,8 +175,9 @@ public class LocalCacheServiceImpl implements CacheService {
     }
 
     /**
-     * 定期清理过期缓存（可选：可以配合定时任务）
+     * 定期清理过期缓存（每5分钟执行）
      */
+    @Scheduled(fixedRate = 300000)
     public void cleanExpiredCache() {
         List<String> expiredKeys = new ArrayList<>();
         for (Map.Entry<String, CacheEntry> entry : cache.entrySet()) {

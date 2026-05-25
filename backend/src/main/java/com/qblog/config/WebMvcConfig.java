@@ -15,8 +15,34 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // 安全 Headers 拦截器
+        registry.addInterceptor(new SecurityHeadersInterceptor())
+                .addPathPatterns("/**");
+
+        // 缓存控制拦截器
         registry.addInterceptor(new CacheControlInterceptor())
                 .addPathPatterns("/articles/**", "/categories/**", "/tags/**");
+    }
+
+    /**
+     * 安全 Headers 拦截器
+     */
+    private static class SecurityHeadersInterceptor implements HandlerInterceptor {
+
+        @Override
+        public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+            // 防止 XSS
+            response.setHeader("X-XSS-Protection", "1; mode=block");
+            // 防止内容类型嗅探
+            response.setHeader("X-Content-Type-Options", "nosniff");
+            // 防止点击劫持
+            response.setHeader("X-Frame-Options", "DENY");
+            // HSTS（仅 HTTPS）
+            if (request.isSecure()) {
+                response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+            }
+            return true;
+        }
     }
 
     /**

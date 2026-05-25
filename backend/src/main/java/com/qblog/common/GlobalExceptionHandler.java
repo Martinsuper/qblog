@@ -4,6 +4,7 @@ import com.qblog.common.exception.BusinessException;
 import com.qblog.common.exception.ResourceNotFoundException;
 import com.qblog.common.exception.UnauthorizedException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -77,6 +78,15 @@ public class GlobalExceptionHandler {
     public Result<Void> handleIllegalArgumentException(IllegalArgumentException e) {
         log.warn("参数错误：{}", e.getMessage());
         return Result.error(400, e.getMessage());
+    }
+
+    /**
+     * 处理数据访问异常
+     */
+    @ExceptionHandler(DataAccessException.class)
+    public Result<Void> handleDataAccessException(DataAccessException e) {
+        log.error("数据访问异常：{}", e.getMessage(), e);
+        return Result.error(500, "数据库操作失败，请稍后重试");
     }
 
     /**

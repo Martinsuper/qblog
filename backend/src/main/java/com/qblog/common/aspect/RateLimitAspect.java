@@ -1,5 +1,6 @@
 package com.qblog.common.aspect;
 
+import com.qblog.common.JwtUtil;
 import com.qblog.common.annotation.RateLimit;
 import com.qblog.common.exception.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,11 +11,14 @@ import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -29,6 +33,9 @@ public class RateLimitAspect {
 
     @Autowired(required = false)
     private StringRedisTemplate redisTemplate;
+
+    @Autowired(required = false)
+    private JwtUtil jwtUtil;
 
     private static final String RATE_LIMIT_KEY_PREFIX = "rate_limit:";
 
@@ -138,11 +145,48 @@ public class RateLimitAspect {
     }
 
     /**
-     * 获取用户 ID（从 JWT 或 Session 中获取）
+     * 获取用户 ID（从 JWT 或 SecurityContext 中获取）
      */
     private String getUserId() {
-        // TODO: 从 JWT token 中解析用户 ID
-        // 这里暂时返回 IP 作为替代
+        // 从 SecurityContext 获取
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof Map) {
+            Map<String, Object> details = (Map<String, Object>) auth.getDetails();
+            if (details.containsKey("userId")) {
+                return String.valueOf(details.get("userId"));
+            }
+        }
+
+        // 从 JWT Token 中获取
+        ServletRequestAttributes attributes =
+            (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+
+        if (attributes != null && jwtUtil != null) {
+            HttpServletRequest request = attributes.getRequest();
+            String token = getTokenFromRequest(request);
+
+            if (token != null && jwtUtil.validateToken(token)) {
+                try {
+                    Long userId = jwtUtil.getUserIdFromToken(token);
+                    return String.valueOf(userId);
+                } catch (Exception e) {
+                    log.debug("Failed to extract userId from token", e);
+                }
+            }
+        }
+
+        // 降级：使用IP
         return getClientIP();
+    }
+
+    /**
+     * 从请求中获取 Token
+     */
+    private String getTokenFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
     }
 }
