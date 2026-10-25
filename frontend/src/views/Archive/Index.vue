@@ -12,15 +12,15 @@
             <span class="year-text">{{ yearGroup.year }}</span>
           </div>
           <div class="articles-list">
-            <div
+            <router-link
               v-for="article in yearGroup.articles"
               :key="article.id"
+              :to="`/article/${article.id}`"
               class="article-item"
-              @click="$router.push(`/article/${article.id}`)"
             >
               <span class="article-date">{{ formatDate(article.publishTime || article.createTime) }}</span>
               <span class="article-title">{{ article.title }}</span>
-            </div>
+            </router-link>
           </div>
         </div>
       </div>
@@ -170,13 +170,16 @@ onMounted(fetchArticles)
   align-items: center;
   padding: 12px 0;
   cursor: pointer;
+  text-decoration: none;
   border-bottom: 1px dashed var(--border-color);
-  transition: all 0.2s;
+  transition: border-color 0.2s, transform 0.2s;
 }
 
-.article-item:hover {
+.article-item:hover,
+.article-item:focus-visible {
   border-bottom-color: var(--color-primary);
   transform: translateX(5px);
+  outline: none;
 }
 
 .article-item::before {

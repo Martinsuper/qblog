@@ -27,7 +27,8 @@
             v-model:page-size="pageSize"
             :total="total"
             :page-sizes="[10, 20, 50]"
-            layout="total, sizes, prev, pager, next, jumper"
+            :layout="paginationLayout"
+            :pager-count="isMobile ? 5 : 7"
             class="flex justify-center mt-8"
             @current-change="onPageChange"
             @size-change="fetchArticles"
@@ -43,7 +44,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import ArticleCard from '@/components/ArticleCard.vue'
 import Sidebar from '@/components/Sidebar.vue'
@@ -70,6 +71,14 @@ const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const loading = ref(true)
+
+// 小屏分页条精简布局，避免溢出换行
+const isMobile = ref(false)
+const mobileQuery = window.matchMedia('(max-width: 640px)')
+const updateIsMobile = (e) => { isMobile.value = e.matches }
+const paginationLayout = computed(() =>
+  isMobile.value ? 'prev, pager, next' : 'total, sizes, prev, pager, next, jumper'
+)
 
 const fetchArticles = async () => {
   loading.value = true
@@ -107,7 +116,13 @@ watch(() => [props.categoryId, props.tagId, route.params.id, route.query.keyword
 })
 
 onMounted(() => {
+  isMobile.value = mobileQuery.matches
+  mobileQuery.addEventListener('change', updateIsMobile)
   fetchArticles()
+})
+
+onUnmounted(() => {
+  mobileQuery.removeEventListener('change', updateIsMobile)
 })
 </script>
 

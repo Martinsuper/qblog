@@ -99,12 +99,15 @@
   margin: 0;
 }
 
-/* 表格 */
+/* 表格：小屏下变为横向滚动容器，避免撑破页面 */
 .markdown-body table {
-  width: 100%;
+  display: block;
+  width: max-content;
+  max-width: 100%;
   border-collapse: collapse;
   margin: 16px 0;
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: var(--border-radius);
 }
 
@@ -118,6 +121,7 @@
 .markdown-body th {
   background: var(--bg-tertiary);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 /* 水平线 */
@@ -145,11 +149,13 @@
   color: #e83e8c;
 }
 
-/* 代码块基础样式 */
+/* 代码块基础样式：允许横向滚动，小屏不裁剪 */
 .markdown-body pre {
   margin: 16px 0;
   border-radius: var(--border-radius);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .markdown-body pre code {
@@ -322,6 +328,6 @@
 
 /* info 类型 */
 .markdown-body .custom-container.info {
-  --container-color: #3b82f6;
+  --container-color: #3e63dd;
   background: rgba(59, 130, 246, 0.1);
 }
