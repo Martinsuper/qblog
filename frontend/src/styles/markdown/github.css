@@ -232,12 +232,12 @@
 }
 
 .markdown-body.github-theme .custom-container.info {
-  background: #f1f8ff;
-  border-color: #3b82f6;
+  background: #f0f4fe;
+  border-color: #3e63dd;
 }
 
 .markdown-body.github-theme .custom-container.info .custom-container-title {
-  color: #0366d6;
+  color: #3250b0;
 }
 
 /* GitHub 风格的图片 */

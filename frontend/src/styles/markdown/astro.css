@@ -67,14 +67,14 @@
 
 /* 链接 - 蓝色文字，hover 下划线 */
 .markdown-body.astro-theme a {
-  color: #3b82f6;
+  color: #3e63dd;
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
 .markdown-body.astro-theme a:hover {
   text-decoration: underline;
-  color: #2563eb;
+  color: #3554c9;
 }
 
 /* 列表 */
@@ -306,11 +306,11 @@
 /* info 容器 */
 .markdown-body.astro-theme .custom-container.info {
   background: #f1f8ff;
-  border-color: #3b82f6;
+  border-color: #3e63dd;
 }
 
 .markdown-body.astro-theme .custom-container.info .custom-container-title {
-  color: #0366d6;
+  color: #3250b0;
 }
 
 .markdown-body.astro-theme .custom-container.info .custom-container-content {
@@ -346,11 +346,11 @@
 }
 
 [data-theme="dark"] .markdown-body.astro-theme a {
-  color: #60a5fa;
+  color: #8ca2f3;
 }
 
 [data-theme="dark"] .markdown-body.astro-theme a:hover {
-  color: #93c5fd;
+  color: #a9b9f6;
 }
 
 [data-theme="dark"] .markdown-body.astro-theme li::marker {

@@ -17,7 +17,7 @@ export function tipContainerPlugin(md) {
     { type: 'tip', defaultTitle: 'TIP', icon: icons.tip, color: '#42b983' },
     { type: 'warning', defaultTitle: 'WARNING', icon: icons.warning, color: '#e7c000' },
     { type: 'danger', defaultTitle: 'DANGER', icon: icons.danger, color: '#cc0000' },
-    { type: 'info', defaultTitle: 'INFO', icon: icons.info, color: '#3b82f6' }
+    { type: 'info', defaultTitle: 'INFO', icon: icons.info, color: '#3e63dd' }
   ]
 
   containerTypes.forEach(({ type, defaultTitle, icon, color }) => {

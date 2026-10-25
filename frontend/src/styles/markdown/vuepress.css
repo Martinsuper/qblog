@@ -203,12 +203,12 @@
 
 /* info 容器 */
 .markdown-body.vuepress-theme .custom-container.info {
-  border-left-color: #3b82f6;
-  background: #e8f4ff;
+  border-left-color: #3e63dd;
+  background: #edf2fe;
 }
 
 .markdown-body.vuepress-theme .custom-container.info .custom-container-title {
-  color: #3b82f6;
+  color: #3e63dd;
 }
 
 /* VuePress 风格的列表 */

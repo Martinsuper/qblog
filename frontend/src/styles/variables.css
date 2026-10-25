@@ -1,34 +1,35 @@
 :root {
-  /* Brand Color: Indigo（替代撞脸率极高的默认蓝） */
-  --color-primary: #6366f1;
-  --color-primary-light: #818cf8;
-  --color-primary-dark: #4f46e5;
-  --color-primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  /* Brand Color: 单一沉稳的蓝（Radix Blue），克制、简洁 */
+  --color-primary: #3e63dd;
+  --color-primary-light: #7b96e8;
+  --color-primary-dark: #3554c9;
+  /* 同色系柔和渐变（替代原来的蓝紫双色渐变） */
+  --color-primary-gradient: linear-gradient(135deg, #3e63dd 0%, #5b82ee 100%);
 
   /* Element Plus 主色对齐品牌色（官方推荐的变量定制方式） */
-  --el-color-primary: #6366f1;
-  --el-color-primary-light-3: #8484f4;
-  --el-color-primary-light-5: #a1a1f7;
-  --el-color-primary-light-7: #bfcdfa;
-  --el-color-primary-light-8: #ced0fc;
-  --el-color-primary-light-9: #e0e1fd;
-  --el-color-primary-dark-2: #4f46e5;
+  --el-color-primary: #3e63dd;
+  --el-color-primary-light-3: #7892e7;
+  --el-color-primary-light-5: #9fb1ee;
+  --el-color-primary-light-7: #c5d0f5;
+  --el-color-primary-light-8: #d8e0f8;
+  --el-color-primary-light-9: #eceffc;
+  --el-color-primary-dark-2: #3250b0;
 
-  /* Background Colors */
+  /* Background Colors（锌灰中性色阶） */
   --bg-primary: #fafafa;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #f3f4f6;
-  --bg-hover: #f1f2f4;
+  --bg-tertiary: #f4f4f5;
+  --bg-hover: #f1f1f3;
   --bg-glass: rgba(255, 255, 255, 0.72);
 
   /* Text Hierarchy */
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-tertiary: #9ca3af;
+  --text-primary: #18181b;
+  --text-secondary: #52525b;
+  --text-tertiary: #a1a1aa;
 
   /* Borders */
-  --border-color: #e5e7eb;
-  --border-color-light: #f3f4f6;
+  --border-color: #e4e4e7;
+  --border-color-light: #f4f4f5;
 
   /* Border Radius */
   --border-radius-sm: 8px;
@@ -36,12 +37,12 @@
   --border-radius-lg: 16px;
   --border-radius-xl: 24px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.03);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -4px rgba(0,0,0,0.03);
-  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01);
-  --shadow-hover: 0 10px 40px -10px rgba(0,0,0,0.1);
+  /* Shadows（更轻，靠边框和层次而非重阴影） */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.02);
+  --shadow-md: 0 2px 4px rgba(0,0,0,0.03), 0 4px 8px rgba(0,0,0,0.02);
+  --shadow-lg: 0 4px 8px rgba(0,0,0,0.03), 0 8px 16px rgba(0,0,0,0.03);
+  --shadow-xl: 0 8px 16px rgba(0,0,0,0.04), 0 16px 32px rgba(0,0,0,0.03);
+  --shadow-hover: 0 8px 30px -8px rgba(0,0,0,0.1);
 
   /* Spacing System */
   --spacing-xs: 4px;
@@ -71,30 +72,30 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     /* Premium Dark Mode Colors (Sleek dark, not pure black) */
-    --color-primary: #818cf8;
-    --color-primary-light: #a5b4fc;
-    --color-primary-dark: #6366f1;
+    --color-primary: #7b92f0;
+    --color-primary-light: #a5b4f5;
+    --color-primary-dark: #6981e8;
 
-    --el-color-primary: #818cf8;
-    --el-color-primary-light-3: #6c75dd;
-    --el-color-primary-light-5: #525cb0;
-    --el-color-primary-light-7: #394285;
-    --el-color-primary-light-8: #2d356d;
-    --el-color-primary-light-9: #21284f;
-    --el-color-primary-dark-2: #93a0fa;
+    --el-color-primary: #7b92f0;
+    --el-color-primary-light-3: #5d6ea6;
+    --el-color-primary-light-5: #47527e;
+    --el-color-primary-light-7: #333a58;
+    --el-color-primary-light-8: #2b3049;
+    --el-color-primary-light-9: #232941;
+    --el-color-primary-dark-2: #95a8f3;
 
-    --bg-primary: #0a0a0a;
-    --bg-secondary: #121212;
-    --bg-tertiary: #1e1e1e;
-    --bg-hover: #262626;
-    --bg-glass: rgba(18, 18, 18, 0.72);
+    --bg-primary: #09090b;
+    --bg-secondary: #101012;
+    --bg-tertiary: #1a1a1d;
+    --bg-hover: #242428;
+    --bg-glass: rgba(16, 16, 18, 0.72);
 
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --text-tertiary: #64748b;
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-tertiary: #71717a;
 
-    --border-color: #262626;
-    --border-color-light: #171717;
+    --border-color: #26262a;
+    --border-color-light: #1f1f23;
 
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.5);
     --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.5);
@@ -103,45 +104,45 @@
     --shadow-hover: 0 10px 40px -10px rgba(0,0,0,0.8);
 
     /* Element Plus 背景暗色覆盖 */
-    --el-bg-color: #121212;
-    --el-bg-color-page: #0a0a0a;
-    --el-bg-color-overlay: #1e1e1e;
-    --el-text-color-primary: #f8fafc;
-    --el-text-color-regular: #94a3b8;
-    --el-border-color: #262626;
-    --el-border-color-light: #333333;
-    --el-border-color-lighter: #262626;
-    --el-fill-color-blank: #121212;
+    --el-bg-color: #101012;
+    --el-bg-color-page: #09090b;
+    --el-bg-color-overlay: #1a1a1d;
+    --el-text-color-primary: #f4f4f5;
+    --el-text-color-regular: #a1a1aa;
+    --el-border-color: #26262a;
+    --el-border-color-light: #303035;
+    --el-border-color-lighter: #26262a;
+    --el-fill-color-blank: #101012;
     --el-mask-color: rgba(0, 0, 0, 0.7);
   }
 }
 
 [data-theme="dark"] {
   /* Manual Dark Mode Override */
-  --color-primary: #818cf8;
-  --color-primary-light: #a5b4fc;
-  --color-primary-dark: #6366f1;
+  --color-primary: #7b92f0;
+  --color-primary-light: #a5b4f5;
+  --color-primary-dark: #6981e8;
 
-  --el-color-primary: #818cf8;
-  --el-color-primary-light-3: #6c75dd;
-  --el-color-primary-light-5: #525cb0;
-  --el-color-primary-light-7: #394285;
-  --el-color-primary-light-8: #2d356d;
-  --el-color-primary-light-9: #21284f;
-  --el-color-primary-dark-2: #93a0fa;
+  --el-color-primary: #7b92f0;
+  --el-color-primary-light-3: #5d6ea6;
+  --el-color-primary-light-5: #47527e;
+  --el-color-primary-light-7: #333a58;
+  --el-color-primary-light-8: #2b3049;
+  --el-color-primary-light-9: #232941;
+  --el-color-primary-dark-2: #95a8f3;
 
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #121212;
-  --bg-tertiary: #1e1e1e;
-  --bg-hover: #262626;
-  --bg-glass: rgba(18, 18, 18, 0.72);
+  --bg-primary: #09090b;
+  --bg-secondary: #101012;
+  --bg-tertiary: #1a1a1d;
+  --bg-hover: #242428;
+  --bg-glass: rgba(16, 16, 18, 0.72);
 
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
 
-  --border-color: #262626;
-  --border-color-light: #171717;
+  --border-color: #26262a;
+  --border-color-light: #1f1f23;
 
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.5);
   --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.5);
@@ -150,14 +151,14 @@
   --shadow-hover: 0 10px 40px -10px rgba(0,0,0,0.8);
 
   /* Element Plus 背景暗色覆盖 */
-  --el-bg-color: #121212;
-  --el-bg-color-page: #0a0a0a;
-  --el-bg-color-overlay: #1e1e1e;
-  --el-text-color-primary: #f8fafc;
-  --el-text-color-regular: #94a3b8;
-  --el-border-color: #262626;
-  --el-border-color-light: #333333;
-  --el-border-color-lighter: #262626;
-  --el-fill-color-blank: #121212;
+  --el-bg-color: #101012;
+  --el-bg-color-page: #09090b;
+  --el-bg-color-overlay: #1a1a1d;
+  --el-text-color-primary: #f4f4f5;
+  --el-text-color-regular: #a1a1aa;
+  --el-border-color: #26262a;
+  --el-border-color-light: #303035;
+  --el-border-color-lighter: #26262a;
+  --el-fill-color-blank: #101012;
   --el-mask-color: rgba(0, 0, 0, 0.7);
 }
