@@ -1,27 +1,25 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login, register, getCurrentUser, logout } from '@/api/auth'
+import { login, register, getCurrentUser } from '@/api/auth'
+import { getToken, setToken, clearToken } from '@/utils/auth'
+
+const USER_INFO_KEY = 'userInfo'
 
 export const useUserStore = defineStore('user', () => {
-  const token = ref(localStorage.getItem('token') || '')
-  const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || 'null'))
+  const token = ref(getToken() || '')
+  const userInfo = ref(JSON.parse(localStorage.getItem(USER_INFO_KEY) || 'null'))
 
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => userInfo.value?.role === 1)
 
-  // 登录
+  // 登录（remember=true 时持久化到 localStorage，否则仅 sessionStorage）
   async function userLogin(loginForm) {
     const res = await login(loginForm)
     token.value = res.data
-    localStorage.setItem('token', res.data)
-    localStorage.setItem('isLoggedIn', 'true')
+    setToken(res.data, !!loginForm.remember)
 
-    // 获取用户信息
-    try {
-      await fetchUserInfo()
-    } catch (error) {
-      console.error('获取用户信息失败:', error)
-    }
+    // 获取用户信息（失败不阻断登录流程）
+    await fetchUserInfo().catch((error) => console.error('获取用户信息失败:', error))
 
     return res
   }
@@ -33,31 +31,17 @@ export const useUserStore = defineStore('user', () => {
 
   // 获取用户信息
   async function fetchUserInfo() {
-    try {
-      const res = await getCurrentUser()
-      userInfo.value = res.data
-      localStorage.setItem('userInfo', JSON.stringify(res.data))
-    } catch (error) {
-      // 如果获取失败，使用 token 中的信息
-      console.error('获取用户信息失败:', error)
-      // 可以从 token 中解析基本信息
-      if (token.value) {
-        const payload = JSON.parse(atob(token.value.split('.')[1]))
-        userInfo.value = {
-          username: payload.username,
-          nickname: payload.username
-        }
-        localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
-      }
-    }
+    const res = await getCurrentUser()
+    userInfo.value = res.data
+    localStorage.setItem(USER_INFO_KEY, JSON.stringify(res.data))
   }
 
   // 退出登录
   function userLogout() {
     token.value = ''
     userInfo.value = null
-    localStorage.removeItem('token')
-    localStorage.removeItem('userInfo')
+    clearToken()
+    localStorage.removeItem(USER_INFO_KEY)
     localStorage.removeItem('isLoggedIn')
   }
 

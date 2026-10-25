@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getToken } from '@/utils/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -105,9 +106,9 @@ const router = createRouter({
 
 // 路由守卫
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
+  const token = getToken()
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-  
+
   if (to.meta.requiresAuth && !token) {
     next('/login')
   } else if (to.meta.requiresAdmin && userInfo.role !== 1) {

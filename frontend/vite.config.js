@@ -2,12 +2,22 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import UnoCSS from 'unocss/vite'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 export default defineConfig({
   base: '/',
   plugins: [
     vue(),
     UnoCSS(),
+    // Element Plus 按需引入：组件与 API 自动导入，只打包实际用到的部分
+    AutoImport({
+      resolvers: [ElementPlusResolver()]
+    }),
+    Components({
+      resolvers: [ElementPlusResolver()]
+    })
   ],
   resolve: {
     alias: {
@@ -19,9 +29,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'element-plus': ['element-plus', '@element-plus/icons-vue'],
-          'markdown': ['markdown-it', 'highlight.js'],
-          'utils': ['axios', 'dayjs']
+          'markdown': ['markdown-it', 'highlight.js']
         }
       }
     },

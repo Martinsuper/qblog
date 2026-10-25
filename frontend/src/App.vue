@@ -1,25 +1,32 @@
 <template>
-  <div class="app-wrapper" :class="{ 'admin-mode': isAdminRoute }">
-    <template v-if="!isAdminRoute">
-      <Navbar />
-      <main class="main-content">
-        <div class="container">
-          <router-view />
-        </div>
-      </main>
-      <Footer />
-      <BackToTop />
-      <ReadingProgress />
-    </template>
-    <template v-else>
-      <router-view />
-    </template>
-  </div>
+  <el-config-provider :locale="zhCn">
+    <div class="app-wrapper" :class="{ 'admin-mode': isAdminRoute }">
+      <template v-if="!isAdminRoute">
+        <Navbar />
+        <main class="main-content">
+          <div class="container">
+            <router-view v-slot="{ Component }">
+              <transition name="page" mode="out-in">
+                <component :is="Component" />
+              </transition>
+            </router-view>
+          </div>
+        </main>
+        <Footer />
+        <BackToTop />
+        <ReadingProgress />
+      </template>
+      <template v-else>
+        <router-view />
+      </template>
+    </div>
+  </el-config-provider>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import Navbar from '@/components/Navbar.vue'
 import Footer from '@/components/Footer.vue'
 import BackToTop from '@/components/BackToTop.vue'

@@ -1,9 +1,14 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import { ElLoading } from 'element-plus'
+
+// 函数式调用与指令类组件的样式需手动引入（按需模式下不会自动注入）
+import 'element-plus/es/components/message/style/css'
+import 'element-plus/es/components/message-box/style/css'
+import 'element-plus/es/components/notification/style/css'
+import 'element-plus/es/components/loading/style/css'
+// Element Plus 官方暗色变量（配合 html.dark 类生效）
+import 'element-plus/theme-chalk/dark/css-vars.css'
 
 import App from './App.vue'
 import router from './router'
@@ -17,15 +22,9 @@ initCodeCopyHandler()
 const app = createApp(App)
 const pinia = createPinia()
 
-// 注册 Element Plus 图标
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-  app.component(key, component)
-}
+// v-loading 指令
+app.use(ElLoading)
 
 app.use(pinia)
 app.use(router)
-app.use(ElementPlus, {
-  locale: zhCn
-})
-
 app.mount('#app')
