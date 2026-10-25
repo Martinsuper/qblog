@@ -1,6 +1,8 @@
 package com.qblog.controller;
 
 import com.qblog.common.Result;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -16,6 +18,7 @@ import java.util.Map;
 /**
  * 健康检查控制器
  */
+@Tag(name = "健康检查")
 @RestController
 @RequestMapping("/health")
 @RequiredArgsConstructor
@@ -29,6 +32,7 @@ public class HealthController {
     /**
      * 存活探针 - 检查服务是否运行
      */
+    @Operation(summary = "存活探针")
     @GetMapping
     public Result<Map<String, String>> health() {
         Map<String, String> status = new HashMap<>();
@@ -39,6 +43,7 @@ public class HealthController {
     /**
      * 就绪探针 - 检查服务是否准备好接收请求
      */
+    @Operation(summary = "就绪探针（检查数据库与 Redis）")
     @GetMapping("/ready")
     public Result<Map<String, String>> ready() {
         Map<String, String> status = new HashMap<>();

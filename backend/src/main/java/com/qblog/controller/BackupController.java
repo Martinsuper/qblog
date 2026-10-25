@@ -5,6 +5,8 @@ import com.qblog.model.dto.BackupSettingsDTO;
 import com.qblog.model.vo.BackupVO;
 import com.qblog.model.vo.BackupSettingsVO;
 import com.qblog.service.BackupService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
@@ -18,6 +20,7 @@ import java.util.List;
 /**
  * 备份控制器
  */
+@Tag(name = "备份管理（需管理员）")
 @RestController
 @RequestMapping("/backup")
 @RequiredArgsConstructor
@@ -28,6 +31,7 @@ public class BackupController {
     /**
      * 创建备份
      */
+    @Operation(summary = "创建备份")
     @PostMapping("/create")
     public Result<BackupVO> createBackup(
             @RequestParam(required = false, defaultValue = "json") String type,
@@ -39,6 +43,7 @@ public class BackupController {
     /**
      * 获取备份列表
      */
+    @Operation(summary = "获取备份列表")
     @GetMapping("/list")
     public Result<List<BackupVO>> getBackupList() {
         return Result.success(backupService.getBackupList());
@@ -47,6 +52,7 @@ public class BackupController {
     /**
      * 获取备份详情
      */
+    @Operation(summary = "获取备份详情")
     @GetMapping("/{id}")
     public Result<BackupVO> getBackupDetail(@PathVariable String id) {
         return Result.success(backupService.getBackupDetail(id));
@@ -55,6 +61,7 @@ public class BackupController {
     /**
      * 下载备份文件
      */
+    @Operation(summary = "下载备份文件")
     @GetMapping("/download/{id}")
     public ResponseEntity<ByteArrayResource> downloadBackup(@PathVariable String id)
             throws java.io.IOException {
@@ -85,6 +92,7 @@ public class BackupController {
     /**
      * 恢复备份
      */
+    @Operation(summary = "恢复备份")
     @PostMapping("/restore/{id}")
     public Result<Void> restoreBackup(@PathVariable String id) {
         backupService.restoreBackup(id);
@@ -94,6 +102,7 @@ public class BackupController {
     /**
      * 删除备份
      */
+    @Operation(summary = "删除备份")
     @DeleteMapping("/delete/{id}")
     public Result<Void> deleteBackup(@PathVariable String id) {
         backupService.deleteBackup(id);
@@ -103,6 +112,7 @@ public class BackupController {
     /**
      * 导入备份文件
      */
+    @Operation(summary = "导入备份文件")
     @PostMapping("/import")
     public Result<BackupVO> importBackup(@RequestParam("file") MultipartFile file) {
         BackupVO backup = backupService.importBackup(file);
@@ -112,6 +122,7 @@ public class BackupController {
     /**
      * 获取备份设置
      */
+    @Operation(summary = "获取备份设置")
     @GetMapping("/settings")
     public Result<BackupSettingsVO> getSettings() {
         return Result.success(backupService.getSettings());
@@ -120,6 +131,7 @@ public class BackupController {
     /**
      * 更新备份设置
      */
+    @Operation(summary = "更新备份设置")
     @PutMapping("/settings")
     public Result<Void> updateSettings(@RequestBody BackupSettingsDTO settings) {
         backupService.updateSettings(settings);

@@ -14,6 +14,7 @@ import java.util.Set;
  * 浏览量计数服务
  * 使用 Redis 进行计数（Redis 启用时），定时同步到数据库
  * Redis 禁用时直接写入数据库
+ * 支持按访客去重：同一访客对同一文章 24 小时内只计一次
  */
 @Slf4j
 @Service
@@ -26,23 +27,56 @@ public class ViewCountService {
     private StringRedisTemplate redisTemplate;
 
     private static final String VIEW_COUNT_KEY_PREFIX = "article:views:";
+    private static final String VIEW_DEDUP_KEY_PREFIX = "article:viewdedup:";
+    private static final long DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000L; // 24h
 
     // 本地计数器（Redis 禁用时使用）
     private final java.util.Map<Long, Long> localViewCounts = new java.util.concurrent.ConcurrentHashMap<>();
 
+    // 本地去重记录：key -> 上次计数时间戳
+    private final java.util.Map<String, Long> localViewDedup = new java.util.concurrent.ConcurrentHashMap<>();
+
     /**
-     * 增加文章浏览量
-     * Redis 启用时写入 Redis，禁用时直接写入数据库
+     * 增加文章浏览量（同一访客 24 小时内去重）
+     * @param articleId 文章 ID
+     * @param visitorKey 访客标识（如 IP）
      */
-    public void incrementViewCount(Long articleId) {
+    public void incrementViewCount(Long articleId, String visitorKey) {
+        if (!shouldCount(articleId, visitorKey)) {
+            return;
+        }
         if (redisTemplate != null) {
-            // Redis 启用，写入 Redis
             String key = VIEW_COUNT_KEY_PREFIX + articleId;
             redisTemplate.opsForValue().increment(key);
         } else {
-            // Redis 禁用，使用本地计数器
             localViewCounts.merge(articleId, 1L, Long::sum);
         }
+    }
+
+    /**
+     * 判断该访客是否应计入浏览量（去重窗口内只计一次）
+     */
+    private boolean shouldCount(Long articleId, String visitorKey) {
+        String dedupKey = VIEW_DEDUP_KEY_PREFIX + articleId + ":" + visitorKey;
+        long now = System.currentTimeMillis();
+
+        if (redisTemplate != null) {
+            try {
+                Boolean first = redisTemplate.opsForValue()
+                        .setIfAbsent(dedupKey, "1", java.time.Duration.ofMillis(DEDUP_WINDOW_MS));
+                return Boolean.TRUE.equals(first);
+            } catch (Exception e) {
+                log.warn("View dedup check failed, counting the view: {}", e.getMessage());
+                return true;
+            }
+        }
+
+        // 本地去重
+        if (localViewDedup.size() > 100_000) {
+            localViewDedup.clear();
+        }
+        Long last = localViewDedup.put(dedupKey, now);
+        return last == null || now - last >= DEDUP_WINDOW_MS;
     }
 
     /**

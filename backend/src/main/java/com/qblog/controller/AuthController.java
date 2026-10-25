@@ -8,12 +8,15 @@ import com.qblog.model.dto.RegisterDTO;
 import com.qblog.model.vo.UserVO;
 import com.qblog.service.UserService;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 /**
  * 认证控制器
  */
+@Tag(name = "认证")
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -24,6 +27,7 @@ public class AuthController {
     /**
      * 用户登录
      */
+    @Operation(summary = "用户登录")
     @PostMapping("/login")
     @RateLimit(key = "login", period = 60, count = 5, limitType = RateLimit.LimitType.IP)
     public Result<String> login(@Valid @RequestBody LoginDTO loginDTO) {
@@ -34,6 +38,7 @@ public class AuthController {
     /**
      * 用户注册
      */
+    @Operation(summary = "用户注册")
     @PostMapping("/register")
     @RateLimit(key = "register", period = 3600, count = 3, limitType = RateLimit.LimitType.IP)
     public Result<Void> register(@Valid @RequestBody RegisterDTO registerDTO) {
@@ -44,6 +49,7 @@ public class AuthController {
     /**
      * 获取当前用户信息
      */
+    @Operation(summary = "获取当前用户信息")
     @GetMapping("/me")
     public Result<UserVO> getCurrentUser() {
         return Result.success(userService.getCurrentUser());
@@ -52,6 +58,7 @@ public class AuthController {
     /**
      * 退出登录
      */
+    @Operation(summary = "退出登录")
     @PostMapping("/logout")
     public Result<Void> logout() {
         // JWT 无状态，前端删除 token 即可
@@ -61,6 +68,7 @@ public class AuthController {
     /**
      * 修改密码
      */
+    @Operation(summary = "修改密码")
     @PutMapping("/password")
     public Result<Void> changePassword(@Valid @RequestBody ChangePasswordDTO changePasswordDTO) {
         userService.changePassword(changePasswordDTO);

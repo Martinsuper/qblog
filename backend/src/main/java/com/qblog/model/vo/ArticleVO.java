@@ -29,6 +29,11 @@ public class ArticleVO {
 
     private Integer viewCount;
 
+    /**
+     * 状态：0-草稿 1-已发布 2-已删除
+     */
+    private Integer status;
+
     private Integer top;
 
     private Boolean isLiked;

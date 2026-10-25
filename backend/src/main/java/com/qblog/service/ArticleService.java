@@ -32,14 +32,14 @@ public interface ArticleService extends IService<Article> {
     ArticleVO getArticleDetail(Long id);
 
     /**
-     * 创建文章
+     * 创建文章（返回组装好的详情 VO，不触发缓存与浏览量计数）
      */
-    Article createArticle(ArticleDTO articleDTO);
+    ArticleVO createArticle(ArticleDTO articleDTO);
 
     /**
-     * 更新文章
+     * 更新文章（返回组装好的详情 VO，不触发缓存与浏览量计数）
      */
-    Article updateArticle(Long id, ArticleDTO articleDTO);
+    ArticleVO updateArticle(Long id, ArticleDTO articleDTO);
 
     /**
      * 删除文章

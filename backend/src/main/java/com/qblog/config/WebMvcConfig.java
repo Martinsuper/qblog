@@ -60,9 +60,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
             String uri = request.getRequestURI();
 
-            // 文章详情 API: 缓存 2 分钟
+            // 文章详情 API: 仅浏览器缓存 2 分钟（草稿对管理员可见，不能用 public 共享缓存）
             if (uri.matches("/api/articles/\\d+$")) {
-                response.setHeader("Cache-Control", "public, max-age=120");
+                response.setHeader("Cache-Control", "private, max-age=120");
                 return;
             }
 

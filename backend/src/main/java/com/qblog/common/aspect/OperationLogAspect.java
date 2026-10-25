@@ -164,7 +164,10 @@ public class OperationLogAspect {
 
                 if (token != null && token.startsWith("Bearer ")) {
                     token = token.substring(7);
-                    return jwtUtil.getUsernameFromToken(token);
+                    var claims = jwtUtil.parseClaims(token);
+                    if (claims != null) {
+                        return claims.get("username", String.class);
+                    }
                 }
             }
         } catch (Exception e) {

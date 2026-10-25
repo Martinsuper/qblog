@@ -5,7 +5,10 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.qblog.common.SecurityUtils;
+import com.qblog.common.WebUtils;
 import com.qblog.common.exception.ResourceNotFoundException;
+import com.qblog.common.exception.UnauthorizedException;
 import com.qblog.entity.Article;
 import com.qblog.entity.ArticleTag;
 import com.qblog.entity.Category;
@@ -169,11 +172,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
         Page<Article> resultPage = page(articlePage, wrapper);
 
-        // 转换为 VO - 手动设置总数，解决 MyBatis-Plus 分页计数问题
+        // 转换为 VO（分页插件已自动执行 count，直接使用 total）
         Page<ArticleListItemVO> voPage = new Page<>(resultPage.getCurrent(), resultPage.getSize());
-        // 使用 count 查询获取总数
-        Long total = count(wrapper);
-        voPage.setTotal(total);
+        voPage.setTotal(resultPage.getTotal());
         voPage.setRecords(convertToListItemVO(resultPage.getRecords()));
 
         return voPage;
@@ -181,107 +182,107 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public ArticleVO getArticleDetail(Long id) {
-        String cacheKey = CACHE_ARTICLE_DETAIL + id;
-
-        // 使用缓存击穿保护的方法获取文章详情（带随机TTL防止雪崩）
-        ArticleVO vo = cacheService.getOrLoad(cacheKey, ArticleVO.class, getRandomizedTTL(TTL_DETAIL), () -> {
-            Article article = getById(id);
-            if (article == null) {
-                throw new ResourceNotFoundException("文章", id);
-            }
-
-            // 只检查已删除的文章（status=2），允许访问草稿（status=0）和已发布（status=1）
-            if (article.getStatus() == 2) {
-                throw new ResourceNotFoundException("文章", id);
-            }
-
-            ArticleVO result = BeanUtil.copyProperties(article, ArticleVO.class);
-
-            // 填充作者信息
-            if (article.getAuthorId() != null) {
-                User author = userService.getById(article.getAuthorId());
-                if (author != null) {
-                    UserVO authorVO = new UserVO();
-                    BeanUtil.copyProperties(author, authorVO);
-                    result.setAuthor(authorVO);
-                }
-            }
-
-            // 填充分类信息
-            if (article.getCategoryId() != null) {
-                Category category = categoryService.getById(article.getCategoryId());
-                if (category != null) {
-                    CategoryVO categoryVO = new CategoryVO();
-                    BeanUtil.copyProperties(category, categoryVO);
-                    result.setCategory(categoryVO);
-                }
-            }
-
-            // 填充标签信息
-            if (article.getId() != null) {
-                List<ArticleTag> articleTags = articleTagService.list(
-                    new LambdaQueryWrapper<ArticleTag>().eq(ArticleTag::getArticleId, article.getId())
-                );
-                if (!articleTags.isEmpty()) {
-                    List<Long> tagIds = articleTags.stream()
-                        .map(ArticleTag::getTagId)
-                        .collect(Collectors.toList());
-                    List<Tag> tags = tagService.listByIds(tagIds);
-                    List<TagVO> tagVOs = tags.stream().map(tag -> {
-                        TagVO tagVO = new TagVO();
-                        BeanUtil.copyProperties(tag, tagVO);
-                        return tagVO;
-                    }).collect(Collectors.toList());
-                    result.setTags(tagVOs);
-                }
-            }
-
-            return result;
-        });
-
-        // 使用 ViewCountService 增加浏览量（仅已发布文章）
         Article article = getById(id);
-        if (article != null && article.getStatus() == 1) {
-            viewCountService.incrementViewCount(id);
+        if (article == null || article.getStatus() == 2) {
+            throw new ResourceNotFoundException("文章", id);
+        }
+
+        // 草稿仅管理员可见（也不进缓存，避免缓存把草稿泄漏给匿名访客）
+        if (article.getStatus() == 0) {
+            if (!SecurityUtils.isAdmin()) {
+                throw new ResourceNotFoundException("文章", id);
+            }
+            return assembleArticleVO(article);
+        }
+
+        // 已发布文章：使用缓存击穿保护的方法获取详情（带随机TTL防止雪崩）
+        String cacheKey = CACHE_ARTICLE_DETAIL + id;
+        ArticleVO vo = cacheService.getOrLoad(cacheKey, ArticleVO.class, getRandomizedTTL(TTL_DETAIL),
+                () -> assembleArticleVO(article));
+
+        // 仅已发布文章计数浏览量（同一访客 24 小时内去重）
+        if (vo != null && Integer.valueOf(1).equals(vo.getStatus())) {
+            viewCountService.incrementViewCount(id, currentVisitorKey());
         }
 
         return vo;
     }
 
+    /**
+     * 组装文章详情 VO（填充作者/分类/标签）
+     */
+    private ArticleVO assembleArticleVO(Article article) {
+        ArticleVO result = BeanUtil.copyProperties(article, ArticleVO.class);
+
+        // 填充作者信息
+        if (article.getAuthorId() != null) {
+            User author = userService.getById(article.getAuthorId());
+            if (author != null) {
+                UserVO authorVO = new UserVO();
+                BeanUtil.copyProperties(author, authorVO);
+                result.setAuthor(authorVO);
+            }
+        }
+
+        // 填充分类信息
+        if (article.getCategoryId() != null) {
+            Category category = categoryService.getById(article.getCategoryId());
+            if (category != null) {
+                CategoryVO categoryVO = new CategoryVO();
+                BeanUtil.copyProperties(category, categoryVO);
+                result.setCategory(categoryVO);
+            }
+        }
+
+        // 填充标签信息
+        if (article.getId() != null) {
+            List<ArticleTag> articleTags = articleTagService.list(
+                new LambdaQueryWrapper<ArticleTag>().eq(ArticleTag::getArticleId, article.getId())
+            );
+            if (!articleTags.isEmpty()) {
+                List<Long> tagIds = articleTags.stream()
+                    .map(ArticleTag::getTagId)
+                    .collect(Collectors.toList());
+                List<Tag> tags = tagService.listByIds(tagIds);
+                List<TagVO> tagVOs = tags.stream().map(tag -> {
+                    TagVO tagVO = new TagVO();
+                    BeanUtil.copyProperties(tag, tagVO);
+                    return tagVO;
+                }).collect(Collectors.toList());
+                result.setTags(tagVOs);
+            }
+        }
+
+        return result;
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Article createArticle(ArticleDTO articleDTO) {
+    public ArticleVO createArticle(ArticleDTO articleDTO) {
         Article article = BeanUtil.copyProperties(articleDTO, Article.class);
 
-        // 设置作者 ID（从当前登录用户获取）
-        // article.setAuthorId(getCurrentUserId());
-        article.setAuthorId(1L);
+        // 作者为当前登录用户
+        Long authorId = SecurityUtils.getCurrentUserId();
+        if (authorId == null) {
+            throw new UnauthorizedException("用户未登录");
+        }
+        article.setAuthorId(authorId);
 
         if (articleDTO.getStatus() == 1) {
             article.setPublishTime(LocalDateTime.now());
         }
 
         save(article);
+        saveArticleTags(article.getId(), articleDTO.getTagIds());
 
-        // 处理文章标签关联
-        if (articleDTO.getTagIds() != null && !articleDTO.getTagIds().isEmpty()) {
-            List<ArticleTag> articleTags = articleDTO.getTagIds().stream().map(tagId -> {
-                ArticleTag articleTag = new ArticleTag();
-                articleTag.setArticleId(article.getId());
-                articleTag.setTagId(tagId);
-                return articleTag;
-            }).collect(Collectors.toList());
-            articleTagService.saveBatch(articleTags);
-        }
-
-        return article;
+        return assembleArticleVO(article);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Article updateArticle(Long id, ArticleDTO articleDTO) {
+    public ArticleVO updateArticle(Long id, ArticleDTO articleDTO) {
         Article article = getById(id);
-        if (article == null) {
+        if (article == null || article.getStatus() == 2) {
             throw new ResourceNotFoundException("文章", id);
         }
 
@@ -296,21 +297,25 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         // 处理文章标签关联：先删除旧的，再添加新的
         articleTagService.remove(new LambdaQueryWrapper<ArticleTag>()
             .eq(ArticleTag::getArticleId, id));
-
-        if (articleDTO.getTagIds() != null && !articleDTO.getTagIds().isEmpty()) {
-            List<ArticleTag> articleTags = articleDTO.getTagIds().stream().map(tagId -> {
-                ArticleTag articleTag = new ArticleTag();
-                articleTag.setArticleId(id);
-                articleTag.setTagId(tagId);
-                return articleTag;
-            }).collect(Collectors.toList());
-            articleTagService.saveBatch(articleTags);
-        }
+        saveArticleTags(id, articleDTO.getTagIds());
 
         // 清除文章缓存
         clearArticleCache(id);
 
-        return article;
+        return assembleArticleVO(article);
+    }
+
+    private void saveArticleTags(Long articleId, List<Long> tagIds) {
+        if (tagIds == null || tagIds.isEmpty()) {
+            return;
+        }
+        List<ArticleTag> articleTags = tagIds.stream().map(tagId -> {
+            ArticleTag articleTag = new ArticleTag();
+            articleTag.setArticleId(articleId);
+            articleTag.setTagId(tagId);
+            return articleTag;
+        }).collect(Collectors.toList());
+        articleTagService.saveBatch(articleTags);
     }
 
     @Override
@@ -539,13 +544,15 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         return list;
     }
 
-    private String getSortColumn(String sortBy) {
-        // 简单的字段映射，防止 SQL 注入
-        return switch (sortBy) {
-            case "createTime" -> "create_time";
-            case "viewCount" -> "view_count";
-            default -> "publish_time";
-        };
+    /**
+     * 获取当前访客标识（用于浏览量去重）
+     */
+    private String currentVisitorKey() {
+        var attributes = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        if (attributes instanceof org.springframework.web.context.request.ServletRequestAttributes servletAttributes) {
+            return WebUtils.getClientIp(servletAttributes.getRequest());
+        }
+        return "anonymous";
     }
 
     /**
