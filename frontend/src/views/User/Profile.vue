@@ -71,7 +71,7 @@
                 v-model="passwordForm.newPassword"
                 type="password"
                 show-password
-                placeholder="请输入新密码（至少6位）"
+                placeholder="请输入新密码（8-20位，含字母和数字）"
               />
             </el-form-item>
             <el-form-item label="确认密码" prop="confirmPassword">
@@ -162,7 +162,12 @@ const passwordRules = {
   ],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: 6, message: '密码长度至少为6位', trigger: 'blur' },
+    { min: 8, max: 20, message: '密码长度在 8-20 之间', trigger: 'blur' },
+    {
+      pattern: /^(?=.*[A-Za-z])(?=.*\d).+$/,
+      message: '密码必须同时包含字母和数字',
+      trigger: 'blur'
+    },
     { validator: validateNewPassword, trigger: 'blur' }
   ],
   confirmPassword: [

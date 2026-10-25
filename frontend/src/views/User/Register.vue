@@ -113,7 +113,12 @@ const rules = {
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度至少 6 位', trigger: 'blur' }
+    { min: 8, max: 20, message: '密码长度在 8-20 之间', trigger: 'blur' },
+    {
+      pattern: /^(?=.*[A-Za-z])(?=.*\d).+$/,
+      message: '密码必须同时包含字母和数字',
+      trigger: 'blur'
+    }
   ],
   confirmPassword: [
     { required: true, message: '请确认密码', trigger: 'blur' },
@@ -156,16 +161,12 @@ const handleRegister = async () => {
   width: 100%;
   max-width: 360px;
   padding: 40px;
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--bg-glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: var(--border-radius-lg);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-md);
-}
-
-:global([data-theme="dark"]) .register-card {
-  background: rgba(31, 41, 55, 0.8);
 }
 
 .register-title {

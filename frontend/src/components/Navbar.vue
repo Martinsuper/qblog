@@ -1,12 +1,12 @@
 <template>
-  <header class="navbar">
+  <header class="navbar glass">
     <div class="container">
       <div class="navbar-content">
         <router-link to="/" class="navbar-brand">
           <span class="brand-text">QBlog</span>
         </router-link>
 
-        <nav class="navbar-menu">
+        <nav class="navbar-menu" aria-label="主导航">
           <router-link to="/" class="nav-link" exact-active-class="active">首页</router-link>
           <router-link to="/archives" class="nav-link" active-class="active">时间轴</router-link>
           <router-link to="/categories" class="nav-link" active-class="active">分类</router-link>
@@ -14,18 +14,22 @@
         </nav>
 
         <div class="navbar-right">
-          <button class="theme-toggle" @click="toggleTheme" title="切换主题">
+          <button
+            class="icon-btn"
+            @click="toggleTheme"
+            :aria-label="isDark ? '切换到亮色模式' : '切换到暗色模式'"
+          >
             <el-icon v-if="isDark"><Sunny /></el-icon>
             <el-icon v-else><Moon /></el-icon>
           </button>
 
-          <template v-if="isLoggedIn">
+          <template v-if="userStore.isLoggedIn">
             <el-dropdown trigger="click" @command="handleCommand">
               <span class="user-dropdown">
-                <el-avatar :size="32" :src="userInfo?.avatar">
-                  {{ userInfo?.nickname?.charAt(0) || 'U' }}
+                <el-avatar :size="32" :src="userStore.userInfo?.avatar">
+                  {{ userStore.userInfo?.nickname?.charAt(0) || 'U' }}
                 </el-avatar>
-                <span class="user-name">{{ userInfo?.nickname || '用户' }}</span>
+                <span class="user-name">{{ userStore.userInfo?.nickname || '用户' }}</span>
                 <el-icon><ArrowDown /></el-icon>
               </span>
               <template #dropdown>
@@ -34,11 +38,11 @@
                     <el-icon><User /></el-icon>
                     个人中心
                   </el-dropdown-item>
-                  <el-dropdown-item v-if="isAdmin" command="write">
+                  <el-dropdown-item v-if="userStore.isAdmin" command="write">
                     <el-icon><EditPen /></el-icon>
                     写文章
                   </el-dropdown-item>
-                  <el-dropdown-item v-if="isAdmin" command="admin" divided>
+                  <el-dropdown-item v-if="userStore.isAdmin" command="admin" divided>
                     <el-icon><Setting /></el-icon>
                     管理后台
                   </el-dropdown-item>
@@ -54,60 +58,73 @@
             <router-link to="/login" class="nav-link">登录</router-link>
             <router-link to="/register" class="btn-register">注册</router-link>
           </template>
+
+          <!-- 移动端汉堡菜单 -->
+          <button
+            class="icon-btn menu-toggle"
+            :class="{ open: menuVisible }"
+            :aria-expanded="menuVisible"
+            aria-label="打开导航菜单"
+            @click="menuVisible = true"
+          >
+            <el-icon :size="20"><Menu /></el-icon>
+          </button>
         </div>
       </div>
     </div>
+
+    <!-- 移动端抽屉导航 -->
+    <el-drawer
+      v-model="menuVisible"
+      direction="rtl"
+      size="72%"
+      :with-header="false"
+      class="mobile-nav-drawer"
+    >
+      <nav class="mobile-nav" aria-label="移动端导航">
+        <router-link to="/" class="mobile-link" @click="menuVisible = false">首页</router-link>
+        <router-link to="/archives" class="mobile-link" @click="menuVisible = false">时间轴</router-link>
+        <router-link to="/categories" class="mobile-link" @click="menuVisible = false">分类</router-link>
+        <router-link to="/tags" class="mobile-link" @click="menuVisible = false">标签</router-link>
+
+        <template v-if="!userStore.isLoggedIn">
+          <div class="mobile-auth">
+            <router-link to="/login" class="mobile-link" @click="menuVisible = false">登录</router-link>
+            <router-link to="/register" class="mobile-link register" @click="menuVisible = false">注册</router-link>
+          </div>
+        </template>
+        <template v-else>
+          <div class="mobile-auth">
+            <router-link to="/user/profile" class="mobile-link" @click="menuVisible = false">个人中心</router-link>
+            <router-link v-if="userStore.isAdmin" to="/admin/create" class="mobile-link" @click="menuVisible = false">写文章</router-link>
+            <router-link v-if="userStore.isAdmin" to="/admin/articles" class="mobile-link" @click="menuVisible = false">管理后台</router-link>
+            <a href="javascript:void(0)" class="mobile-link logout" @click="handleLogout">退出登录</a>
+          </div>
+        </template>
+      </nav>
+    </el-drawer>
   </header>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Sunny, Moon, ArrowDown, User, EditPen, Setting, SwitchButton, Menu } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
+import { useTheme } from '@/composables/useTheme'
 
 const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
+const { isDark, toggleTheme } = useTheme()
 
-const isLoggedIn = ref(false)
-const userInfo = ref(null)
-const isDark = ref(false)
+const menuVisible = ref(false)
 
-const isAdmin = computed(() => userInfo.value?.role === 1)
-
-const checkAuth = () => {
-  const token = localStorage.getItem('token')
-  const info = localStorage.getItem('userInfo')
-  isLoggedIn.value = !!token
-  if (info) {
-    try {
-      userInfo.value = JSON.parse(info)
-    } catch (e) {
-      userInfo.value = null
-    }
-  } else if (token) {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      userInfo.value = {
-        username: payload.username,
-        nickname: payload.username
-      }
-      localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
-    } catch (e) {
-      console.error('解析 token 失败:', e)
-    }
-  }
-}
-
-const handleStorageChange = (e) => {
-  if (e.key === 'token' || e.key === 'userInfo') {
-    checkAuth()
-  }
-}
-
-const toggleTheme = () => {
-  isDark.value = !isDark.value
-  document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light')
-  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
-}
+// 路由变化时关闭抽屉（覆盖浏览器返回键的场景）
+watch(() => route.path, () => {
+  menuVisible.value = false
+})
 
 const handleCommand = (command) => {
   switch (command) {
@@ -121,40 +138,26 @@ const handleCommand = (command) => {
       router.push('/admin/articles')
       break
     case 'logout':
-      localStorage.removeItem('token')
-      localStorage.removeItem('userInfo')
-      isLoggedIn.value = false
-      userInfo.value = null
-      ElMessage.success('已退出登录')
-      router.push('/')
+      handleLogout()
       break
   }
 }
 
-onMounted(() => {
-  checkAuth()
-  window.addEventListener('storage', handleStorageChange)
-  
-  const savedTheme = localStorage.getItem('theme')
-  if (savedTheme === 'dark') {
-    isDark.value = true
-    document.documentElement.setAttribute('data-theme', 'dark')
-  }
-})
+const handleLogout = () => {
+  userStore.userLogout()
+  menuVisible.value = false
+  ElMessage.success('已退出登录')
+  router.push('/')
+}
 </script>
 
 <style scoped>
-/* Navbar Container with Glassmorphism */
 .navbar {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-bottom: 1px solid var(--border-color);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-  transition: all var(--transition-normal);
 }
 
 .navbar-content {
@@ -174,7 +177,7 @@ onMounted(() => {
 }
 
 .brand-text {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  background: var(--color-primary-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -226,7 +229,7 @@ onMounted(() => {
   gap: var(--spacing-md);
 }
 
-.theme-toggle {
+.icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -237,16 +240,17 @@ onMounted(() => {
   border-radius: var(--border-radius);
   cursor: pointer;
   color: var(--text-secondary);
-  transition: all var(--transition-fast);
-  transform: rotate(0deg);
-  transition: all var(--transition-fast), transform var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.theme-toggle:hover {
+.icon-btn:hover {
   background: var(--bg-tertiary);
   color: var(--color-primary);
-  transform: rotate(360deg);
-  transition: all var(--transition-fast);
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .user-dropdown {
@@ -287,13 +291,71 @@ onMounted(() => {
   background: var(--color-primary-dark);
 }
 
-@media (max-width: 640px) {
+.menu-toggle {
+  display: none;
+}
+
+/* 移动端抽屉内部 */
+.mobile-nav {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-md) var(--spacing-sm);
+  gap: var(--spacing-xs);
+}
+
+.mobile-link {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1rem;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.mobile-link:active,
+.mobile-link.router-link-active {
+  background: var(--bg-hover);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.mobile-auth {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.mobile-link.register {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.mobile-link.logout {
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
   .navbar-menu {
     display: none;
   }
 
   .user-name {
     display: none;
+  }
+
+  .navbar-right .nav-link {
+    display: none;
+  }
+
+  .navbar-right .btn-register {
+    display: none;
+  }
+
+  .menu-toggle {
+    display: flex;
   }
 }
 </style>

@@ -19,6 +19,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { ArrowUp } from '@element-plus/icons-vue'
 
 const visible = ref(false)
 

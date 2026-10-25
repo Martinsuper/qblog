@@ -103,9 +103,11 @@ import {
   Download,
   PriceTag
 } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 
 const sidebarCollapsed = ref(false)
 const userAvatar = ref('')
@@ -144,8 +146,7 @@ const handleCommand = async (command) => {
         cancelButtonText: '取消',
         type: 'warning'
       })
-      localStorage.removeItem('token')
-      localStorage.removeItem('userInfo')
+      userStore.userLogout()
       ElMessage.success('已退出登录')
       router.push('/login')
     } catch {

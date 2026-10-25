@@ -1,6 +1,11 @@
 <template>
   <div class="article-detail-page">
-    <article v-if="article" class="article-content">
+    <!-- 加载骨架屏 -->
+    <el-card v-if="loading">
+      <el-skeleton :rows="10" animated />
+    </el-card>
+
+    <article v-else-if="article" class="article-content">
       <el-card>
         <!-- 文章头部 -->
         <div class="article-header">
@@ -14,22 +19,43 @@
               <span class="author-name">{{ article.author?.nickname || '管理员' }}</span>
             </div>
             <div class="meta-items">
-              <span class="meta-item">
+              <span class="meta-item" :title="formatDateTime(article.publishTime)">
                 <el-icon><Calendar /></el-icon>
-                {{ formatTime(article.publishTime) }}
+                {{ formatRelativeTime(article.publishTime) }}
               </span>
 
               <span class="meta-item">
                 <el-icon><View /></el-icon>
                 {{ article.viewCount }}
               </span>
+
+              <span class="meta-item">
+                <el-icon><Timer /></el-icon>
+                约 {{ readingMinutes }} 分钟
+              </span>
+
+              <span v-if="article.status === 0" class="draft-badge">草稿</span>
             </div>
           </div>
         </div>
 
+        <!-- 目录 -->
+        <nav v-if="toc.length >= 3" class="article-toc" aria-label="文章目录">
+          <div class="toc-title">目录</div>
+          <ul class="toc-list">
+            <li
+              v-for="item in toc"
+              :key="item.anchor"
+              :class="['toc-item', `toc-level-${item.level}`]"
+            >
+              <a :href="`#${item.anchor}`">{{ item.title }}</a>
+            </li>
+          </ul>
+        </nav>
+
         <!-- 封面图 -->
         <div v-if="article.coverImage" class="article-cover">
-          <img :src="article.coverImage" alt="封面图" />
+          <img :src="article.coverImage" alt="封面图" loading="lazy" decoding="async" />
         </div>
 
         <!-- 文章内容 -->
@@ -67,7 +93,7 @@
           <div class="related-item-title">{{ related.title }}</div>
           <div class="related-item-meta">
             <span><el-icon><View /></el-icon> {{ related.viewCount }}</span>
-            <span>{{ formatTime(related.publishTime) }}</span>
+            <span>{{ formatRelativeTime(related.publishTime) }}</span>
           </div>
         </router-link>
       </div>
@@ -76,10 +102,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Calendar, View, Timer } from '@element-plus/icons-vue'
 import { useMarkdown } from '@/composables/useMarkdown'
+import { formatRelativeTime, formatDateTime, estimateReadingMinutes } from '@/composables/useTime'
+import { generateSlug } from '@/utils/markdownPlugins/headingAnchor'
 import { getArticleDetail, getRelatedArticles } from '@/api/article'
 
 const route = useRoute()
@@ -87,6 +116,7 @@ const { render, getThemeClass } = useMarkdown()
 
 const article = ref(null)
 const relatedArticles = ref([])
+const loading = ref(true)
 
 // 计算属性：渲染后的内容
 const renderedContent = computed(() => {
@@ -96,15 +126,41 @@ const renderedContent = computed(() => {
 // 计算属性：Markdown 样式类
 const markdownClass = computed(() => getThemeClass())
 
+// 阅读时长估算
+const readingMinutes = computed(() => estimateReadingMinutes(article.value?.content))
+
+// 从 Markdown 中提取 h2/h3 生成目录（锚点与 headingAnchor 插件使用同一 slug 算法）
+const toc = computed(() => {
+  const content = article.value?.content
+  if (!content) return []
+  const result = []
+  let inCodeBlock = false
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim()
+    if (trimmed.startsWith('```')) {
+      inCodeBlock = !inCodeBlock
+      continue
+    }
+    if (inCodeBlock) continue
+    const match = trimmed.match(/^(#{2,3})\s+(.+?)\s*#*$/)
+    if (match) {
+      result.push({ level: match[1].length, title: match[2], anchor: generateSlug(match[2]) })
+    }
+  }
+  return result.slice(0, 30)
+})
+
 const fetchArticle = async () => {
+  loading.value = true
   try {
     const res = await getArticleDetail(route.params.id)
     article.value = res.data
-    // 获取相关文章
     fetchRelatedArticles()
   } catch (error) {
     console.error('获取文章失败:', error)
     ElMessage.error('获取文章失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -117,18 +173,14 @@ const fetchRelatedArticles = async () => {
   }
 }
 
-// 格式化时间为 yyyy-MM-dd HH:mm:ss
-const formatTime = (time) => {
-  if (!time) return ''
-  const date = new Date(time)
-  const year = date.getFullYear()
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const day = date.getDate().toString().padStart(2, '0')
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-  const seconds = date.getSeconds().toString().padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-}
+// 同一路由组件复用时（文章间跳转）重新拉取
+watch(() => route.params.id, (newId) => {
+  if (newId && route.name === 'article-detail') {
+    article.value = null
+    relatedArticles.value = []
+    fetchArticle()
+  }
+})
 
 onMounted(() => {
   fetchArticle()
@@ -180,12 +232,63 @@ onMounted(() => {
       display: flex;
       gap: 15px;
       flex-wrap: wrap;
+      align-items: center;
 
       .meta-item {
         display: flex;
         align-items: center;
         gap: 4px;
       }
+    }
+  }
+}
+
+.draft-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.article-toc {
+  margin-bottom: 30px;
+  padding: 16px 20px;
+  border-radius: var(--border-radius);
+  background: var(--bg-tertiary);
+  border-left: 3px solid var(--color-primary);
+
+  .toc-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+  }
+
+  .toc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .toc-item {
+    a {
+      display: block;
+      padding: 4px 0;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13.5px;
+      line-height: 1.6;
+      transition: color var(--transition-fast);
+
+      &:hover {
+        color: var(--color-primary);
+      }
+    }
+
+    &.toc-level-3 a {
+      padding-left: 16px;
+      font-size: 13px;
     }
   }
 }
@@ -228,7 +331,7 @@ onMounted(() => {
     border-radius: 8px;
     background: var(--bg-secondary);
     text-decoration: none;
-    transition: all 0.2s;
+    transition: background var(--transition-fast), transform var(--transition-fast);
 
     &:hover {
       background: var(--bg-hover);

@@ -56,9 +56,9 @@ export function headingAnchorPlugin(md) {
 }
 
 /**
- * 生成 URL 友好的 slug
+ * 生成 URL 友好的 slug（导出供目录功能复用，保证锚点一致）
  */
-function generateSlug(text) {
+export function generateSlug(text) {
   if (!text) return ''
 
   return text

@@ -1,6 +1,6 @@
 <template>
   <div class="login-container">
-    <div class="login-card animate-fade-in-up">
+    <div class="login-card glass animate-fade-in-up">
       <h2 class="login-title">用户登录</h2>
 
       <el-form ref="formRef" :model="loginForm" :rules="rules" class="login-form">
@@ -68,7 +68,7 @@ const loading = ref(false)
 const loginForm = reactive({
   username: '',
   password: '',
-  remember: false
+  remember: true
 })
 
 const rules = {
@@ -76,8 +76,7 @@ const rules = {
     { required: true, message: '请输入用户名', trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度至少 6 位', trigger: 'blur' }
+    { required: true, message: '请输入密码', trigger: 'blur' }
   ]
 }
 
@@ -88,7 +87,7 @@ const handleLogin = async () => {
       try {
         await userStore.userLogin(loginForm)
         ElMessage.success('登录成功')
-        window.location.href = '/'
+        router.push('/')
       } catch (error) {
         console.error('登录失败:', error)
       } finally {
@@ -113,16 +112,9 @@ const handleLogin = async () => {
   width: 100%;
   max-width: 360px;
   padding: 40px;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-radius: var(--border-radius-lg);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-md);
-}
-
-:global([data-theme="dark"]) .login-card {
-  background: rgba(31, 41, 55, 0.8);
 }
 
 .login-title {
