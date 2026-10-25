@@ -36,4 +36,9 @@ public interface UserService extends IService<User> {
      * 修改密码
      */
     void changePassword(ChangePasswordDTO changePasswordDTO);
+
+    /**
+     * 获取用户当前密码版本（带缓存），用于校验 Token 是否已因改密而失效
+     */
+    Integer getPasswordVersion(Long userId);
 }

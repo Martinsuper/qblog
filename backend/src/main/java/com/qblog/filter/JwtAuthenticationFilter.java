@@ -1,102 +1,83 @@
 package com.qblog.filter;
 
 import com.qblog.common.JwtUtil;
+import com.qblog.common.SecurityUtils;
+import com.qblog.service.UserService;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.util.AntPathMatcher;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * JWT 认证过滤器
+ * 只负责"认证"：解析 Token 并把用户身份/角色写入 SecurityContext；
+ * "授权"（哪些路径需要什么角色）统一由 SecurityConfig 的声明式规则处理
  */
+@Slf4j
+@Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final AntPathMatcher pathMatcher = new AntPathMatcher();
-
-    /**
-     * 公开接口白名单（不需要认证）
-     */
-    private static final List<String> PUBLIC_PATHS = List.of(
-        "/api/auth/login",
-        "/api/auth/register",
-        "/api/articles",
-        "/api/articles/**",
-        "/api/categories",
-        "/api/categories/**",
-        "/api/tags",
-        "/api/tags/**",
-        "/api/doc.html",
-        "/api/doc/**",
-        "/api/webjars/**",
-        "/api/swagger-resources/**",
-        "/api/v3/api-docs/**",
-        "/api/health",
-        "/api/health/**"
-    );
+    private final UserService userService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        String path = request.getRequestURI();
-
-        // 检查是否是公开接口
-        if (isPublicPath(path)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        // 其他接口需要验证 token
         String token = getTokenFromRequest(request);
 
-        if (!StringUtils.hasText(token) || !jwtUtil.validateToken(token)) {
-            // token 无效，返回 401
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"code\":401,\"message\":\"未授权，请先登录\"}");
-            return;
-        }
+        if (StringUtils.hasText(token)) {
+            try {
+                Claims claims = jwtUtil.parseClaims(token);
+                if (claims != null) {
+                    Long userId = Long.parseLong(claims.getSubject());
+                    // 密码版本校验：改密后旧 Token 立即失效
+                    Integer tokenPwdVer = claims.get("pwdVer", Integer.class);
+                    Integer currentPwdVer = userService.getPasswordVersion(userId);
+                    Integer expected = tokenPwdVer == null ? 0 : tokenPwdVer;
 
-        // token 有效，设置认证信息
-        Long userId = jwtUtil.getUserIdFromToken(token);
-        String username = jwtUtil.getUsernameFromToken(token);
+                    if (expected.equals(currentPwdVer)) {
+                        Integer role = claims.get("role", Integer.class);
+                        String username = claims.get("username", String.class);
 
-        Map<String, Object> attributes = new HashMap<>();
-        attributes.put("userId", userId);
+                        List<SimpleGrantedAuthority> authorities = role != null && role == 1
+                                ? List.of(new SimpleGrantedAuthority(SecurityUtils.ROLE_ADMIN))
+                                : List.of(new SimpleGrantedAuthority(SecurityUtils.ROLE_USER));
 
-        UsernamePasswordAuthenticationToken authentication =
-            new UsernamePasswordAuthenticationToken(username, null, new ArrayList<>());
-        authentication.setDetails(attributes);
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(username, null, authorities);
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+                        Map<String, Object> attributes = new HashMap<>();
+                        attributes.put("userId", userId);
+                        authentication.setDetails(attributes);
 
-        filterChain.doFilter(request, response);
-    }
-
-    /**
-     * 检查路径是否是公开接口
-     */
-    private boolean isPublicPath(String path) {
-        for (String pattern : PUBLIC_PATHS) {
-            if (pathMatcher.match(pattern, path)) {
-                return true;
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
+                }
+            } catch (NumberFormatException e) {
+                log.debug("Token subject 不是合法的用户 ID，忽略该 Token");
+            } catch (Exception e) {
+                // 认证失败不阻断请求，交由授权规则决定是否返回 401
+                log.debug("Token 认证失败: {}", e.getMessage());
             }
         }
-        return false;
+
+        filterChain.doFilter(request, response);
     }
 
     private String getTokenFromRequest(HttpServletRequest request) {

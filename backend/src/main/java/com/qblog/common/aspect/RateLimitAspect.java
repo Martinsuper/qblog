@@ -1,9 +1,9 @@
 package com.qblog.common.aspect;
 
-import com.qblog.common.JwtUtil;
+import com.qblog.common.SecurityUtils;
+import com.qblog.common.WebUtils;
 import com.qblog.common.annotation.RateLimit;
 import com.qblog.common.exception.BusinessException;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
@@ -11,20 +11,19 @@ import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.reflect.Method;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 限流切面
- * Redis 启用时使用 Redis 实现滑动窗口限流
- * Redis 禁用时跳过限流检查
+ * Redis 启用时使用 Redis 固定窗口计数；Redis 禁用时降级为本地内存限流，
+ * 保证登录等敏感接口在无 Redis 环境下仍有暴力破解防护
  */
 @Slf4j
 @Aspect
@@ -34,35 +33,35 @@ public class RateLimitAspect {
     @Autowired(required = false)
     private StringRedisTemplate redisTemplate;
 
-    @Autowired(required = false)
-    private JwtUtil jwtUtil;
-
     private static final String RATE_LIMIT_KEY_PREFIX = "rate_limit:";
+
+    /** 本地限流：key -> (窗口起始秒, 计数) */
+    private final ConcurrentHashMap<String, LocalWindow> localWindows = new ConcurrentHashMap<>();
+
+    /** 本地窗口表容量保护，防止恶意构造大量 key 导致内存膨胀 */
+    private static final int MAX_LOCAL_WINDOWS = 100_000;
 
     @Before("@annotation(com.qblog.common.annotation.RateLimit)")
     public void doBefore(JoinPoint joinPoint) {
-        // Redis 未启用，跳过限流检查
-        if (redisTemplate == null) {
-            log.debug("Redis disabled, skipping rate limit check");
-            return;
-        }
-
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
         RateLimit rateLimit = method.getAnnotation(RateLimit.class);
 
-        if (rateLimit != null) {
-            String key = buildKey(rateLimit, signature);
-            long count = rateLimit.count();
-            long period = rateLimit.period();
+        if (rateLimit == null) {
+            return;
+        }
 
-            // 使用 Redis 实现滑动窗口限流
-            boolean allowed = checkRateLimit(key, count, period);
+        String key = buildKey(rateLimit, signature);
+        long count = rateLimit.count();
+        long period = rateLimit.period();
 
-            if (!allowed) {
-                log.warn("Rate limit exceeded for key: {}", key);
-                throw new BusinessException(429, "请求过于频繁，请稍后再试");
-            }
+        boolean allowed = redisTemplate != null
+                ? checkRateLimitWithRedis(key, count, period)
+                : checkRateLimitLocally(key, count, period);
+
+        if (!allowed) {
+            log.warn("Rate limit exceeded for key: {}", key);
+            throw new BusinessException(429, "请求过于频繁，请稍后再试");
         }
     }
 
@@ -72,7 +71,6 @@ public class RateLimitAspect {
     private String buildKey(RateLimit rateLimit, MethodSignature signature) {
         StringBuilder key = new StringBuilder(RATE_LIMIT_KEY_PREFIX);
 
-        // 添加自定义 key 或方法签名
         if (!rateLimit.key().isEmpty()) {
             key.append(rateLimit.key());
         } else {
@@ -81,7 +79,6 @@ public class RateLimitAspect {
                .append(signature.getName());
         }
 
-        // 根据限流类型添加后缀
         switch (rateLimit.limitType()) {
             case IP -> key.append(":").append(getClientIP());
             case USER -> key.append(":").append(getUserId());
@@ -92,9 +89,9 @@ public class RateLimitAspect {
     }
 
     /**
-     * 检查是否超过限流阈值（使用 Redis 计数器）
+     * Redis 固定窗口计数限流
      */
-    private boolean checkRateLimit(String key, long maxCount, long period) {
+    private boolean checkRateLimitWithRedis(String key, long maxCount, long period) {
         try {
             Long currentCount = redisTemplate.opsForValue().increment(key);
 
@@ -109,10 +106,29 @@ public class RateLimitAspect {
 
             return currentCount <= maxCount;
         } catch (Exception e) {
-            log.error("Rate limit check failed for key: {}", key, e);
-            // 限流检查失败时，允许请求通过（降级策略）
-            return true;
+            log.error("Rate limit check failed for key: {}, falling back to local limiter", key, e);
+            // Redis 故障时降级到本地限流，而不是直接放行
+            return checkRateLimitLocally(key, maxCount, period);
         }
+    }
+
+    /**
+     * 本地内存固定窗口限流（单机语义，足够应对单实例部署）
+     */
+    private boolean checkRateLimitLocally(String key, long maxCount, long period) {
+        if (localWindows.size() > MAX_LOCAL_WINDOWS) {
+            localWindows.clear();
+        }
+        long now = System.currentTimeMillis();
+        long windowMillis = period * 1000;
+
+        LocalWindow window = localWindows.compute(key, (k, w) -> {
+            if (w == null || now - w.start >= windowMillis) {
+                return new LocalWindow(now);
+            }
+            return w;
+        });
+        return window.count.incrementAndGet() <= maxCount;
     }
 
     /**
@@ -125,68 +141,27 @@ public class RateLimitAspect {
         if (attributes == null) {
             return "unknown";
         }
-
-        HttpServletRequest request = attributes.getRequest();
-        String ip = request.getHeader("X-Forwarded-For");
-
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-
-        // 处理多个 IP 的情况（取第一个）
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-
-        return ip;
+        return WebUtils.getClientIp(attributes.getRequest());
     }
 
     /**
-     * 获取用户 ID（从 JWT 或 SecurityContext 中获取）
+     * 获取用户 ID（从 SecurityContext 中获取，未登录时退化为 IP）
      */
     private String getUserId() {
-        // 从 SecurityContext 获取
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getDetails() instanceof Map) {
-            Map<String, Object> details = (Map<String, Object>) auth.getDetails();
-            if (details.containsKey("userId")) {
-                return String.valueOf(details.get("userId"));
-            }
+        Long userId = SecurityUtils.getCurrentUserId();
+        if (userId != null) {
+            return String.valueOf(userId);
         }
-
-        // 从 JWT Token 中获取
-        ServletRequestAttributes attributes =
-            (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-
-        if (attributes != null && jwtUtil != null) {
-            HttpServletRequest request = attributes.getRequest();
-            String token = getTokenFromRequest(request);
-
-            if (token != null && jwtUtil.validateToken(token)) {
-                try {
-                    Long userId = jwtUtil.getUserIdFromToken(token);
-                    return String.valueOf(userId);
-                } catch (Exception e) {
-                    log.debug("Failed to extract userId from token", e);
-                }
-            }
-        }
-
-        // 降级：使用IP
         return getClientIP();
     }
 
-    /**
-     * 从请求中获取 Token
-     */
-    private String getTokenFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
+    /** 本地固定窗口 */
+    private static final class LocalWindow {
+        final long start;
+        final AtomicLong count = new AtomicLong();
+
+        LocalWindow(long start) {
+            this.start = start;
         }
-        return null;
     }
 }

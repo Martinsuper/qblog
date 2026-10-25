@@ -31,6 +31,7 @@ CREATE TABLE `user` (
     `avatar` VARCHAR(255) DEFAULT NULL COMMENT '头像 URL',
     `role` TINYINT DEFAULT 0 COMMENT '角色：0-普通用户，1-管理员',
     `status` TINYINT DEFAULT 1 COMMENT '状态：0-禁用，1-正常',
+    `password_version` INT NOT NULL DEFAULT 0 COMMENT '密码版本：改密时 +1，用于失效旧 Token',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),

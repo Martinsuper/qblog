@@ -27,9 +27,11 @@ public class JwtUtil {
 
     @PostConstruct
     public void validateSecretKey() {
-        if (secret == null || secret.length() < 32) {
-            log.warn("JWT secret key is too short ({} chars). Recommended minimum: 32 chars for HS256",
-                secret == null ? 0 : secret.length());
+        // fail-fast：密钥过短直接拒绝启动，而不是仅告警后带病运行
+        if (secret == null || secret.trim().length() < 32) {
+            throw new IllegalStateException(String.format(
+                "JWT secret 长度不足（当前 %d 字符），HS256 至少需要 32 字符。请通过 JWT_SECRET 环境变量配置",
+                secret == null ? 0 : secret.trim().length()));
         }
     }
 
@@ -39,14 +41,16 @@ public class JwtUtil {
     }
 
     /**
-     * 生成 Token
+     * 生成 Token（携带角色与密码版本，用于服务端鉴权和改密后失效旧 Token）
      */
-    public String generateToken(Long userId, String username) {
+    public String generateToken(Long userId, String username, Integer role, Integer passwordVersion) {
         Date now = new Date();
         Date expirationDate = new Date(now.getTime() + expiration);
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("username", username)
+                .claim("role", role == null ? 0 : role)
+                .claim("pwdVer", passwordVersion == null ? 0 : passwordVersion)
                 .issuedAt(now)
                 .expiration(expirationDate)
                 .signWith(getSigningKey())
@@ -54,41 +58,24 @@ public class JwtUtil {
     }
 
     /**
-     * 从 Token 中获取用户 ID
+     * 解析 Token，无效或过期时返回 null（一次解析，避免重复验签）
      */
-    public Long getUserIdFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        return Long.parseLong(claims.getSubject());
-    }
-
-    /**
-     * 从 Token 中获取用户名
-     */
-    public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        return claims.get("username", String.class);
+    public Claims parseClaims(String token) {
+        try {
+            return Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**
      * 验证 Token 是否有效
      */
     public boolean validateToken(String token) {
-        try {
-            Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+        return parseClaims(token) != null;
     }
 }

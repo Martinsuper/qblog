@@ -57,6 +57,11 @@ public class User implements Serializable {
     private Integer status;
 
     /**
+     * 密码版本：改密时 +1，使已签发的旧 Token 全部失效
+     */
+    private Integer passwordVersion;
+
+    /**
      * 创建时间
      */
     @TableField(fill = FieldFill.INSERT)
