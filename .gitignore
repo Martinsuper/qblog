@@ -54,3 +54,10 @@ qblog-backup*
 deploy.sh
 redeploy.sh
 deploy-backend.sh
+# 运行时备份产物（目录通过 .gitkeep 保留）
+backend/backups/*
+!backend/backups/.gitkeep
+
+# 编辑器/工具备份文件
+*.bak
+*.compiled.css
