@@ -16,7 +16,7 @@
         </div>
       </div>
     </header>
-    <div class="demo-bar"><span><b>方案 G · 目录型知识库</b><span class="extra">　/　以阅读、检索与整理为中心</span></span><span>私人知识工作区 · 已连接服务器　 <button class="appearance-link" @click="$emit('appearance')">外观与布局 ↗</button></span></div>
+    <div class="demo-bar"><span><b>方案 G · 目录型知识库</b><span class="extra">&#12288;/&#12288;以阅读、检索与整理为中心</span></span><span>私人知识工作区 · 已连接服务器&#12288; <button class="appearance-link" @click="$emit('appearance')">外观与布局 ↗</button></span></div>
     <nav class="mobile-nav" aria-label="切换工作区域"><button v-for="(label, view) in viewLabels" :key="view" :class="{ active: mobileView === view }" @click="$emit('view', view)">{{ label }}</button></nav>
     <main class="app" :data-view="mobileView">
       <aside class="sidebar" aria-label="知识库导航">

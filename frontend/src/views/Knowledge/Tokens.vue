@@ -14,7 +14,19 @@ const base = new URL(import.meta.env.VITE_API_BASE_URL || '/api', location.origi
 const endpoint = `${base.href.replace(/\/$/, '')}/mcp`
 const tokens = ref([]), folders = ref([]), loading = ref(false), error = ref(false), createOpen = ref(false), creating = ref(false), secretOpen = ref(false), secret = ref('')
 const form = reactive({ name: '', days: 30, scopes: ['READ'], all: false, inbox: false, directoryIds: [] })
-async function load() { loading.value = true; error.value = false; try { const [t, f] = await Promise.all([listApiTokens(), listFolders()]); tokens.value = t.data; const flat = []; function visit(items, path = '') { for (const item of items) { const full = path ? `${path} / ${item.name}` : item.name; flat.push({ id: item.id, path: full }); visit(item.children || [], full) } } visit(f.data); folders.value = flat } catch { error.value = true } finally { loading.value = false } }
+function flattenFolders(items, path = '') {
+  return items.flatMap(item => {
+    const full = path ? `${path} / ${item.name}` : item.name
+    return [{ id: item.id, path: full }, ...flattenFolders(item.children || [], full)]
+  })
+}
+async function load() {
+  loading.value = true; error.value = false
+  try {
+    const [t, f] = await Promise.all([listApiTokens(), listFolders()])
+    tokens.value = t.data; folders.value = flattenFolders(f.data || [])
+  } catch { error.value = true } finally { loading.value = false }
+}
 function openCreate() { Object.assign(form, { name: '', days: 30, scopes: ['READ'], all: false, inbox: false, directoryIds: [] }); createOpen.value = true }
 async function create() { if (!form.name.trim() || !form.scopes.length || (!form.all && !form.inbox && !form.directoryIds.length)) { ElMessage.warning('请填写名称、权限及明确的目录范围'); return } creating.value = true; try { const res = await createApiToken({ name: form.name.trim(), expiresAt: new Date(Date.now() + form.days * 86400000).toISOString(), scopes: [...form.scopes], directoryScope: { all: form.all, inbox: !form.all && form.inbox, directoryIds: form.all ? [] : [...form.directoryIds] } }); secret.value = res.data.secret; createOpen.value = false; secretOpen.value = true; await load() } finally { creating.value = false } }
 async function revoke(row) { await ElMessageBox.confirm(`撤销「${row.name}」后，工具将立即失去访问权限。`, '撤销访问凭证'); await revokeApiToken(row.id); await load() }
