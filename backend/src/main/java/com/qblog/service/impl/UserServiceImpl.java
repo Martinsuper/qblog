@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
+
 
 /**
  * 用户服务实现
@@ -41,7 +41,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         // 用户不存在与密码错误返回相同提示，避免账号枚举
         if (user == null || !passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
-            throw new BusinessException(400, "用户名或密码错误");
+            throw new BusinessException(401, "用户名或密码错误");
         }
 
         if (user.getStatus() == null || user.getStatus() != 1) {
@@ -125,16 +125,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (userId == null) {
             return null;
         }
-        String key = CACHE_USER_PWD_VERSION + userId;
-        Integer cached = cacheService.get(key, Integer.class);
-        if (cached != null) {
-            return cached;
-        }
+        // Revocation data must not be cached: an in-flight cache fill after a password
+        // change could otherwise resurrect an old version for the cache TTL.
         User user = getById(userId);
-        // 用户已删除时返回 -1，可让其所有存量 Token 失效
-        Integer version = user == null ? -1 : getPasswordVersionValue(user);
-        cacheService.set(key, version, Duration.ofMinutes(5));
-        return version;
+        return user == null ? -1 : getPasswordVersionValue(user);
     }
 
     private Integer getPasswordVersionValue(User user) {

@@ -29,7 +29,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'markdown': ['markdown-it', 'highlight.js']
+          'markdown': ['markdown-it']
         }
       }
     },

@@ -9,6 +9,11 @@ import com.qblog.model.dto.BackupSettingsDTO;
 import com.qblog.model.vo.BackupVO;
 import com.qblog.model.vo.BackupSettingsVO;
 import com.qblog.service.BackupService;
+import com.qblog.service.CacheService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import com.qblog.util.JsonBackupExporter;
 import com.qblog.util.JsonBackupImporter;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +59,12 @@ public class BackupServiceImpl implements BackupService {
     private final ArticleMapper articleMapper;
     private final ArticleTagMapper articleTagMapper;
 
+    @Value("${backup.directory:backups}")
+    private String backupDirectory = "backups";
+
+    @Autowired
+    private CacheService cacheService;
+
     private Path backupDirPath;
     private Path settingsFilePath;
 
@@ -73,14 +84,14 @@ public class BackupServiceImpl implements BackupService {
     @PostConstruct
     public void init() {
         // 初始化备份目录
-        backupDirPath = Paths.get(BACKUP_DIR);
-        if (!Files.exists(backupDirPath)) {
-            try {
-                Files.createDirectories(backupDirPath);
-                log.info("创建备份目录：{}", BACKUP_DIR);
-            } catch (IOException e) {
-                log.error("创建备份目录失败", e);
-            }
+        backupDirPath = Paths.get(backupDirectory).toAbsolutePath().normalize();
+        try {
+            Files.createDirectories(backupDirPath);
+            // 实际探测写入权限；启动时失败而不是直到需要恢复数据才发现备份失效。
+            Path probe = Files.createTempFile(backupDirPath, ".writable-", ".tmp");
+            Files.delete(probe);
+        } catch (IOException e) {
+            throw new IllegalStateException("备份目录不可写：" + backupDirPath, e);
         }
 
         // 初始化设置文件路径
@@ -115,7 +126,7 @@ public class BackupServiceImpl implements BackupService {
     public BackupVO createBackup(String type, String description) {
         log.info("开始创建 JSON 备份，描述：{}", description);
 
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS")) + "-" + UUID.randomUUID().toString().substring(0, 8);
         String zipFilename = BACKUP_PREFIX + timestamp + ".zip";
         Path zipPath = backupDirPath.resolve(zipFilename);
 
@@ -164,8 +175,8 @@ public class BackupServiceImpl implements BackupService {
 
         List<BackupVO> backups = new ArrayList<>();
 
-        try {
-            Files.list(backupDirPath)
+        try (var paths = Files.list(backupDirPath)) {
+            paths
                 .filter(path -> {
                     String filename = path.getFileName().toString();
                     return filename.endsWith(".zip") && filename.startsWith(BACKUP_PREFIX);
@@ -184,7 +195,7 @@ public class BackupServiceImpl implements BackupService {
                         vo.setCreateTime(parseCreateTimeFromBackupId(backupId));
 
                         // 读取元数据
-                        Path metaPath = backupDirPath.resolve(backupId + ".meta");
+                        Path metaPath = resolveBackupPath(backupId, ".meta");
                         if (Files.exists(metaPath)) {
                             Properties meta = new Properties();
                             try (InputStream is = Files.newInputStream(metaPath)) {
@@ -235,7 +246,7 @@ public class BackupServiceImpl implements BackupService {
         log.debug("获取备份详情：{}", backupId);
 
         try {
-            Path backupPath = backupDirPath.resolve(backupId + ".zip");
+            Path backupPath = resolveBackupPath(backupId, ".zip");
 
             if (!Files.exists(backupPath)) {
                 throw new RuntimeException("备份文件不存在：" + backupId);
@@ -251,7 +262,7 @@ public class BackupServiceImpl implements BackupService {
             vo.setCreateTime(parseCreateTimeFromBackupId(backupId));
 
             // 读取元数据
-            Path metaPath = backupDirPath.resolve(backupId + ".meta");
+            Path metaPath = resolveBackupPath(backupId, ".meta");
             if (Files.exists(metaPath)) {
                 Properties meta = new Properties();
                 try (InputStream is = Files.newInputStream(metaPath)) {
@@ -271,7 +282,7 @@ public class BackupServiceImpl implements BackupService {
     public byte[] downloadBackup(String backupId) throws IOException {
         log.info("下载备份：{}", backupId);
 
-        Path backupPath = backupDirPath.resolve(backupId + ".zip");
+        Path backupPath = resolveBackupPath(backupId, ".zip");
 
         if (!Files.exists(backupPath)) {
             throw new RuntimeException("备份文件不存在：" + backupId);
@@ -281,6 +292,7 @@ public class BackupServiceImpl implements BackupService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void restoreBackup(String backupId) {
         log.info("开始恢复备份：{}", backupId);
 
@@ -298,6 +310,7 @@ public class BackupServiceImpl implements BackupService {
                 userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper
             );
             Map<String, Integer> counts = importer.importBackup(backupPath);
+            invalidateRestoredCaches();
 
             log.info("备份恢复完成：{}, 导入记录数：{}", backupId, counts);
         } catch (IOException e) {
@@ -312,11 +325,11 @@ public class BackupServiceImpl implements BackupService {
 
         try {
             // 删除 ZIP 文件
-            Path zipPath = backupDirPath.resolve(backupId + ".zip");
+            Path zipPath = resolveBackupPath(backupId, ".zip");
             Files.deleteIfExists(zipPath);
 
             // 删除元数据文件
-            Path metaPath = backupDirPath.resolve(backupId + ".meta");
+            Path metaPath = resolveBackupPath(backupId, ".meta");
             Files.deleteIfExists(metaPath);
 
             log.info("备份删除完成：{}", backupId);
@@ -327,6 +340,7 @@ public class BackupServiceImpl implements BackupService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public BackupVO importBackup(MultipartFile file) {
         log.info("导入备份文件：{}", file.getOriginalFilename());
 
@@ -346,7 +360,7 @@ public class BackupServiceImpl implements BackupService {
             throw new IllegalArgumentException("文件大小超过限制（100MB）");
         }
 
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS")) + "-" + UUID.randomUUID().toString().substring(0, 8);
         String filename = BACKUP_PREFIX + timestamp + ".zip";
 
         Path targetPath = backupDirPath.resolve(filename);
@@ -378,6 +392,7 @@ public class BackupServiceImpl implements BackupService {
                 userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper
             );
             Map<String, Integer> counts = importer.importBackup(targetPath);
+            invalidateRestoredCaches();
             log.info("备份导入并恢复完成：{}, 恢复记录数：{}", filename, counts);
 
             return getBackupDetail(BACKUP_PREFIX + timestamp);
@@ -391,12 +406,14 @@ public class BackupServiceImpl implements BackupService {
      * 验证是否为有效的 JSON 备份文件
      */
     private boolean isValidJsonBackup(Path zipPath) {
-        try (java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(Files.newInputStream(zipPath))) {
+        try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(zipPath.toFile())) {
+            Enumeration<? extends java.util.zip.ZipEntry> entries = zip.entries();
             java.util.zip.ZipEntry entry;
             boolean hasManifest = false;
             boolean hasDataDir = false;
 
-            while ((entry = zis.getNextEntry()) != null) {
+            while (entries.hasMoreElements()) {
+                entry = entries.nextElement();
                 String name = entry.getName();
                 if ("manifest.json".equals(name)) {
                     hasManifest = true;
@@ -404,7 +421,6 @@ public class BackupServiceImpl implements BackupService {
                 if (name.startsWith("data/") && name.endsWith(".json")) {
                     hasDataDir = true;
                 }
-                zis.closeEntry();
             }
 
             return hasManifest && hasDataDir;
@@ -534,8 +550,8 @@ public class BackupServiceImpl implements BackupService {
 
         log.info("清理过期备份，保留数量：{}", keepCount);
 
-        try {
-            List<Path> backups = Files.list(backupDirPath)
+        try (var paths = Files.list(backupDirPath)) {
+            List<Path> backups = paths
                 .filter(path -> {
                     String filename = path.getFileName().toString();
                     return filename.endsWith(".zip") && filename.startsWith(BACKUP_PREFIX);
@@ -564,6 +580,38 @@ public class BackupServiceImpl implements BackupService {
             }
         } catch (IOException e) {
             log.error("清理过期备份失败", e);
+        }
+    }
+
+    private Path resolveBackupPath(String backupId, String extension) {
+        if (backupId == null || !backupId.matches("qblog-backup-[0-9]{8}-[0-9]{6}(?:-[0-9]{3}-[a-f0-9]{8})?")) {
+            throw new IllegalArgumentException("非法备份 ID");
+        }
+        Path path = backupDirPath.resolve(backupId + extension).normalize();
+        if (!path.startsWith(backupDirPath) || Files.isSymbolicLink(path)) {
+            throw new IllegalArgumentException("非法备份路径");
+        }
+        return path;
+    }
+
+    private void invalidateRestoredCaches() {
+        Runnable invalidate = () -> {
+            // 不删除 article:views:* 计数器。
+            cacheService.deleteByPattern("article:detail:*");
+            cacheService.deleteByPattern("article:list:*");
+            cacheService.deleteByPattern("article:hot*");
+            cacheService.deleteByPattern("article:latest*");
+            cacheService.deleteByPattern("category:*");
+            cacheService.deleteByPattern("tag:*");
+            cacheService.deleteByPattern("user:*");
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() { invalidate.run(); }
+            });
+        } else {
+            invalidate.run();
         }
     }
 

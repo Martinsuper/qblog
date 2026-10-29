@@ -1,0 +1,89 @@
+# 服务器部署配置（ali.younote.top / 47.106.113.4）
+# 边缘入口是宿主机上的 Caddy（80/443），由它伺服 frontend/dist 并将 /api 反代到 127.0.0.1:8081，
+# 因此这里不部署前端 nginx 容器；后端镜像 qblog-backend:latest 在本地构建后 docker load 导入。
+# 启动：docker compose -p qblog -f docker-compose.server.yml --env-file .env up -d
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: qblog-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: qblog
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --default-time-zone=+8:00
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - qblog-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: qblog-redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - qblog-network
+
+  backend:
+    image: qblog-backend:latest
+    container_name: qblog-backend
+    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/qblog?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      BACKUP_DIRECTORY: /app/backups
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:8081:8081"   # 仅本机可访问，由 Caddy 反代；不暴露到公网
+    mem_limit: 600m             # 宿主机内存紧张（1.7G），限制后端占用，JVM 按容器内存的 75% 定堆
+    memswap_limit: 900m
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - backup_data:/app/backups
+      - upload_data:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8081/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - qblog-network
+
+volumes:
+  mysql_data:
+  redis_data:
+  backup_data:
+  upload_data:
+
+networks:
+  qblog-network:
+    driver: bridge

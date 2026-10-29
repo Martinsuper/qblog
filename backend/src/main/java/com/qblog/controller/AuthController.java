@@ -41,9 +41,8 @@ public class AuthController {
     @Operation(summary = "用户注册")
     @PostMapping("/register")
     @RateLimit(key = "register", period = 3600, count = 3, limitType = RateLimit.LimitType.IP)
-    public Result<Void> register(@Valid @RequestBody RegisterDTO registerDTO) {
-        userService.register(registerDTO);
-        return Result.success();
+    public Result<Void> register(@RequestBody(required = false) RegisterDTO registerDTO) {
+        throw new com.qblog.common.exception.BusinessException(403, "私人知识库不开放注册");
     }
 
     /**

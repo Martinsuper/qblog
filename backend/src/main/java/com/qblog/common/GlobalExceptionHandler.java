@@ -98,6 +98,36 @@ public class GlobalExceptionHandler {
         return Result.error(500, "数据库操作失败，请稍后重试");
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public Result<Void> handleUnreadable(org.springframework.http.converter.HttpMessageNotReadableException e, HttpServletResponse response) {
+        response.setStatus(400);
+        return Result.error(400, "无效的JSON请求");
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotSupportedException.class)
+    public Result<Void> handleMediaType(org.springframework.web.HttpMediaTypeNotSupportedException e, HttpServletResponse response) {
+        response.setStatus(415);
+        return Result.error(415, "Content-Type must be application/json");
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public Result<Void> handleMethod(org.springframework.web.HttpRequestMethodNotSupportedException e, HttpServletResponse response) {
+        response.setStatus(405);
+        return Result.error(405, "Method not supported");
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public Result<Void> handleAccessDenied(org.springframework.security.access.AccessDeniedException e, HttpServletResponse response) {
+        response.setStatus(403);
+        return Result.error(403, "无权限访问该资源");
+    }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public Result<Void> handleAuthentication(org.springframework.security.core.AuthenticationException e, HttpServletResponse response) {
+        response.setStatus(401);
+        return Result.error(401, "未授权，请先登录");
+    }
+
     /**
      * 处理运行时异常（未被其他处理器捕获的）
      */

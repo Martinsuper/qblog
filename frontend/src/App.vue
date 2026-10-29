@@ -1,7 +1,7 @@
 <template>
   <el-config-provider :locale="zhCn">
     <div class="app-wrapper" :class="{ 'admin-mode': isAdminRoute }">
-      <template v-if="!isAdminRoute">
+      <template v-if="!isStandaloneRoute">
         <Navbar />
         <main class="main-content">
           <div class="container">
@@ -34,9 +34,8 @@ import ReadingProgress from '@/components/ReadingProgress.vue'
 
 const route = useRoute()
 
-const isAdminRoute = computed(() => {
-  return route.path.startsWith('/admin')
-})
+const isAdminRoute = computed(() => route.path.startsWith('/admin'))
+const isStandaloneRoute = computed(() => route.meta.standalone || isAdminRoute.value)
 </script>
 
 <style>

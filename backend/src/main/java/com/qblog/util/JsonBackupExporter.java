@@ -172,8 +172,8 @@ public class JsonBackupExporter {
         Path targetUploads = filesDir.resolve("uploads");
         Files.createDirectories(targetUploads);
 
-        Files.walk(uploadsPath)
-            .filter(Files::isRegularFile)
+        try (var paths = Files.walk(uploadsPath)) {
+            paths.filter(Files::isRegularFile)
             .forEach(sourcePath -> {
                 try {
                     Path relativePath = uploadsPath.relativize(sourcePath);
@@ -184,6 +184,7 @@ public class JsonBackupExporter {
                     log.warn("复制文件失败: {}", sourcePath, e);
                 }
             });
+        }
 
         log.debug("复制上传文件完成");
     }
@@ -192,8 +193,9 @@ public class JsonBackupExporter {
      * 创建 ZIP 压缩包
      */
     private void createZipArchive(Path sourceDir, Path zipPath) throws IOException {
-        try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(zipPath))) {
-            Files.walk(sourceDir)
+        try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(zipPath));
+             var paths = Files.walk(sourceDir)) {
+            paths
                 .filter(Files::isRegularFile)
                 .forEach(file -> {
                     try {

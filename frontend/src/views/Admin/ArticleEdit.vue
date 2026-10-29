@@ -281,6 +281,7 @@ import {
 import { createArticle, updateArticle, getArticleDetail } from '@/api/article'
 import { getCategoryList } from '@/api/category'
 import { getTagList } from '@/api/tag'
+import { createArticleSaveQueue } from '@/utils/articleSaveQueue'
 
 const route = useRoute()
 const router = useRouter()
@@ -311,19 +312,13 @@ let debounceTimer = null
 
 // 防抖保存函数
 const debouncedSave = async () => {
-  if (!articleForm.title.trim() || !articleForm.content.trim()) return
+  if (!editorReady || saving.value || publishing.value ||
+      !articleForm.title.trim() || !articleForm.content.trim()) return
 
   try {
-    articleForm.status = 0
-    if (isEdit.value && articleForm.id) {
-      await updateArticle(articleForm.id, articleForm)
-    } else {
-      const res = await createArticle(articleForm)
-      if (res.data?.id) {
-        articleForm.id = res.data.id
-        isEdit.value = true
-      }
-    }
+    // Preserve publication state; unchanged forms never issue a write.
+    const saved = await saveQueue.save({ automatic: true })
+    if (!saved) return
     const now = new Date()
     autoSaveStatus.value = `自动保存 · ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
   } catch (error) {
@@ -450,8 +445,29 @@ const articleForm = reactive({
   coverImage: '',
   categoryId: null,
   tagIds: [],
-  status: 1
+  status: 0
 })
+
+let editorReady = false
+let editorDisposed = false
+const saveQueue = createArticleSaveQueue({
+  getSnapshot: () => {
+    const { id, ...fields } = articleForm
+    return { ...fields, tagIds: [...fields.tagIds] }
+  },
+  persist: async (snapshot) => {
+    if (articleForm.id) {
+      await updateArticle(articleForm.id, snapshot)
+    } else {
+      const res = await createArticle(snapshot)
+      if (!res.data?.id) throw new Error('保存成功但未返回文章 ID')
+      articleForm.id = res.data.id
+      isEdit.value = true
+    }
+  },
+  onSaved: (snapshot) => { articleForm.status = snapshot.status }
+})
+saveQueue.markSaved()
 
 // 渲染后的内容
 const renderedContent = computed(() => {
@@ -504,15 +520,20 @@ const handleEscKey = (e) => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('keydown', handleEscKey)
   fetchCategories()
   fetchTags()
-  fetchArticle()
+  const loaded = await fetchArticle()
+  if (editorDisposed || !loaded) return
+  editorReady = true
   startAutoSave()
 })
 
 onUnmounted(() => {
+  editorDisposed = true
+  editorReady = false
+  saveQueue.dispose()
   document.removeEventListener('keydown', handleEscKey)
   document.documentElement.classList.remove('editor-fullscreen')
   stopAutoSave()
@@ -845,7 +866,7 @@ const fetchArticle = async () => {
 
       if (!data) {
         ElMessage.warning('未获取到文章数据')
-        return
+        return false
       }
 
       // 直接逐个字段赋值，确保响应式更新
@@ -859,7 +880,8 @@ const fetchArticle = async () => {
       articleForm.tagIds = (data.tags || [])
         .map(t => Number(t.id))
         .filter(id => !isNaN(id) && id > 0)
-      articleForm.status = data.status || 1
+      articleForm.status = data.status ?? 0
+      saveQueue.markSaved()
 
       // 验证内容是否真的填充了
       if (data.content && articleForm.content === '') {
@@ -868,8 +890,10 @@ const fetchArticle = async () => {
     } catch (error) {
       console.error('获取文章失败:', error)
       ElMessage.error('获取文章失败：' + (error.message || '未知错误'))
+      return false
     }
   }
+  return true
 }
 
 const handleCoverSuccess = (response) => {
@@ -880,6 +904,7 @@ const handleCoverSuccess = (response) => {
 }
 
 const handleSaveDraft = async () => {
+  if (!editorReady || saving.value || publishing.value) return
   // 验证标题和内容
   if (!articleForm.title.trim()) {
     ElMessage.warning('请输入文章标题')
@@ -892,19 +917,7 @@ const handleSaveDraft = async () => {
 
   try {
     saving.value = true
-    articleForm.status = 0
-    // 如果有 ID 且是编辑模式，才调用更新接口
-    if (isEdit.value && articleForm.id) {
-      await updateArticle(articleForm.id, articleForm)
-    } else {
-      // 否则调用创建接口
-      const res = await createArticle(articleForm)
-      // 新建草稿后保存返回的 ID，后续更新使用
-      if (res.data?.id) {
-        articleForm.id = res.data.id
-        isEdit.value = true
-      }
-    }
+    await saveQueue.save({ status: 0 })
     ElMessage.success('草稿保存成功')
   } catch (error) {
     console.error('保存草稿失败:', error)
@@ -926,6 +939,7 @@ const closeSettingsModal = () => {
 
 // 发布文章（从模态框调用）
 const handlePublish = async () => {
+  if (!editorReady || saving.value || publishing.value) return
   if (!articleForm.title.trim()) {
     ElMessage.warning('请输入文章标题')
     return
@@ -939,14 +953,11 @@ const handlePublish = async () => {
 
   try {
     publishing.value = true
-    articleForm.status = 1
-    if (isEdit.value && articleForm.id) {
-      await updateArticle(articleForm.id, articleForm)
-      ElMessage.success('文章更新成功')
-    } else {
-      await createArticle(articleForm)
-      ElMessage.success('文章发布成功')
-    }
+    await saveQueue.save({ status: 1 })
+    // Do not let a delayed automatic save run after publishing/navigation.
+    stopAutoSave()
+    saveQueue.dispose()
+    ElMessage.success('文章发布成功')
     router.push('/admin/articles')
   } catch (error) {
     console.error('发布文章失败:', error)

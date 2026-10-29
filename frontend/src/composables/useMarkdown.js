@@ -1,6 +1,16 @@
 import MarkdownIt from 'markdown-it'
-import hljs from 'highlight.js'
-import { computed, ref, watch } from 'vue'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import xml from 'highlight.js/lib/languages/xml'
+import css from 'highlight.js/lib/languages/css'
+import json from 'highlight.js/lib/languages/json'
+import bash from 'highlight.js/lib/languages/bash'
+import java from 'highlight.js/lib/languages/java'
+import python from 'highlight.js/lib/languages/python'
+import sql from 'highlight.js/lib/languages/sql'
+import yaml from 'highlight.js/lib/languages/yaml'
+import { computed } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import {
   plantumlPlugin,
@@ -8,6 +18,10 @@ import {
   headingAnchorPlugin,
   codeCopyPlugin
 } from '@/utils/markdownPlugins'
+
+// 未注册的语言安全回退到纯文本，避免加载全部语言。
+Object.entries({ javascript, typescript, xml, css, json, bash, java, python, sql, yaml })
+  .forEach(([name, language]) => hljs.registerLanguage(name, language))
 
 // 缓存渲染器实例
 const rendererCache = new Map()
@@ -39,7 +53,7 @@ function createRenderer(theme) {
 
   // 添加安全链接校验（只允许 http/https/mailto 协议）
   md.validateLink = (url) => {
-    const allowed = /^https?:\/|mailto:/
+    const allowed = /^(?:https?:\/\/|mailto:)/i
     return allowed.test(url)
   }
 

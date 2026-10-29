@@ -1,13 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login, register, getCurrentUser } from '@/api/auth'
-import { getToken, setToken, clearToken } from '@/utils/auth'
-
-const USER_INFO_KEY = 'userInfo'
+import { getToken, setToken, clearToken, getCachedUserInfo, USER_INFO_KEY } from '@/utils/auth'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(getToken() || '')
-  const userInfo = ref(JSON.parse(localStorage.getItem(USER_INFO_KEY) || 'null'))
+  const userInfo = ref(getCachedUserInfo())
 
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => userInfo.value?.role === 1)
@@ -18,8 +16,13 @@ export const useUserStore = defineStore('user', () => {
     token.value = res.data
     setToken(res.data, !!loginForm.remember)
 
-    // 获取用户信息（失败不阻断登录流程）
-    await fetchUserInfo().catch((error) => console.error('获取用户信息失败:', error))
+    // 私人工作区必须成功校验实时身份，不能以旧缓存决定权限。
+    try {
+      await fetchUserInfo()
+    } catch (error) {
+      userLogout()
+      throw error
+    }
 
     return res
   }

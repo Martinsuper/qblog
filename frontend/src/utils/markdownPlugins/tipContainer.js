@@ -108,7 +108,7 @@ export function tipContainerPlugin(md) {
       const token = tokens[idx]
       const meta = token.meta || { title: defaultTitle, icon, color }
       return `<div class="custom-container ${meta.type || type}">
-  <p class="custom-container-title">${meta.icon} ${meta.title}</p>
+  <p class="custom-container-title">${icon} ${md.utils.escapeHtml(meta.title)}</p>
 `
     }
 

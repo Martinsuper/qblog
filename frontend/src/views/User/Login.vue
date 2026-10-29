@@ -1,7 +1,8 @@
 <template>
   <div class="login-container">
     <div class="login-card glass animate-fade-in-up">
-      <h2 class="login-title">用户登录</h2>
+      <h2 class="login-title">YOUNOTE</h2>
+      <p class="login-subtitle">登录你的私人知识库</p>
 
       <el-form ref="formRef" :model="loginForm" :rules="rules" class="login-form">
         <el-form-item prop="username">
@@ -46,7 +47,7 @@
 
         <div class="form-footer">
           <el-checkbox v-model="loginForm.remember" label="记住我" />
-          <router-link to="/register" class="register-link">注册账号</router-link>
+          <span class="private-label">私人空间 · 不开放注册</span>
         </div>
       </el-form>
     </div>
@@ -86,6 +87,11 @@ const handleLogin = async () => {
       loading.value = true
       try {
         await userStore.userLogin(loginForm)
+        if (!userStore.isAdmin) {
+          userStore.userLogout()
+          ElMessage.error('此私人知识库仅允许管理员账号访问')
+          return
+        }
         ElMessage.success('登录成功')
         router.push('/')
       } catch (error) {
@@ -125,6 +131,8 @@ const handleLogin = async () => {
   margin: 0 0 32px;
 }
 
+.login-subtitle { text-align:center; color:var(--text-secondary); font-size:13px; margin:-18px 0 28px; }
+.private-label { color:var(--text-tertiary); font-size:11px; }
 .login-form :deep(.el-form-item) {
   margin-bottom: 16px;
 }

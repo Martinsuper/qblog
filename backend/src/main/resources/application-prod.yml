@@ -21,19 +21,17 @@ spring:
       max-lifetime: 1800000
       connection-timeout: 30000
 
-  # Redis 配置（可选）
+  # 自定义开关；连接参数使用 Spring Boot 3 的 spring.data.redis
   redis:
-    enabled: ${REDIS_ENABLED:true}  # Redis 开关，默认启用。设为 false 时使用本地缓存
-    host: ${SPRING_REDIS_HOST:localhost}
-    port: ${SPRING_REDIS_PORT:6379}
-    password: ${SPRING_REDIS_PASSWORD:}
-    timeout: 10s
-    lettuce:
-      pool:
-        max-active: 50      # 生产环境更大的连接池
-        max-idle: 20
-        min-idle: 10
-        max-wait: 3000ms
+    enabled: ${REDIS_ENABLED:true}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:${SPRING_REDIS_HOST:localhost}}
+      port: ${SPRING_DATA_REDIS_PORT:${SPRING_REDIS_PORT:6379}}
+      password: ${SPRING_DATA_REDIS_PASSWORD:${SPRING_REDIS_PASSWORD:}}
+      database: ${SPRING_DATA_REDIS_DATABASE:0}
+      connect-timeout: 3s
+      timeout: 3s
 
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss

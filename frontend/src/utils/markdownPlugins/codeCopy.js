@@ -19,7 +19,7 @@ export function codeCopyPlugin(md) {
     let result = defaultFenceRenderer(tokens, idx, options, env, self)
 
     // 包装代码块并添加复制按钮
-    const language = info || 'text'
+    const language = escapeHtml(info || 'text')
     const languageLabel = `<span class="code-lang">${language}</span>`
     const copyButton = `<button class="code-copy-btn" data-code-id="${id}" title="复制代码">
       <svg class="copy-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">

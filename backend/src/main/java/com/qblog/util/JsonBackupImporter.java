@@ -73,6 +73,18 @@ public class JsonBackupImporter {
 
             // 读取并验证 manifest
             Map<String, Object> manifest = readManifest(manifestPath);
+            if (!"QBlog".equals(manifest.get("application")) || !"json".equals(manifest.get("format"))
+                    || !"2.0".equals(manifest.get("version"))) {
+                throw new IOException("不支持的备份格式或版本");
+            }
+            // 在数据库写入前验证所有数据文件，避免损坏的后续文件导致半恢复。
+            for (String table : List.of("user", "category", "tag", "article", "article_tag")) {
+                Path data = tempDir.resolve("data").resolve(table + ".json");
+                var tree = Files.isRegularFile(data) ? objectMapper.readTree(data.toFile()) : null;
+                if (tree == null || !tree.isArray()) {
+                    throw new IOException("备份缺少有效的数据文件：" + table);
+                }
+            }
             log.info("备份版本: {}, 时间: {}", manifest.get("version"), manifest.get("timestamp"));
 
             // 导入数据（按依赖顺序）
@@ -99,16 +111,45 @@ public class JsonBackupImporter {
     /**
      * 解压 ZIP 文件
      */
-    private void extractZip(Path zipPath, Path targetDir) throws IOException {
+    // 限制实际解压字节，不能信任 ZIP 声明的 size（也不能只限制上传压缩大小）。
+    private static final long MAX_ENTRY_BYTES = 64L * 1024 * 1024;
+    private static final long MAX_TOTAL_BYTES = 256L * 1024 * 1024;
+    private static final int MAX_ENTRIES = 10_000;
+
+    void extractZip(Path zipPath, Path targetDir) throws IOException {
+        Path root = targetDir.toAbsolutePath().normalize();
+        long total = 0;
+        int entries = 0;
+        Set<Path> seen = new HashSet<>();
+        byte[] buffer = new byte[8192];
         try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(zipPath))) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
-                Path entryPath = targetDir.resolve(entry.getName());
+                if (++entries > MAX_ENTRIES) throw new IOException("备份文件条目过多");
+                String name = entry.getName();
+                if (name.contains("\\") || name.matches("^[A-Za-z]:.*")) {
+                    throw new IOException("备份包含非法路径");
+                }
+                Path entryPath = root.resolve(name).normalize();
+                if (!entryPath.startsWith(root) || entryPath.equals(root) || !seen.add(entryPath)) {
+                    throw new IOException("备份包含越界或重复路径");
+                }
                 if (entry.isDirectory()) {
                     Files.createDirectories(entryPath);
                 } else {
                     Files.createDirectories(entryPath.getParent());
-                    Files.copy(zis, entryPath, StandardCopyOption.REPLACE_EXISTING);
+                    long size = 0;
+                    try (OutputStream out = Files.newOutputStream(entryPath, StandardOpenOption.CREATE_NEW)) {
+                        int read;
+                        while ((read = zis.read(buffer)) != -1) {
+                            size += read;
+                            total += read;
+                            if (size > MAX_ENTRY_BYTES || total > MAX_TOTAL_BYTES) {
+                                throw new IOException("备份解压大小超过限制");
+                            }
+                            out.write(buffer, 0, read);
+                        }
+                    }
                 }
                 zis.closeEntry();
             }
@@ -292,8 +333,8 @@ public class JsonBackupImporter {
         Path targetUploads = Paths.get("uploads");
         Files.createDirectories(targetUploads);
 
-        Files.walk(uploadsSource)
-            .filter(Files::isRegularFile)
+        try (var paths = Files.walk(uploadsSource)) {
+            paths.filter(Files::isRegularFile)
             .forEach(sourcePath -> {
                 try {
                     Path relativePath = uploadsSource.relativize(sourcePath);
@@ -304,6 +345,7 @@ public class JsonBackupImporter {
                     log.warn("恢复文件失败: {}", sourcePath, e);
                 }
             });
+        }
 
         log.info("上传文件恢复完成");
     }

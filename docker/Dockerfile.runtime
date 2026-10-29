@@ -1,0 +1,14 @@
+# Package the already tested Java 17 JAR for the production server.
+# docker buildx build --platform linux/amd64 -f docker/Dockerfile.runtime -t qblog-backend:VERSION --load backend
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+RUN groupadd -r qblog && useradd -r -g qblog qblog \
+    && mkdir -p /app/logs /app/backups /app/uploads \
+    && chown -R qblog:qblog /app \
+    && apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+COPY --chown=qblog:qblog target/qblog-*.jar /app/app.jar
+ENV BACKUP_DIRECTORY=/app/backups
+USER qblog
+EXPOSE 8081
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "/app/app.jar"]

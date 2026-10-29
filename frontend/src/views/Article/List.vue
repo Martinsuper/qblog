@@ -49,6 +49,7 @@ import { useRoute } from 'vue-router'
 import ArticleCard from '@/components/ArticleCard.vue'
 import Sidebar from '@/components/Sidebar.vue'
 import { getArticleList } from '@/api/article'
+import { createLatestRequest } from '@/utils/latestRequest'
 
 const props = defineProps({
   categoryId: {
@@ -80,7 +81,9 @@ const paginationLayout = computed(() =>
   isMobile.value ? 'prev, pager, next' : 'total, sizes, prev, pager, next, jumper'
 )
 
+const requests = createLatestRequest()
 const fetchArticles = async () => {
+  const isCurrent = requests.start()
   loading.value = true
   try {
     const catId = props.categoryId || (route.name === 'category' ? route.params.id : null)
@@ -93,12 +96,16 @@ const fetchArticles = async () => {
       tagId: tId,
       keyword: route.query.keyword || ''
     })
+    if (!isCurrent()) return
     articleList.value = res.data.records || []
     total.value = res.data.total || 0
   } catch (error) {
+    if (!isCurrent()) return
+    articleList.value = []
+    total.value = 0
     console.error('获取文章列表失败:', error)
   } finally {
-    loading.value = false
+    if (isCurrent()) loading.value = false
   }
 }
 
@@ -122,6 +129,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  requests.invalidate()
   mobileQuery.removeEventListener('change', updateIsMobile)
 })
 </script>

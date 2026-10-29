@@ -35,18 +35,17 @@ spring:
       connection-timeout: 30000
       leak-detection-threshold: 60000
 
-  # Redis 配置（可选）
+  # 自定义开关；连接参数使用 Spring Boot 3 的 spring.data.redis
   redis:
-    enabled: ${REDIS_ENABLED:false}  # Redis 开关，默认启用。设为 false 时使用本地缓存
-    host: localhost
-    port: 6379
-    timeout: 10s
-    lettuce:
-      pool:
-        max-active: 30      # 连接池最大连接数
-        max-idle: 15        # 连接池最大空闲连接数
-        min-idle: 5         # 连接池最小空闲连接数
-        max-wait: 5000ms    # 连接池最大阻塞等待时间
+    enabled: ${REDIS_ENABLED:false}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:${SPRING_REDIS_HOST:localhost}}
+      port: ${SPRING_DATA_REDIS_PORT:${SPRING_REDIS_PORT:6379}}
+      password: ${SPRING_DATA_REDIS_PASSWORD:${SPRING_REDIS_PASSWORD:}}
+      database: ${SPRING_DATA_REDIS_DATABASE:0}
+      connect-timeout: 3s
+      timeout: 3s
 
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
@@ -87,4 +86,5 @@ knife4j:
 
 # 备份配置
 backup:
+  directory: ${BACKUP_DIRECTORY:backups}
   cron: ${BACKUP_CRON:0 0 2 * * ?}  # 默认每天凌晨 2 点执行

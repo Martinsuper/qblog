@@ -18,7 +18,7 @@ export function plantumlPlugin(md) {
         return `<div class="plantuml-diagram"><img src="https://www.plantuml.com/plantuml/svg/${encoded}" alt="PlantUML Diagram" loading="lazy" /></div>`
       } catch (error) {
         console.error('PlantUML 渲染失败:', error)
-        return `<div class="plantuml-error">PlantUML 渲染失败：${error.message}</div>`
+        return `<div class="plantuml-error">PlantUML 渲染失败：${md.utils.escapeHtml(String(error.message))}</div>`
       }
     }
 

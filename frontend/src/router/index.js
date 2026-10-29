@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { getToken } from '@/utils/auth'
+import { getToken, getCachedUserInfo } from '@/utils/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -7,7 +7,8 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: () => import('@/views/Home/Index.vue')
+      component: () => import('@/views/Knowledge/Index.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true, standalone: true }
     },
     {
       path: '/articles',
@@ -47,18 +48,24 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      component: () => import('@/views/User/Login.vue')
+      component: () => import('@/views/User/Login.vue'),
+      meta: { standalone: true }
     },
     {
       path: '/register',
-      name: 'register',
-      component: () => import('@/views/User/Register.vue')
+      redirect: '/login'
+    },
+    {
+      path: '/settings/tokens',
+      name: 'knowledge-tokens',
+      component: () => import('@/views/Knowledge/Tokens.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true, standalone: true }
     },
     {
       path: '/user',
       name: 'user-center',
       redirect: '/user/profile',
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true, standalone: true },
       children: [
         {
           path: 'profile',
@@ -107,12 +114,12 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach((to, from, next) => {
   const token = getToken()
-  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+  const userInfo = getCachedUserInfo()
 
-  if (to.meta.requiresAuth && !token) {
+  if (to.path !== '/login' && !token) {
+    next({ path: '/login', query: { redirect: to.fullPath } })
+  } else if (to.path !== '/login' && userInfo && userInfo.role !== 1) {
     next('/login')
-  } else if (to.meta.requiresAdmin && userInfo.role !== 1) {
-    next('/')
   } else {
     next()
   }

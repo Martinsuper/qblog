@@ -14,7 +14,7 @@ import App from './App.vue'
 import router from './router'
 import 'virtual:uno.css'
 import './styles/index.css'
-import { initCodeCopyHandler } from './composables/useMarkdown'
+import { initCodeCopyHandler } from './utils/markdownPlugins/codeCopy'
 
 // 初始化代码复制功能
 initCodeCopyHandler()

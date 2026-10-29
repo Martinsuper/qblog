@@ -31,38 +31,28 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ObjectMapper objectMapper;
+    private final com.qblog.knowledge.KnowledgeTokenService knowledgeTokens;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
+            .logout(logout -> logout.disable())
+            .requestCache(cache -> cache.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // 登录/注册
-                .requestMatchers("/auth/login", "/auth/register").permitAll()
-                // 公开只读接口（博客内容对所有人可见）
-                .requestMatchers(HttpMethod.GET,
-                    "/articles", "/articles/hot", "/articles/latest",
-                    "/articles/{id}", "/articles/{id}/related",
-                    "/categories", "/categories/{id}",
-                    "/tags", "/tags/{id}").permitAll()
-                // 健康检查与 API 文档
-                .requestMatchers("/health", "/health/**",
-                    "/doc.html", "/doc/**", "/webjars/**",
-                    "/swagger-resources/**", "/v3/api-docs/**").permitAll()
-                // 管理接口：仅管理员（含草稿列表、备份的完整读写）
-                .requestMatchers("/articles/admin/**", "/backup/**").hasRole("ADMIN")
-                // 内容写操作：仅管理员
-                .requestMatchers(HttpMethod.POST, "/articles", "/categories", "/tags").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/articles/**", "/categories/**", "/tags/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/articles/**", "/categories/**", "/tags/**").hasRole("ADMIN")
-                // 其余接口（个人中心等）：登录即可
-                .anyRequest().authenticated())
+                .requestMatchers("/auth/register").denyAll()
+                .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                .requestMatchers(HttpMethod.GET, "/health").permitAll()
+                .requestMatchers("/mcp").hasAuthority("MCP_TOKEN")
+                // A private shared workspace: legacy reads, docs and readiness are admin-only too.
+                .anyRequest().hasRole("ADMIN"))
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(this::handleUnauthorized)
                 .accessDeniedHandler(this::handleForbidden))
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(new com.qblog.filter.KnowledgeApiTokenFilter(knowledgeTokens), JwtAuthenticationFilter.class);
 
         return http.build();
     }

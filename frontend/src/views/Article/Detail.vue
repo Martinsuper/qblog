@@ -102,7 +102,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { createLatestRequest } from '@/utils/latestRequest'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Calendar, View, Timer } from '@element-plus/icons-vue'
@@ -150,26 +151,33 @@ const toc = computed(() => {
   return result.slice(0, 30)
 })
 
+const requests = createLatestRequest()
 const fetchArticle = async () => {
+  const isCurrent = requests.start()
+  const id = route.params.id
   loading.value = true
+  article.value = null
+  relatedArticles.value = []
   try {
-    const res = await getArticleDetail(route.params.id)
+    const res = await getArticleDetail(id)
+    if (!isCurrent()) return
     article.value = res.data
-    fetchRelatedArticles()
+    fetchRelatedArticles(id, isCurrent)
   } catch (error) {
+    if (!isCurrent()) return
     console.error('获取文章失败:', error)
     ElMessage.error('获取文章失败')
   } finally {
-    loading.value = false
+    if (isCurrent()) loading.value = false
   }
 }
 
-const fetchRelatedArticles = async () => {
+const fetchRelatedArticles = async (id, isCurrent) => {
   try {
-    const res = await getRelatedArticles(route.params.id, { limit: 5 })
-    relatedArticles.value = res.data
+    const res = await getRelatedArticles(id, { limit: 5 })
+    if (isCurrent()) relatedArticles.value = res.data
   } catch (error) {
-    console.error('获取相关文章失败:', error)
+    if (isCurrent()) console.error('获取相关文章失败:', error)
   }
 }
 
@@ -185,6 +193,7 @@ watch(() => route.params.id, (newId) => {
 onMounted(() => {
   fetchArticle()
 })
+onUnmounted(() => requests.invalidate())
 </script>
 
 <style lang="scss" scoped>

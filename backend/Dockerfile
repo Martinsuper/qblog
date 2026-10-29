@@ -9,7 +9,12 @@ RUN mvn clean package -DskipTests -B
 # 运行阶段
 FROM eclipse-temurin:17-jre
 WORKDIR /app
-RUN groupadd -r qblog && useradd -r -g qblog qblog
+RUN groupadd -r qblog && useradd -r -g qblog qblog \
+    && mkdir -p /app/logs /app/backups /app/uploads \
+    && chown qblog:qblog /app/logs /app/backups /app/uploads \
+    && apt-get update && apt-get install -y --no-install-recommends curl \
+    && apt-get clean
+ENV BACKUP_DIRECTORY=/app/backups
 USER qblog
 COPY --from=builder /app/target/*.jar app.jar
 EXPOSE 8081

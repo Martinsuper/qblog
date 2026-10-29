@@ -31,8 +31,9 @@ import com.qblog.service.ViewCountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -40,7 +41,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -58,24 +58,16 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private final CacheService cacheService;
     private final ViewCountService viewCountService;
 
-    // 缓存 Key 前缀
     private static final String CACHE_ARTICLE_DETAIL = "article:detail:";
     private static final String CACHE_ARTICLE_HOT = "article:hot";
     private static final String CACHE_ARTICLE_LATEST = "article:latest";
-    private static final Duration TTL_DETAIL = Duration.ofMinutes(10);
-    private static final Duration TTL_HOT = Duration.ofMinutes(30);
-    private static final Duration TTL_LATEST = Duration.ofMinutes(5);
-    // 随机数生成器，用于防止缓存雪崩
-    private static final Random random = new Random();
 
-    /**
-     * 获取随机化 TTL（防止缓存雪崩）
-     * 在基础 TTL 上添加 ±10% 的随机偏移
-     */
-    private Duration getRandomizedTTL(Duration baseTtl) {
-        long baseMillis = baseTtl.toMillis();
-        long offset = (long) (baseMillis * 0.1 * (random.nextDouble() - 0.5) * 2);
-        return Duration.ofMillis(baseMillis + offset);
+    // List queries must not load the potentially large Markdown body.
+    private LambdaQueryWrapper<Article> listQuery() {
+        return new LambdaQueryWrapper<Article>().select(Article::getId, Article::getTitle,
+                Article::getSummary, Article::getCoverImage, Article::getAuthorId,
+                Article::getCategoryId, Article::getViewCount, Article::getStatus,
+                Article::getTop, Article::getCreateTime, Article::getUpdateTime, Article::getPublishTime);
     }
 
     @Override
@@ -83,7 +75,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                                                    Long tagId, String keyword, String sortBy, String sortOrder) {
         Page<Article> articlePage = new Page<>(page, size);
 
-        LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<>();
+        LambdaQueryWrapper<Article> wrapper = listQuery();
         // 默认只查询已发布的文章
         wrapper.eq(Article::getStatus, 1);
 
@@ -128,7 +120,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         Page<Article> resultPage = page(articlePage, wrapper);
 
         // 转换为 VO
-        Page<ArticleListItemVO> voPage = new Page<>();
+        Page<ArticleListItemVO> voPage = new Page<>(resultPage.getCurrent(), resultPage.getSize());
         voPage.setTotal(resultPage.getTotal());
         voPage.setRecords(convertToListItemVO(resultPage.getRecords()));
 
@@ -140,7 +132,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                                                         String keyword, Integer status, String sortBy, String sortOrder) {
         Page<Article> articlePage = new Page<>(page, size);
 
-        LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<>();
+        LambdaQueryWrapper<Article> wrapper = listQuery();
 
         // 管理员可以选择查看特定状态的文章，不传则查看除已删除外的全部文章
         if (status != null) {
@@ -195,10 +187,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             return assembleArticleVO(article);
         }
 
-        // 已发布文章：使用缓存击穿保护的方法获取详情（带随机TTL防止雪崩）
-        String cacheKey = CACHE_ARTICLE_DETAIL + id;
-        ArticleVO vo = cacheService.getOrLoad(cacheKey, ArticleVO.class, getRandomizedTTL(TTL_DETAIL),
-                () -> assembleArticleVO(article));
+        // Do not cache mutable publication snapshots. A stale in-flight loader can
+        // repopulate Redis after invalidation, including across application instances.
+        ArticleVO vo = assembleArticleVO(article);
 
         // 仅已发布文章计数浏览量（同一访客 24 小时内去重）
         if (vo != null && Integer.valueOf(1).equals(vo.getStatus())) {
@@ -274,6 +265,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
         save(article);
         saveArticleTags(article.getId(), articleDTO.getTagIds());
+        clearArticleCache(article.getId());
 
         return assembleArticleVO(article);
     }
@@ -319,6 +311,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteArticle(Long id) {
         Article article = getById(id);
         if (article != null) {
@@ -332,34 +325,15 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public List<ArticleListItemVO> getHotArticles(Integer limit) {
-        String cacheKey = CACHE_ARTICLE_HOT + ":" + limit;
-
-        // 使用缓存击穿保护的方法获取热门文章（带随机TTL防止雪崩）
-        return cacheService.getOrLoadList(cacheKey, ArticleListItemVO.class, getRandomizedTTL(TTL_HOT), () -> {
-            // 使用 Page 对象实现 LIMIT，避免 SQL 注入
-            Page<Article> page = new Page<>(1, limit);
-            List<Article> articles = page(page, new LambdaQueryWrapper<Article>()
-                    .eq(Article::getStatus, 1)
-                    .orderByDesc(Article::getViewCount))
-                    .getRecords();
-            return convertToListItemVO(articles);
-        });
+        // Prefer fresh publication state over distributed snapshot-cache races.
+        return convertToListItemVO(page(new Page<Article>(1, limit), listQuery()
+                .eq(Article::getStatus, 1).orderByDesc(Article::getViewCount)).getRecords());
     }
 
     @Override
     public List<ArticleListItemVO> getLatestArticles(Integer limit) {
-        String cacheKey = CACHE_ARTICLE_LATEST + ":" + limit;
-
-        // 使用缓存击穿保护的方法获取最新文章（带随机TTL防止雪崩）
-        return cacheService.getOrLoadList(cacheKey, ArticleListItemVO.class, getRandomizedTTL(TTL_LATEST), () -> {
-            // 使用 Page 对象实现 LIMIT，避免 SQL 注入
-            Page<Article> page = new Page<>(1, limit);
-            List<Article> articles = page(page, new LambdaQueryWrapper<Article>()
-                    .eq(Article::getStatus, 1)
-                    .orderByDesc(Article::getPublishTime))
-                    .getRecords();
-            return convertToListItemVO(articles);
-        });
+        return convertToListItemVO(page(new Page<Article>(1, limit), listQuery()
+                .eq(Article::getStatus, 1).orderByDesc(Article::getPublishTime)).getRecords());
     }
 
     @Override
@@ -405,7 +379,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
         // 查询文章详情
         List<Article> relatedArticles = list(
-            new LambdaQueryWrapper<Article>()
+            listQuery()
                 .in(Article::getId, relatedArticleIds)
                 .eq(Article::getStatus, 1)
         );
@@ -559,13 +533,20 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      * 清除文章相关缓存
      */
     private void clearArticleCache(Long articleId) {
-        // 清除文章详情缓存
-        cacheService.delete(CACHE_ARTICLE_DETAIL + articleId);
-
-        // 清除热门文章缓存（使用通配符删除所有热门文章缓存）
-        cacheService.deleteByPattern(CACHE_ARTICLE_HOT + "*");
-
-        // 清除最新文章缓存（使用通配符删除所有最新文章缓存）
-        cacheService.deleteByPattern(CACHE_ARTICLE_LATEST + "*");
+        Runnable invalidate = () -> {
+            cacheService.delete(CACHE_ARTICLE_DETAIL + articleId);
+            cacheService.deleteByPattern(CACHE_ARTICLE_HOT + "*");
+            cacheService.deleteByPattern(CACHE_ARTICLE_LATEST + "*");
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    invalidate.run();
+                }
+            });
+        } else {
+            invalidate.run();
+        }
     }
 }

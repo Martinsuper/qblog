@@ -4,6 +4,7 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
@@ -11,7 +12,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * Redis 为可选依赖，通过 spring.redis.enabled 配置控制
  */
 @SpringBootApplication(exclude = {
-    RedisAutoConfiguration.class  // 排除 Redis 自动配置，通过 RedisConfig 手动控制
+    RedisAutoConfiguration.class,              // 排除 Redis 自动配置，通过 RedisConfig 手动控制
+    RedisRepositoriesAutoConfiguration.class   // 未使用 Redis Repository；不排除会在启用 Redis 时要求 redisTemplate Bean
 })
 @MapperScan("com.qblog.mapper")
 @EnableScheduling

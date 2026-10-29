@@ -3,6 +3,7 @@ package com.qblog.filter;
 import com.qblog.common.JwtUtil;
 import com.qblog.common.SecurityUtils;
 import com.qblog.service.UserService;
+import com.qblog.entity.User;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -41,19 +42,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = getTokenFromRequest(request);
 
-        if (StringUtils.hasText(token)) {
+        // Integration credentials are authenticated only by the exact-/mcp API-token filter.
+        if (StringUtils.hasText(token) && !token.startsWith("qnt_")) {
             try {
                 Claims claims = jwtUtil.parseClaims(token);
                 if (claims != null) {
                     Long userId = Long.parseLong(claims.getSubject());
                     // 密码版本校验：改密后旧 Token 立即失效
                     Integer tokenPwdVer = claims.get("pwdVer", Integer.class);
-                    Integer currentPwdVer = userService.getPasswordVersion(userId);
+                    // Always read one current DB snapshot: never trust cached revocation data or token roles.
+                    User user = userService.getById(userId);
+                    Integer currentPwdVer = user == null ? null
+                            : (user.getPasswordVersion() == null ? 0 : user.getPasswordVersion());
                     Integer expected = tokenPwdVer == null ? 0 : tokenPwdVer;
 
-                    if (expected.equals(currentPwdVer)) {
-                        Integer role = claims.get("role", Integer.class);
-                        String username = claims.get("username", String.class);
+                    if (user != null && Integer.valueOf(1).equals(user.getStatus())
+                            && expected.equals(currentPwdVer)) {
+                        Integer role = user.getRole();
+                        String username = user.getUsername();
 
                         List<SimpleGrantedAuthority> authorities = role != null && role == 1
                                 ? List.of(new SimpleGrantedAuthority(SecurityUtils.ROLE_ADMIN))
