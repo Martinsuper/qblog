@@ -10,15 +10,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class UserPasswordVersionTest {
-    @Test void passwordRevocationNeverReadsOrRepopulatesCache() {
-        CacheService cache = mock(CacheService.class);
-        UserServiceImpl service = spy(new UserServiceImpl(mock(PasswordEncoder.class), mock(JwtUtil.class), cache));
+    @Test void passwordRevocationIsAlwaysReadFreshFromDatabase() {
+        UserServiceImpl service = spy(new UserServiceImpl(mock(PasswordEncoder.class), mock(JwtUtil.class)));
         User old = new User(); old.setPasswordVersion(0);
         User changed = new User(); changed.setPasswordVersion(1);
         doReturn(old, changed, null).when(service).getById(7L);
         assertEquals(0, service.getPasswordVersion(7L));
         assertEquals(1, service.getPasswordVersion(7L));
         assertEquals(-1, service.getPasswordVersion(7L));
-        verifyNoInteractions(cache);
     }
 }

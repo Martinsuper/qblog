@@ -10,7 +10,9 @@ import java.util.List;
 @RequestMapping("/knowledge/tokens")
 public class KnowledgeTokenController {
     private final KnowledgeTokenService tokens;
+    private final McpCallLog callLog;
     @GetMapping public Result<List<KnowledgeTokenService.TokenView>> list() { return Result.success(tokens.list()); }
+    @GetMapping("/calls") public Result<?> calls() { return Result.success(callLog.recent()); }
     @PostMapping public Result<KnowledgeTokenService.TokenView> create(@RequestBody KnowledgeTokenService.CreateRequest request) {
         return Result.success(tokens.create(request));
     }

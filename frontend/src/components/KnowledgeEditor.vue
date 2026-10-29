@@ -1,13 +1,65 @@
 <template>
-  <div class="knowledge-editor" :class="{ 'is-readonly': readonly }">
-    <div v-if="!readonly" class="format-bar" aria-label="文档格式">
-      <button type="button" :class="{ active: editor?.isActive('bold') }" title="加粗" @click="editor.chain().focus().toggleBold().run()"><b>B</b></button>
-      <button type="button" title="二级标题" @click="editor.chain().focus().toggleHeading({ level: 2 }).run()">H2</button>
-      <button type="button" title="无序列表" @click="editor.chain().focus().toggleBulletList().run()">☷</button>
-      <button type="button" title="代码块" @click="editor.chain().focus().toggleCodeBlock().run()">&lt;/&gt;</button>
-      <button type="button" title="插入表格" @click="editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()">▦</button>
-      <button type="button" title="撤销" :disabled="!editor?.can().undo()" @click="editor.chain().focus().undo().run()">↶</button>
-      <button type="button" title="重做" :disabled="!editor?.can().redo()" @click="editor.chain().focus().redo().run()">↷</button>
+  <div
+    class="knowledge-editor"
+    :class="{ 'is-readonly': readonly }"
+  >
+    <div
+      v-if="!readonly"
+      class="format-bar"
+      aria-label="文档格式"
+    >
+      <button
+        type="button"
+        :class="{ active: editor?.isActive('bold') }"
+        title="加粗"
+        @click="editor.chain().focus().toggleBold().run()"
+      >
+        <b>B</b>
+      </button>
+      <button
+        type="button"
+        title="二级标题"
+        @click="editor.chain().focus().toggleHeading({ level: 2 }).run()"
+      >
+        H2
+      </button>
+      <button
+        type="button"
+        title="无序列表"
+        @click="editor.chain().focus().toggleBulletList().run()"
+      >
+        ☷
+      </button>
+      <button
+        type="button"
+        title="代码块"
+        @click="editor.chain().focus().toggleCodeBlock().run()"
+      >
+        &lt;/&gt;
+      </button>
+      <button
+        type="button"
+        title="插入表格"
+        @click="editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()"
+      >
+        ▦
+      </button>
+      <button
+        type="button"
+        title="撤销"
+        :disabled="!editor?.can().undo()"
+        @click="editor.chain().focus().undo().run()"
+      >
+        ↶
+      </button>
+      <button
+        type="button"
+        title="重做"
+        :disabled="!editor?.can().redo()"
+        @click="editor.chain().focus().redo().run()"
+      >
+        ↷
+      </button>
       <span>点击正文直接编辑 · 自动保存</span>
     </div>
     <editor-content :editor="editor" />

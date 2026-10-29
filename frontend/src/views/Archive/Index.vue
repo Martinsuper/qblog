@@ -2,12 +2,23 @@
   <div class="py-6 md:py-8">
     <div class="card p-6 md:p-10">
       <div class="archive-header mb-10">
-        <h2 class="text-2xl font-bold mb-2" style="color: var(--text-primary)">时间轴</h2>
-        <p class="text-sm text-gray-500">目前共计 {{ total }} 篇文章。继续努力。</p>
+        <h2
+          class="text-2xl font-bold mb-2"
+          style="color: var(--text-primary)"
+        >
+          时间轴
+        </h2>
+        <p class="text-sm text-gray-500">
+          目前共计 {{ total }} 篇文章。继续努力。
+        </p>
       </div>
 
       <div class="timeline">
-        <div v-for="yearGroup in groupedArticles" :key="yearGroup.year" class="year-group">
+        <div
+          v-for="yearGroup in groupedArticles"
+          :key="yearGroup.year"
+          class="year-group"
+        >
           <div class="year-header">
             <span class="year-text">{{ yearGroup.year }}</span>
           </div>
@@ -25,17 +36,34 @@
         </div>
       </div>
 
-      <div v-if="loading" class="flex justify-center py-10">
-        <el-icon class="is-loading" :size="32">
+      <div
+        v-if="loading"
+        class="flex justify-center py-10"
+      >
+        <el-icon
+          class="is-loading"
+          :size="32"
+        >
           <Loading />
         </el-icon>
       </div>
       
-      <el-empty v-if="!loading && groupedArticles.length === 0" description="暂无文章" />
+      <el-empty
+        v-if="!loading && groupedArticles.length === 0"
+        description="暂无文章"
+      />
 
       <!-- 如果文章很多，可能需要分页或加载更多，NexT 通常是一次性加载或按年加载 -->
-      <div v-if="hasMore" class="mt-8 text-center">
-        <el-button :loading="loading" @click="fetchMore">加载更多</el-button>
+      <div
+        v-if="hasMore"
+        class="mt-8 text-center"
+      >
+        <el-button
+          :loading="loading"
+          @click="fetchMore"
+        >
+          加载更多
+        </el-button>
       </div>
     </div>
   </div>
@@ -45,6 +73,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
 import { getArticleList } from '@/api/article'
+import { parseDate } from '@/composables/useTime'
 
 const articles = ref([])
 const total = ref(0)
@@ -56,7 +85,8 @@ const hasMore = ref(false)
 const groupedArticles = computed(() => {
   const groups = {}
   articles.value.forEach(article => {
-    const date = new Date(article.publishTime || article.createTime)
+    const date = parseDate(article.publishTime || article.createTime)
+    if (!date) return
     const year = date.getFullYear()
     if (!groups[year]) {
       groups[year] = []
@@ -73,7 +103,8 @@ const groupedArticles = computed(() => {
 })
 
 const formatDate = (dateStr) => {
-  const date = new Date(dateStr)
+  const date = parseDate(dateStr)
+  if (!date) return ''
   const month = (date.getMonth() + 1).toString().padStart(2, '0')
   const day = date.getDate().toString().padStart(2, '0')
   return `${month}-${day}`
@@ -100,6 +131,7 @@ const fetchArticles = async () => {
 }
 
 const fetchMore = () => {
+  if (loading.value) return
   currentPage.value++
   fetchArticles()
 }

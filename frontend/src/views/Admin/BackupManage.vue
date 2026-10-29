@@ -1,19 +1,36 @@
 <template>
-  <div class="backup-manage" v-loading="loading">
+  <div
+    v-loading="loading"
+    class="backup-manage"
+  >
     <!-- 自动备份设置 -->
-    <el-card shadow="hover" class="mb-4">
+    <el-card
+      shadow="hover"
+      class="mb-4"
+    >
       <template #header>
         <div class="card-header">
           <span class="card-title">⚙️ 自动备份设置</span>
-          <el-tag :type="settings.enabled ? 'success' : 'info'" size="small">
+          <el-tag
+            :type="settings.enabled ? 'success' : 'info'"
+            size="small"
+          >
             {{ settings.enabled ? '已启用' : '已禁用' }}
           </el-tag>
         </div>
       </template>
 
-      <el-form :model="settingsForm" label-width="120px" size="default">
+      <el-form
+        :model="settingsForm"
+        label-width="120px"
+        size="default"
+      >
         <el-row :gutter="20">
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col
+            :xs="24"
+            :sm="12"
+            :md="8"
+          >
             <el-form-item label="启用自动备份">
               <el-switch
                 v-model="settingsForm.enabled"
@@ -23,17 +40,39 @@
             </el-form-item>
           </el-col>
 
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col
+            :xs="24"
+            :sm="12"
+            :md="8"
+          >
             <el-form-item label="备份频率">
-              <el-select v-model="settingsForm.frequency" placeholder="请选择备份频率" style="width: 100%">
-                <el-option label="每小时" value="hourly" />
-                <el-option label="每天" value="daily" />
-                <el-option label="每周" value="weekly" />
+              <el-select
+                v-model="settingsForm.frequency"
+                placeholder="请选择备份频率"
+                style="width: 100%"
+              >
+                <el-option
+                  label="每小时"
+                  value="hourly"
+                />
+                <el-option
+                  label="每天"
+                  value="daily"
+                />
+                <el-option
+                  label="每周"
+                  value="weekly"
+                />
               </el-select>
             </el-form-item>
           </el-col>
 
-          <el-col :xs="24" :sm="12" :md="8" v-if="settingsForm.frequency !== 'hourly'">
+          <el-col
+            v-if="settingsForm.frequency !== 'hourly'"
+            :xs="24"
+            :sm="12"
+            :md="8"
+          >
             <el-form-item label="备份时间">
               <el-time-picker
                 v-model="backupTime"
@@ -45,21 +84,55 @@
             </el-form-item>
           </el-col>
 
-          <el-col :xs="24" :sm="12" :md="8" v-if="settingsForm.frequency === 'weekly'">
+          <el-col
+            v-if="settingsForm.frequency === 'weekly'"
+            :xs="24"
+            :sm="12"
+            :md="8"
+          >
             <el-form-item label="备份星期">
-              <el-select v-model="settingsForm.dayOfWeek" placeholder="选择星期" style="width: 100%">
-                <el-option label="周日" :value="0" />
-                <el-option label="周一" :value="1" />
-                <el-option label="周二" :value="2" />
-                <el-option label="周三" :value="3" />
-                <el-option label="周四" :value="4" />
-                <el-option label="周五" :value="5" />
-                <el-option label="周六" :value="6" />
+              <el-select
+                v-model="settingsForm.dayOfWeek"
+                placeholder="选择星期"
+                style="width: 100%"
+              >
+                <el-option
+                  label="周日"
+                  :value="0"
+                />
+                <el-option
+                  label="周一"
+                  :value="1"
+                />
+                <el-option
+                  label="周二"
+                  :value="2"
+                />
+                <el-option
+                  label="周三"
+                  :value="3"
+                />
+                <el-option
+                  label="周四"
+                  :value="4"
+                />
+                <el-option
+                  label="周五"
+                  :value="5"
+                />
+                <el-option
+                  label="周六"
+                  :value="6"
+                />
               </el-select>
             </el-form-item>
           </el-col>
 
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col
+            :xs="24"
+            :sm="12"
+            :md="8"
+          >
             <el-form-item label="保留数量">
               <el-input-number
                 v-model="settingsForm.keepCount"
@@ -71,20 +144,39 @@
             </el-form-item>
           </el-col>
 
-          <el-col :xs="24" :sm="12" :md="8">
+          <el-col
+            :xs="24"
+            :sm="12"
+            :md="8"
+          >
             <el-form-item label="备份类型">
-              <el-select v-model="settingsForm.backupType" placeholder="选择备份类型" style="width: 100%">
-                <el-option label="JSON 数据备份" value="json" />
+              <el-select
+                v-model="settingsForm.backupType"
+                placeholder="选择备份类型"
+                style="width: 100%"
+              >
+                <el-option
+                  label="JSON 数据备份"
+                  value="json"
+                />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
 
         <el-form-item>
-          <el-button type="primary" @click="saveSettings" :loading="savingSettings">
+          <el-button
+            type="primary"
+            :loading="savingSettings"
+            @click="saveSettings"
+          >
             保存设置
           </el-button>
-          <el-text type="info" style="margin-left: 12px" v-if="settings.nextBackupTime">
+          <el-text
+            v-if="settings.nextBackupTime"
+            type="info"
+            style="margin-left: 12px"
+          >
             下次备份时间：{{ settings.nextBackupTime }}
           </el-text>
         </el-form-item>
@@ -92,12 +184,19 @@
     </el-card>
 
     <!-- 备份操作区 -->
-    <el-card shadow="hover" class="mb-4">
+    <el-card
+      shadow="hover"
+      class="mb-4"
+    >
       <template #header>
         <div class="card-header">
           <span class="card-title">📦 备份管理</span>
           <div class="card-actions">
-            <el-button type="primary" @click="handleCreateBackup" :loading="creatingBackup">
+            <el-button
+              type="primary"
+              :loading="creatingBackup"
+              @click="handleCreateBackup"
+            >
               <el-icon><Plus /></el-icon>
               立即备份
             </el-button>
@@ -111,40 +210,91 @@
               accept=".zip"
               style="display: none"
               @change="handleImportFile"
-            />
+            >
           </div>
         </div>
       </template>
 
       <!-- 备份列表 -->
-      <el-table :data="backups" style="width: 100%" v-loading="loading">
-        <el-table-column prop="filename" label="文件名" min-width="200" />
-        <el-table-column prop="type" label="类型" width="100">
+      <el-table
+        v-loading="loading"
+        :data="backups"
+        style="width: 100%"
+      >
+        <el-table-column
+          prop="filename"
+          label="文件名"
+          min-width="200"
+        />
+        <el-table-column
+          prop="type"
+          label="类型"
+          width="100"
+        >
           <template #default="{ row }">
-            <el-tag type="primary" size="small">
+            <el-tag
+              type="primary"
+              size="small"
+            >
               {{ row.type === 'json' ? 'JSON' : row.type }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="formattedSize" label="大小" width="100" />
-        <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column
+          prop="formattedSize"
+          label="大小"
+          width="100"
+        />
+        <el-table-column
+          prop="createTime"
+          label="创建时间"
+          width="180"
+        />
+        <el-table-column
+          prop="description"
+          label="描述"
+          min-width="150"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="操作"
+          width="280"
+          fixed="right"
+        >
           <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="handleDownload(row)">
+            <el-button
+              link
+              type="primary"
+              size="small"
+              @click="handleDownload(row)"
+            >
               下载
             </el-button>
-            <el-button link type="success" size="small" @click="handleRestore(row)" :loading="row.restoring">
+            <el-button
+              link
+              type="success"
+              size="small"
+              :loading="row.restoring"
+              @click="handleRestore(row)"
+            >
               恢复
             </el-button>
-            <el-button link type="danger" size="small" @click="handleDelete(row)">
+            <el-button
+              link
+              type="danger"
+              size="small"
+              @click="handleDelete(row)"
+            >
               删除
             </el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <el-empty v-if="backups.length === 0" description="暂无备份记录" />
+      <el-empty
+        v-if="backups.length === 0"
+        description="暂无备份记录"
+      />
     </el-card>
   </div>
 </template>

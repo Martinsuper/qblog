@@ -8,17 +8,17 @@ import com.qblog.mapper.UserMapper;
 import com.qblog.model.dto.BackupSettingsDTO;
 import com.qblog.model.vo.BackupVO;
 import com.qblog.model.vo.BackupSettingsVO;
+import com.qblog.common.exception.ResourceNotFoundException;
 import com.qblog.service.BackupService;
-import com.qblog.service.CacheService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import com.qblog.util.JsonBackupExporter;
 import com.qblog.util.JsonBackupImporter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -62,23 +62,27 @@ public class BackupServiceImpl implements BackupService {
     @Value("${backup.directory:backups}")
     private String backupDirectory = "backups";
 
-    @Autowired
-    private CacheService cacheService;
+    @Value("${upload.directory:uploads}")
+    private String uploadDirectory = "uploads";
 
     private Path backupDirPath;
     private Path settingsFilePath;
+
+    private final TransactionTemplate transactionTemplate;
 
     @Autowired
     public BackupServiceImpl(UserMapper userMapper,
                              CategoryMapper categoryMapper,
                              TagMapper tagMapper,
                              ArticleMapper articleMapper,
-                             ArticleTagMapper articleTagMapper) {
+                             ArticleTagMapper articleTagMapper,
+                             TransactionTemplate transactionTemplate) {
         this.userMapper = userMapper;
         this.categoryMapper = categoryMapper;
         this.tagMapper = tagMapper;
         this.articleMapper = articleMapper;
         this.articleTagMapper = articleTagMapper;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @PostConstruct
@@ -123,6 +127,7 @@ public class BackupServiceImpl implements BackupService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public BackupVO createBackup(String type, String description) {
         log.info("开始创建 JSON 备份，描述：{}", description);
 
@@ -279,43 +284,54 @@ public class BackupServiceImpl implements BackupService {
     }
 
     @Override
-    public byte[] downloadBackup(String backupId) throws IOException {
+    public Resource downloadBackup(String backupId) throws IOException {
         log.info("下载备份：{}", backupId);
 
         Path backupPath = resolveBackupPath(backupId, ".zip");
 
         if (!Files.exists(backupPath)) {
-            throw new RuntimeException("备份文件不存在：" + backupId);
+            throw new ResourceNotFoundException("备份文件不存在：" + backupId);
         }
 
-        return Files.readAllBytes(backupPath);
+        // 流式返回，避免整个 zip 读入堆内存
+        return new FileSystemResource(backupPath);
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void restoreBackup(String backupId) {
         log.info("开始恢复备份：{}", backupId);
 
+        BackupVO backup = getBackupDetail(backupId);
+        Path backupPath = backupDirPath.resolve(backup.getFilename());
+
+        if (!Files.exists(backupPath)) {
+            throw new ResourceNotFoundException("备份文件不存在：" + backupId);
+        }
+
+        JsonBackupImporter importer = new JsonBackupImporter(
+            userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper, uploadDirectory
+        );
+
+        // 解压与校验不占数据库事务；清表+重放在一个短事务内完成（快照语义）
+        JsonBackupImporter.ParsedBackup parsed;
         try {
-            // 获取备份详情
-            BackupVO backup = getBackupDetail(backupId);
-            Path backupPath = backupDirPath.resolve(backup.getFilename());
-
-            if (!Files.exists(backupPath)) {
-                throw new RuntimeException("备份文件不存在：" + backupId);
-            }
-
-            // 使用 JSON 导入器恢复数据
-            JsonBackupImporter importer = new JsonBackupImporter(
-                userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper
-            );
-            Map<String, Integer> counts = importer.importBackup(backupPath);
-            invalidateRestoredCaches();
-
-            log.info("备份恢复完成：{}, 导入记录数：{}", backupId, counts);
+            parsed = importer.parse(backupPath);
         } catch (IOException e) {
-            log.error("恢复备份失败：{}", backupId, e);
-            throw new RuntimeException("恢复备份失败：" + e.getMessage(), e);
+            log.error("备份解析失败：{}", backupId, e);
+            throw new RuntimeException("备份解析失败：" + e.getMessage(), e);
+        }
+
+        try {
+            Map<String, Integer> counts = transactionTemplate.execute(status -> {
+                try {
+                    return importer.restore(parsed);
+                } catch (IOException e) {
+                    throw new RuntimeException("恢复备份失败：" + e.getMessage(), e);
+                }
+            });
+            log.info("备份恢复完成：{}, 导入记录数：{}", backupId, counts);
+        } finally {
+            parsed.close();
         }
     }
 
@@ -340,7 +356,6 @@ public class BackupServiceImpl implements BackupService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public BackupVO importBackup(MultipartFile file) {
         log.info("导入备份文件：{}", file.getOriginalFilename());
 
@@ -386,13 +401,29 @@ public class BackupServiceImpl implements BackupService {
                 meta.store(os, "Backup Metadata");
             }
 
-            // 立即恢复数据到数据库
+            // 立即恢复数据到数据库（解压校验在事务外，清表+重放在短事务内）
             log.info("开始从导入的备份恢复数据...");
             JsonBackupImporter importer = new JsonBackupImporter(
-                userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper
+                userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper, uploadDirectory
             );
-            Map<String, Integer> counts = importer.importBackup(targetPath);
-            invalidateRestoredCaches();
+            JsonBackupImporter.ParsedBackup parsed;
+            try {
+                parsed = importer.parse(targetPath);
+            } catch (IOException e) {
+                throw new RuntimeException("备份解析失败：" + e.getMessage(), e);
+            }
+            Map<String, Integer> counts;
+            try {
+                counts = transactionTemplate.execute(status -> {
+                    try {
+                        return importer.restore(parsed);
+                    } catch (IOException e) {
+                        throw new RuntimeException("恢复备份失败：" + e.getMessage(), e);
+                    }
+                });
+            } finally {
+                parsed.close();
+            }
             log.info("备份导入并恢复完成：{}, 恢复记录数：{}", filename, counts);
 
             return getBackupDetail(BACKUP_PREFIX + timestamp);
@@ -509,6 +540,16 @@ public class BackupServiceImpl implements BackupService {
         }
     }
 
+    @Override
+    public String resolveCronExpression() {
+        try {
+            return calculateCronExpression(getSettings());
+        } catch (Exception e) {
+            log.warn("读取备份定时设置失败，使用默认 cron", e);
+            return "0 0 2 * * ?";
+        }
+    }
+
     /**
      * 计算 cron 表达式
      */
@@ -528,7 +569,6 @@ public class BackupServiceImpl implements BackupService {
     /**
      * 定时备份任务
      */
-    @Scheduled(cron = "${backup.cron:0 0 2 * * ?}")
     @Override
     public void scheduledBackup() {
         Properties props = loadSettings();
@@ -594,26 +634,6 @@ public class BackupServiceImpl implements BackupService {
         return path;
     }
 
-    private void invalidateRestoredCaches() {
-        Runnable invalidate = () -> {
-            // 不删除 article:views:* 计数器。
-            cacheService.deleteByPattern("article:detail:*");
-            cacheService.deleteByPattern("article:list:*");
-            cacheService.deleteByPattern("article:hot*");
-            cacheService.deleteByPattern("article:latest*");
-            cacheService.deleteByPattern("category:*");
-            cacheService.deleteByPattern("tag:*");
-            cacheService.deleteByPattern("user:*");
-        };
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() { invalidate.run(); }
-            });
-        } else {
-            invalidate.run();
-        }
-    }
 
     /**
      * 格式化文件大小

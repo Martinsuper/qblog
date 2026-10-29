@@ -13,7 +13,6 @@ import com.qblog.model.dto.ChangePasswordDTO;
 import com.qblog.model.dto.LoginDTO;
 import com.qblog.model.dto.RegisterDTO;
 import com.qblog.model.vo.UserVO;
-import com.qblog.service.CacheService;
 import com.qblog.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,9 +29,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final CacheService cacheService;
 
-    private static final String CACHE_USER_PWD_VERSION = "user:pwdver:";
 
     @Override
     public String login(LoginDTO loginDTO) {
@@ -116,8 +113,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 密码版本 +1，使所有已签发的旧 Token 立即失效
         user.setPasswordVersion(getPasswordVersionValue(user) + 1);
         updateById(user);
-
-        cacheService.delete(CACHE_USER_PWD_VERSION + userId);
     }
 
     @Override

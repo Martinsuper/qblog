@@ -2,9 +2,14 @@
   <div class="tag-manage">
     <div class="manage-card">
       <div class="card-header">
-        <h3 class="card-title">标签管理</h3>
+        <h3 class="card-title">
+          标签管理
+        </h3>
         <div class="card-actions">
-          <el-button type="primary" @click="handleAdd">
+          <el-button
+            type="primary"
+            @click="handleAdd"
+          >
             <el-icon><Plus /></el-icon>
             新增标签
           </el-button>
@@ -12,14 +17,42 @@
       </div>
 
       <!-- 表格 -->
-      <div class="table-container" v-loading="loading">
+      <div
+        v-loading="loading"
+        class="table-container"
+      >
         <!-- 表格头部 -->
         <div class="table-header">
-          <div class="header-cell" style="width: 80px;">ID</div>
-          <div class="header-cell" style="flex: 1;">标签名称</div>
-          <div class="header-cell" style="width: 120px;">文章数量</div>
-          <div class="header-cell" style="width: 180px;">创建时间</div>
-          <div class="header-cell" style="width: 200px;">操作</div>
+          <div
+            class="header-cell"
+            style="width: 80px;"
+          >
+            ID
+          </div>
+          <div
+            class="header-cell"
+            style="flex: 1;"
+          >
+            标签名称
+          </div>
+          <div
+            class="header-cell"
+            style="width: 120px;"
+          >
+            文章数量
+          </div>
+          <div
+            class="header-cell"
+            style="width: 180px;"
+          >
+            创建时间
+          </div>
+          <div
+            class="header-cell"
+            style="width: 200px;"
+          >
+            操作
+          </div>
         </div>
 
         <!-- 表格内容 -->
@@ -29,21 +62,55 @@
             :key="item.id"
             class="table-row"
           >
-            <div class="row-cell" style="width: 80px;">{{ item.id }}</div>
-            <div class="row-cell" style="flex: 1;">{{ item.name }}</div>
-            <div class="row-cell" style="width: 120px;">{{ item.articleCount || 0 }}</div>
-            <div class="row-cell" style="width: 180px;">{{ formatDate(item.createTime) }}</div>
-            <div class="row-cell actions" style="width: 200px;">
-              <el-button link type="primary" @click="handleEdit(item)">
+            <div
+              class="row-cell"
+              style="width: 80px;"
+            >
+              {{ item.id }}
+            </div>
+            <div
+              class="row-cell"
+              style="flex: 1;"
+            >
+              {{ item.name }}
+            </div>
+            <div
+              class="row-cell"
+              style="width: 120px;"
+            >
+              {{ item.articleCount || 0 }}
+            </div>
+            <div
+              class="row-cell"
+              style="width: 180px;"
+            >
+              {{ formatDateTime(item.createTime) }}
+            </div>
+            <div
+              class="row-cell actions"
+              style="width: 200px;"
+            >
+              <el-button
+                link
+                type="primary"
+                @click="handleEdit(item)"
+              >
                 编辑
               </el-button>
-              <el-button link type="danger" @click="handleDelete(item)">
+              <el-button
+                link
+                type="danger"
+                @click="handleDelete(item)"
+              >
                 删除
               </el-button>
             </div>
           </div>
 
-          <div v-if="!loading && tags.length === 0" class="empty-data">
+          <div
+            v-if="!loading && tags.length === 0"
+            class="empty-data"
+          >
             暂无标签数据
           </div>
         </div>
@@ -63,7 +130,10 @@
         :rules="formRules"
         label-width="80px"
       >
-        <el-form-item label="标签名称" prop="name">
+        <el-form-item
+          label="标签名称"
+          prop="name"
+        >
           <el-input
             v-model="formData.name"
             placeholder="请输入标签名称"
@@ -73,8 +143,14 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">
+        <el-button @click="dialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="submitting"
+          @click="handleSubmit"
+        >
           确定
         </el-button>
       </template>
@@ -87,6 +163,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getTagList, createTag, updateTag, deleteTag } from '@/api/tag'
+import { formatDateTime } from '@/composables/useTime'
 
 // 状态管理
 const loading = ref(false)
@@ -108,30 +185,14 @@ const formRules = {
   ]
 }
 
-// 日期格式化函数
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return dateStr
-
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  const seconds = String(date.getSeconds()).padStart(2, '0')
-
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-}
-
 const fetchTags = async () => {
   loading.value = true
   try {
     const res = await getTagList()
     tags.value = res.data || []
   } catch (error) {
+    // 失败提示由 axios 拦截器统一弹出
     console.error('获取标签失败:', error)
-    ElMessage.error('获取标签失败')
   } finally {
     loading.value = false
   }
@@ -167,7 +228,6 @@ const handleDelete = async (row) => {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除失败:', error)
-      ElMessage.error('删除失败')
     }
   }
 }
@@ -196,7 +256,6 @@ const handleSubmit = async () => {
       await fetchTags()
     } catch (error) {
       console.error('提交失败:', error)
-      ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
     } finally {
       submitting.value = false
     }

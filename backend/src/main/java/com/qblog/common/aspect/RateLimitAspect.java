@@ -11,13 +11,14 @@ import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -40,6 +41,12 @@ public class RateLimitAspect {
 
     /** 本地窗口表容量保护，防止恶意构造大量 key 导致内存膨胀 */
     private static final int MAX_LOCAL_WINDOWS = 100_000;
+
+    /** INCR + 首次 EXPIRE 必须原子完成，否则中途失败会让 key 永不过期（该 IP 永久 429） */
+    private static final DefaultRedisScript<Long> INCR_WINDOW = new DefaultRedisScript<>(
+            "local c = redis.call('INCR', KEYS[1]) " +
+            "if c == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end " +
+            "return c", Long.class);
 
     @Before("@annotation(com.qblog.common.annotation.RateLimit)")
     public void doBefore(JoinPoint joinPoint) {
@@ -93,15 +100,11 @@ public class RateLimitAspect {
      */
     private boolean checkRateLimitWithRedis(String key, long maxCount, long period) {
         try {
-            Long currentCount = redisTemplate.opsForValue().increment(key);
+            Long currentCount = redisTemplate.execute(
+                    INCR_WINDOW, List.of(key), String.valueOf(period));
 
             if (currentCount == null) {
                 return true;
-            }
-
-            // 第一次访问，设置过期时间
-            if (currentCount == 1) {
-                redisTemplate.expire(key, period, TimeUnit.SECONDS);
             }
 
             return currentCount <= maxCount;

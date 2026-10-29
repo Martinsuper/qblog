@@ -13,11 +13,11 @@ import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -26,60 +26,63 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class ArticleServiceRegressionTest {
-    CacheService cache = mock(CacheService.class);
     ArticleTagService associations = mock(ArticleTagService.class);
     ArticleServiceImpl service = spy(new ArticleServiceImpl(mock(UserService.class),
-            mock(CategoryService.class), mock(TagService.class), associations, cache,
+            mock(CategoryService.class), mock(TagService.class), associations,
             mock(ViewCountService.class)));
 
     @BeforeEach void metadata() {
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), "test"), Article.class);
     }
     @AfterEach void clear() {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.clearSynchronization();
-        }
         SecurityContextHolder.clearContext();
     }
 
-    @Test void updateInvalidatesOnlyAfterCommit() {
-        Article article = new Article(); article.setId(1L); article.setStatus(1);
+    @Test void staleVersionIsRejectedBeforeWrite() {
+        Article article = new Article(); article.setId(1L); article.setStatus(0); article.setVersion(2L);
         doReturn(article).when(service).getById(1L);
-        doReturn(true).when(service).updateById(any(Article.class));
-        ArticleDTO dto = new ArticleDTO(); dto.setStatus(0);
-        TransactionSynchronizationManager.initSynchronization();
-        service.updateArticle(1L, dto);
-        verifyNoInteractions(cache);
-        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
-        verify(cache).delete("article:detail:1");
-        verify(cache).deleteByPattern("article:hot*");
-        verify(cache).deleteByPattern("article:latest*");
+        ArticleDTO dto = new ArticleDTO(); dto.setVersion(1L);
+        var error = assertThrows(com.qblog.common.exception.BusinessException.class, () -> service.updateArticle(1L, dto));
+        assertEquals(409, error.getCode());
+        verify(service, never()).update(any(Article.class), any());
     }
 
-    @Test void rolledBackUpdateDoesNotInvalidate() {
-        Article article = new Article(); article.setId(1L); article.setStatus(1);
+    @Test void concurrentUpdateFailureIsRejected() {
+        Article article = new Article(); article.setId(1L); article.setStatus(0); article.setVersion(2L);
         doReturn(article).when(service).getById(1L);
-        doReturn(true).when(service).updateById(any(Article.class));
-        ArticleDTO dto = new ArticleDTO(); dto.setStatus(0);
-        TransactionSynchronizationManager.initSynchronization();
-        service.updateArticle(1L, dto);
-        TransactionSynchronizationManager.getSynchronizations().forEach(s ->
-                s.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
-        verifyNoInteractions(cache);
+        doReturn(false).when(service).update(any(Article.class), any());
+        ArticleDTO dto = new ArticleDTO(); dto.setVersion(2L);
+        var error = assertThrows(com.qblog.common.exception.BusinessException.class, () -> service.updateArticle(1L, dto));
+        assertEquals(409, error.getCode());
+        // 条件更新失败后不得继续改标签
+        verify(associations, never()).remove(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
     }
 
-    @Test void creationAlsoInvalidatesAfterCommit() {
+    @Test void partialUpdateKeepsUntouchedFields() {
+        Article article = new Article(); article.setId(1L); article.setStatus(1); article.setVersion(0L);
+        article.setSummary("keep"); article.setPublishTime(LocalDateTime.now());
+        doReturn(article).when(service).getById(1L);
+        doReturn(true).when(service).update(any(Article.class), any());
+        // 全空的 DTO：status/tagIds 为 null 表示保持原状态，不得清空摘要或删光标签
+        ArticleDTO partial = new ArticleDTO(); partial.setVersion(0L);
+        service.updateArticle(1L, partial);
+        var captor = ArgumentCaptor.forClass(Article.class);
+        verify(service).update(captor.capture(), any());
+        assertEquals(1, captor.getValue().getStatus());
+        assertEquals("keep", captor.getValue().getSummary());
+        verify(associations, never()).remove(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+    }
+
+    @Test void createWithoutStatusDefaultsToDraft() {
         var auth = new UsernamePasswordAuthenticationToken("admin", null, List.of());
         auth.setDetails(Map.of("userId", 7L));
         SecurityContextHolder.getContext().setAuthentication(auth);
-        doAnswer(call -> { ((Article)call.getArgument(0)).setId(2L); return true; })
-                .when(service).save(any(Article.class));
-        ArticleDTO dto = new ArticleDTO(); dto.setStatus(1);
-        TransactionSynchronizationManager.initSynchronization();
-        service.createArticle(dto);
-        verifyNoInteractions(cache);
-        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
-        verify(cache).deleteByPattern("article:latest*");
+        doReturn(true).when(service).save(any(Article.class));
+        service.createArticle(new ArticleDTO());
+        var captor = ArgumentCaptor.forClass(Article.class);
+        verify(service).save(captor.capture());
+        assertEquals(0, captor.getValue().getStatus());
+        assertNull(captor.getValue().getPublishTime());
     }
 
     @Test @SuppressWarnings("unchecked")
@@ -92,7 +95,6 @@ class ArticleServiceRegressionTest {
         }).when(service).page(any(Page.class), any(LambdaQueryWrapper.class));
         assertTrue(service.getHotArticles(5).isEmpty());
         assertTrue(service.getLatestArticles(5).isEmpty());
-        verifyNoInteractions(cache);
     }
 
     @Test void tagCountUsesFilteredArticleSide() throws Exception {

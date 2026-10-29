@@ -19,6 +19,8 @@ public class McpController {
     public static final int MAX_BODY = 1024 * 1024;
     private final ObjectMapper json;
     private final KnowledgeService notes;
+    @org.springframework.beans.factory.annotation.Autowired(required = false) private McpArticleTools articleTools;
+    @org.springframework.beans.factory.annotation.Autowired(required = false) private McpCallLog callLog;
 
     @PostMapping(value="/mcp", consumes=MediaType.APPLICATION_JSON_VALUE, produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> rpc(HttpServletRequest request, Authentication authentication) throws IOException {
@@ -56,14 +58,23 @@ public class McpController {
             case "tools/call" -> {
                 if (!params.path("name").isTextual() || !params.path("arguments").isObject()) return ResponseEntity.ok(error(id,-32602,"Invalid params"));
                 String name = params.path("name").asText();
-                if (!Set.of("notes_search","notes_get","notes_create","notes_update").contains(name)) return ResponseEntity.ok(error(id,-32602,"Unknown tool"));
+                if (!Set.of("notes_search","notes_get","notes_create","notes_update","articles_search","articles_get","articles_create","articles_update","articles_publish","articles_delete").contains(name)) return ResponseEntity.ok(error(id,-32602,"Unknown tool"));
+                long started = System.nanoTime();
+                boolean success = false;
+                var principal = (KnowledgeTokenService.Principal)authentication.getPrincipal();
                 try {
-                    var principal = (KnowledgeTokenService.Principal)authentication.getPrincipal();
-                    Object data = call(name,params.get("arguments"),principal);
+                    Object data = name.startsWith("articles_") ? articleTools.call(name,params.get("arguments"),principal) : call(name,params.get("arguments"),principal);
+                    success = true;
                     result = Map.of("content",List.of(Map.of("type","text","text",json.writeValueAsString(data))),"isError",false);
+                } catch (com.qblog.common.exception.BusinessException denied) {
+                    String message = denied.getCode() == 409 && name.startsWith("articles_") ? "Article version conflict; read the latest article and merge changes" : "Tool request denied or invalid";
+                    result = Map.of("content",List.of(Map.of("type","text","text",message)),"isError",true);
                 } catch (Exception denied) {
                     // Identical errors for nonexistent/out-of-scope records, external IDs and directories.
                     result = Map.of("content",List.of(Map.of("type","text","text","Tool request denied or invalid")),"isError",true);
+                } finally {
+                    if (callLog != null) try { callLog.record(principal.id(), name, success, (System.nanoTime()-started)/1_000_000); }
+                    catch (Exception e) { org.slf4j.LoggerFactory.getLogger(McpController.class).warn("Unable to record MCP call", e); }
                 }
             }
             default -> { return ResponseEntity.ok(error(id,-32601,"Method not found")); }
@@ -141,7 +152,13 @@ public class McpController {
         return List.of(tool("notes_search","SQL text search within authorized folders (not vector search)",Map.of("search",text,"folderId",folder,"inbox",Map.of("type","boolean"),"tag",text,"current",number,"size",Map.of("type","integer","minimum",1,"maximum",100)),List.of()),
                 tool("notes_get","Read an authorized note",Map.of("id",number),List.of("id")),
                 tool("notes_create","Create or idempotently upsert by this token's externalId",create,List.of("title","content")),
-                tool("notes_update","Replace a note; current version required; folderId omitted means inbox",update,List.of("id","title","content","version")));
+                tool("notes_update","Replace a note; current version required; folderId omitted means inbox",update,List.of("id","title","content","version")),
+                tool("articles_search","Search articles",Map.of("keyword",text,"page",number,"size",number),List.of()),
+                tool("articles_get","Read article and version",Map.of("id",number),List.of("id")),
+                tool("articles_create","Create a draft",Map.of("title",text,"content",text,"summary",text),List.of("title","content")),
+                tool("articles_update","Update article using current version",Map.of("id",number,"version",Map.of("type","integer","minimum",0),"title",text,"content",text,"summary",text),List.of("id","version","title","content")),
+                tool("articles_publish","Publish using current version",Map.of("id",number,"version",Map.of("type","integer","minimum",0)),List.of("id","version")),
+                tool("articles_delete","Soft-delete using current version",Map.of("id",number,"version",Map.of("type","integer","minimum",0)),List.of("id","version")));
     }
     private Map<String,Object> tool(String name,String description,Map<String,Object> properties,List<String> required) {
         return Map.of("name",name,"description",description,"inputSchema",Map.of("type","object","properties",properties,"required",required,"additionalProperties",false));

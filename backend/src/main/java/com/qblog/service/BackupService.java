@@ -37,10 +37,10 @@ public interface BackupService {
     /**
      * 下载备份文件
      * @param backupId 备份 ID
-     * @return 备份文件字节数组
+     * @return 备份文件资源（流式读取，不整包载入内存）
      * @throws IOException IO 异常
      */
-    byte[] downloadBackup(String backupId) throws IOException;
+    org.springframework.core.io.Resource downloadBackup(String backupId) throws IOException;
 
     /**
      * 恢复备份
@@ -77,6 +77,12 @@ public interface BackupService {
      * 执行定时备份
      */
     void scheduledBackup();
+
+    /**
+     * 按当前备份设置计算定时备份的 cron 表达式（供动态调度使用）
+     * @return cron 表达式；设置不可读时返回默认值
+     */
+    String resolveCronExpression();
 
     /**
      * 清理过期备份

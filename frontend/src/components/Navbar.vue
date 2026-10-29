@@ -2,31 +2,71 @@
   <header class="navbar glass">
     <div class="container">
       <div class="navbar-content">
-        <router-link to="/" class="navbar-brand">
+        <router-link
+          to="/"
+          class="navbar-brand"
+        >
           <span class="brand-text">QBlog</span>
         </router-link>
 
-        <nav class="navbar-menu" aria-label="主导航">
-          <router-link to="/" class="nav-link" exact-active-class="active">首页</router-link>
-          <router-link to="/archives" class="nav-link" active-class="active">时间轴</router-link>
-          <router-link to="/categories" class="nav-link" active-class="active">分类</router-link>
-          <router-link to="/tags" class="nav-link" active-class="active">标签</router-link>
+        <nav
+          class="navbar-menu"
+          aria-label="主导航"
+        >
+          <router-link
+            to="/"
+            class="nav-link"
+            exact-active-class="active"
+          >
+            首页
+          </router-link>
+          <router-link
+            to="/archives"
+            class="nav-link"
+            active-class="active"
+          >
+            时间轴
+          </router-link>
+          <router-link
+            to="/categories"
+            class="nav-link"
+            active-class="active"
+          >
+            分类
+          </router-link>
+          <router-link
+            to="/tags"
+            class="nav-link"
+            active-class="active"
+          >
+            标签
+          </router-link>
         </nav>
 
         <div class="navbar-right">
           <button
             class="icon-btn"
-            @click="toggleTheme"
             :aria-label="isDark ? '切换到亮色模式' : '切换到暗色模式'"
+            @click="toggleTheme"
           >
-            <el-icon v-if="isDark"><Sunny /></el-icon>
-            <el-icon v-else><Moon /></el-icon>
+            <el-icon v-if="isDark">
+              <Sunny />
+            </el-icon>
+            <el-icon v-else>
+              <Moon />
+            </el-icon>
           </button>
 
           <template v-if="userStore.isLoggedIn">
-            <el-dropdown trigger="click" @command="handleCommand">
+            <el-dropdown
+              trigger="click"
+              @command="handleCommand"
+            >
               <span class="user-dropdown">
-                <el-avatar :size="32" :src="userStore.userInfo?.avatar">
+                <el-avatar
+                  :size="32"
+                  :src="userStore.userInfo?.avatar"
+                >
                   {{ userStore.userInfo?.nickname?.charAt(0) || 'U' }}
                 </el-avatar>
                 <span class="user-name">{{ userStore.userInfo?.nickname || '用户' }}</span>
@@ -38,15 +78,25 @@
                     <el-icon><User /></el-icon>
                     个人中心
                   </el-dropdown-item>
-                  <el-dropdown-item v-if="userStore.isAdmin" command="write">
+                  <el-dropdown-item
+                    v-if="userStore.isAdmin"
+                    command="write"
+                  >
                     <el-icon><EditPen /></el-icon>
                     写文章
                   </el-dropdown-item>
-                  <el-dropdown-item v-if="userStore.isAdmin" command="admin" divided>
+                  <el-dropdown-item
+                    v-if="userStore.isAdmin"
+                    command="admin"
+                    divided
+                  >
                     <el-icon><Setting /></el-icon>
                     管理后台
                   </el-dropdown-item>
-                  <el-dropdown-item command="logout" divided>
+                  <el-dropdown-item
+                    command="logout"
+                    divided
+                  >
                     <el-icon><SwitchButton /></el-icon>
                     退出登录
                   </el-dropdown-item>
@@ -55,8 +105,12 @@
             </el-dropdown>
           </template>
           <template v-else>
-            <router-link to="/login" class="nav-link">登录</router-link>
-            <router-link to="/register" class="btn-register">注册</router-link>
+            <router-link
+              to="/login"
+              class="nav-link"
+            >
+              登录
+            </router-link>
           </template>
 
           <!-- 移动端汉堡菜单 -->
@@ -67,7 +121,9 @@
             aria-label="打开导航菜单"
             @click="menuVisible = true"
           >
-            <el-icon :size="20"><Menu /></el-icon>
+            <el-icon :size="20">
+              <Menu />
+            </el-icon>
           </button>
         </div>
       </div>
@@ -81,24 +137,80 @@
       :with-header="false"
       class="mobile-nav-drawer"
     >
-      <nav class="mobile-nav" aria-label="移动端导航">
-        <router-link to="/" class="mobile-link" @click="menuVisible = false">首页</router-link>
-        <router-link to="/archives" class="mobile-link" @click="menuVisible = false">时间轴</router-link>
-        <router-link to="/categories" class="mobile-link" @click="menuVisible = false">分类</router-link>
-        <router-link to="/tags" class="mobile-link" @click="menuVisible = false">标签</router-link>
+      <nav
+        class="mobile-nav"
+        aria-label="移动端导航"
+      >
+        <router-link
+          to="/"
+          class="mobile-link"
+          @click="menuVisible = false"
+        >
+          首页
+        </router-link>
+        <router-link
+          to="/archives"
+          class="mobile-link"
+          @click="menuVisible = false"
+        >
+          时间轴
+        </router-link>
+        <router-link
+          to="/categories"
+          class="mobile-link"
+          @click="menuVisible = false"
+        >
+          分类
+        </router-link>
+        <router-link
+          to="/tags"
+          class="mobile-link"
+          @click="menuVisible = false"
+        >
+          标签
+        </router-link>
 
         <template v-if="!userStore.isLoggedIn">
           <div class="mobile-auth">
-            <router-link to="/login" class="mobile-link" @click="menuVisible = false">登录</router-link>
-            <router-link to="/register" class="mobile-link register" @click="menuVisible = false">注册</router-link>
+            <router-link
+              to="/login"
+              class="mobile-link"
+              @click="menuVisible = false"
+            >
+              登录
+            </router-link>
           </div>
         </template>
         <template v-else>
           <div class="mobile-auth">
-            <router-link to="/user/profile" class="mobile-link" @click="menuVisible = false">个人中心</router-link>
-            <router-link v-if="userStore.isAdmin" to="/admin/create" class="mobile-link" @click="menuVisible = false">写文章</router-link>
-            <router-link v-if="userStore.isAdmin" to="/admin/articles" class="mobile-link" @click="menuVisible = false">管理后台</router-link>
-            <a href="javascript:void(0)" class="mobile-link logout" @click="handleLogout">退出登录</a>
+            <router-link
+              to="/user/profile"
+              class="mobile-link"
+              @click="menuVisible = false"
+            >
+              个人中心
+            </router-link>
+            <router-link
+              v-if="userStore.isAdmin"
+              to="/admin/create"
+              class="mobile-link"
+              @click="menuVisible = false"
+            >
+              写文章
+            </router-link>
+            <router-link
+              v-if="userStore.isAdmin"
+              to="/admin/articles"
+              class="mobile-link"
+              @click="menuVisible = false"
+            >
+              管理后台
+            </router-link>
+            <a
+              href="javascript:void(0)"
+              class="mobile-link logout"
+              @click="handleLogout"
+            >退出登录</a>
           </div>
         </template>
       </nav>
@@ -276,21 +388,6 @@ const handleLogout = () => {
   white-space: nowrap;
 }
 
-.btn-register {
-  padding: 6px 16px;
-  background: var(--color-primary);
-  color: white;
-  text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: var(--border-radius-sm);
-  transition: background var(--transition-fast);
-}
-
-.btn-register:hover {
-  background: var(--color-primary-dark);
-}
-
 .menu-toggle {
   display: none;
 }
@@ -328,11 +425,6 @@ const handleLogout = () => {
   gap: var(--spacing-xs);
 }
 
-.mobile-link.register {
-  color: var(--color-primary);
-  font-weight: 500;
-}
-
 .mobile-link.logout {
   color: var(--text-secondary);
 }
@@ -347,10 +439,6 @@ const handleLogout = () => {
   }
 
   .navbar-right .nav-link {
-    display: none;
-  }
-
-  .navbar-right .btn-register {
     display: none;
   }
 

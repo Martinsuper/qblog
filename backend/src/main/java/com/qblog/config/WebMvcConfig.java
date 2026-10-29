@@ -2,16 +2,34 @@ package com.qblog.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.CacheControl;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.io.File;
+import java.time.Duration;
 
 /**
  * Web MVC 配置
  */
 @Component
 public class WebMvcConfig implements WebMvcConfigurer {
+
+    @Value("${upload.directory:uploads}")
+    private String uploadDirectory;
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // 上传的图片（文件名随机不可枚举，允许匿名 GET 以便 <img> 标签展示）
+        File dir = new File(uploadDirectory).getAbsoluteFile();
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations(dir.toURI().toString())
+                .setCacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic());
+    }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {

@@ -1,6 +1,7 @@
 package com.qblog.common.aspect;
 
 import com.qblog.common.JwtUtil;
+import com.qblog.common.WebUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -133,7 +134,7 @@ public class OperationLogAspect {
     }
 
     /**
-     * 从参数中提取用户名
+     * 从参数中提取用户名（过滤控制字符，防止伪造换行注入日志）
      */
     private String extractUsername(Object[] args) {
         if (args != null && args.length > 0) {
@@ -142,7 +143,9 @@ public class OperationLogAspect {
                 // 使用反射获取 username 字段
                 var field = dto.getClass().getDeclaredField("username");
                 field.setAccessible(true);
-                return (String) field.get(dto);
+                String username = (String) field.get(dto);
+                return username == null ? "unknown"
+                        : username.replaceAll("[\\p{Cntrl}\\s]", "_");
             } catch (Exception e) {
                 return "unknown";
             }
@@ -177,7 +180,7 @@ public class OperationLogAspect {
     }
 
     /**
-     * 获取客户端 IP
+     * 获取客户端 IP（统一走 WebUtils，仅信任可信代理的 X-Forwarded-For，避免登录日志 IP 可伪造）
      */
     private String getClientIP() {
         ServletRequestAttributes attributes =
@@ -187,20 +190,6 @@ public class OperationLogAspect {
             return "unknown";
         }
 
-        HttpServletRequest request = attributes.getRequest();
-        String ip = request.getHeader("X-Forwarded-For");
-
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-
-        return ip;
+        return WebUtils.getClientIp(attributes.getRequest());
     }
 }

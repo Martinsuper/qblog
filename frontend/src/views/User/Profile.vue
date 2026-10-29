@@ -3,15 +3,29 @@
     <div class="max-w-2xl mx-auto">
       <!-- 基本信息卡片 -->
       <div class="card p-6 md:p-8 mb-4">
-        <h3 class="text-xl font-semibold mb-6" style="color: var(--text-primary)">个人中心</h3>
-        <el-form :model="userForm" label-width="100px">
+        <h3
+          class="text-xl font-semibold mb-6"
+          style="color: var(--text-primary)"
+        >
+          个人中心
+        </h3>
+        <el-form
+          :model="userForm"
+          label-width="100px"
+        >
           <el-form-item label="头像">
-            <el-avatar :size="80" :src="userForm.avatar">
+            <el-avatar
+              :size="80"
+              :src="userForm.avatar"
+            >
               {{ userForm.nickname?.charAt(0) }}
             </el-avatar>
           </el-form-item>
           <el-form-item label="用户名">
-            <el-input v-model="userForm.username" disabled />
+            <el-input
+              v-model="userForm.username"
+              disabled
+            />
           </el-form-item>
           <el-form-item label="昵称">
             <el-input v-model="userForm.nickname" />
@@ -20,17 +34,31 @@
             <el-input v-model="userForm.email" />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="handleUpdate">保存修改</el-button>
+            <el-button
+              type="primary"
+              @click="handleUpdate"
+            >
+              保存修改
+            </el-button>
           </el-form-item>
         </el-form>
       </div>
 
       <!-- 阅读设置卡片 -->
       <div class="card p-6 md:p-8 mb-4">
-        <h3 class="text-xl font-semibold mb-6" style="color: var(--text-primary)">阅读设置</h3>
+        <h3
+          class="text-xl font-semibold mb-6"
+          style="color: var(--text-primary)"
+        >
+          阅读设置
+        </h3>
         <el-form label-width="100px">
           <el-form-item label="渲染风格">
-            <el-radio-group v-model="markdownTheme" @change="handleThemeChange" class="theme-radio-group">
+            <el-radio-group
+              v-model="markdownTheme"
+              class="theme-radio-group"
+              @change="handleThemeChange"
+            >
               <el-radio label="vuepress">
                 <span class="theme-name">VuePress</span>
                 <span class="theme-desc">文档风格，适合技术文章</span>
@@ -50,7 +78,10 @@
 
       <!-- 修改密码折叠区域 -->
       <el-collapse class="card">
-        <el-collapse-item title="修改密码" name="password">
+        <el-collapse-item
+          title="修改密码"
+          name="password"
+        >
           <el-form
             ref="passwordFormRef"
             :model="passwordForm"
@@ -58,7 +89,10 @@
             label-width="100px"
             class="px-4 pb-4"
           >
-            <el-form-item label="旧密码" prop="oldPassword">
+            <el-form-item
+              label="旧密码"
+              prop="oldPassword"
+            >
               <el-input
                 v-model="passwordForm.oldPassword"
                 type="password"
@@ -66,7 +100,10 @@
                 placeholder="请输入旧密码"
               />
             </el-form-item>
-            <el-form-item label="新密码" prop="newPassword">
+            <el-form-item
+              label="新密码"
+              prop="newPassword"
+            >
               <el-input
                 v-model="passwordForm.newPassword"
                 type="password"
@@ -74,7 +111,10 @@
                 placeholder="请输入新密码（8-20位，含字母和数字）"
               />
             </el-form-item>
-            <el-form-item label="确认密码" prop="confirmPassword">
+            <el-form-item
+              label="确认密码"
+              prop="confirmPassword"
+            >
               <el-input
                 v-model="passwordForm.confirmPassword"
                 type="password"
@@ -83,10 +123,16 @@
               />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="handleChangePassword" :loading="loading">
+              <el-button
+                type="primary"
+                :loading="loading"
+                @click="handleChangePassword"
+              >
                 确认修改
               </el-button>
-              <el-button @click="resetPasswordForm">重置</el-button>
+              <el-button @click="resetPasswordForm">
+                重置
+              </el-button>
             </el-form-item>
           </el-form>
         </el-collapse-item>

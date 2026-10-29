@@ -65,3 +65,7 @@ backend/backups/*
 # Generated prototype data for visual QA (never bundled into the app).
 /frontend/.visual-qa/
 /frontend/tests/visual-seven/fixture.json
+
+# 上传的图片（运行时产物）
+backend/uploads/*
+!backend/uploads/.gitkeep

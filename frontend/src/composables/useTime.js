@@ -3,13 +3,21 @@
  */
 
 /**
+ * 解析后端时间字符串为 Date（兼容 ISO 的 'T' 分隔与 Safari 不支持的 '-' 分隔）
+ */
+export function parseDate(time) {
+  if (!time) return null
+  const date = new Date(String(time).replace('T', ' ').replace(/-/g, '/'))
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+/**
  * 相对时间：7 天内显示"x 分钟/小时/天前"，更早显示完整日期
  */
 export function formatRelativeTime(time) {
   if (!time) return ''
-  // 兼容 Safari：'2024-01-01 12:00:00' 中的 '-' 分隔符
-  const date = new Date(String(time).replace(/-/g, '/'))
-  if (Number.isNaN(date.getTime())) return time
+  const date = parseDate(time)
+  if (!date) return time
 
   const diff = Date.now() - date.getTime()
   const minute = 60 * 1000
@@ -28,8 +36,8 @@ export function formatRelativeTime(time) {
  */
 export function formatDateTime(time) {
   if (!time) return ''
-  const date = new Date(String(time).replace(/-/g, '/'))
-  if (Number.isNaN(date.getTime())) return time
+  const date = parseDate(time)
+  if (!date) return time
   const pad = (n) => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }

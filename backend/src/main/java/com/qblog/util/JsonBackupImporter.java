@@ -1,5 +1,6 @@
 package com.qblog.util;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -23,7 +24,8 @@ import java.util.zip.ZipInputStream;
 
 /**
  * JSON 备份导入工具类
- * 从 JSON 格式的 ZIP 文件恢复数据库数据
+ * 恢复语义是"真实快照"：先清空业务表，再按备份中的主键原样重放，
+ * 保证 article_tag / author_id / category_id 等引用与备份时的数据完全一致。
  */
 @Slf4j
 public class JsonBackupImporter {
@@ -34,35 +36,69 @@ public class JsonBackupImporter {
     private final TagMapper tagMapper;
     private final ArticleMapper articleMapper;
     private final ArticleTagMapper articleTagMapper;
+    private final String uploadDirectory;
 
     public JsonBackupImporter(UserMapper userMapper,
                               CategoryMapper categoryMapper,
                               TagMapper tagMapper,
                               ArticleMapper articleMapper,
-                              ArticleTagMapper articleTagMapper) {
+                              ArticleTagMapper articleTagMapper,
+                              String uploadDirectory) {
         this.userMapper = userMapper;
         this.categoryMapper = categoryMapper;
         this.tagMapper = tagMapper;
         this.articleMapper = articleMapper;
         this.articleTagMapper = articleTagMapper;
+        this.uploadDirectory = uploadDirectory;
 
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
     }
 
     /**
-     * 从 ZIP 文件导入备份数据
+     * 解析后的备份数据：已解压并校验，等待恢复。用完必须 {@link #close()} 清理临时目录。
+     * 数据库写入应当放在调用方的事务里（restore 不自行管理事务）。
+     */
+    public static final class ParsedBackup implements AutoCloseable {
+        private final Path tempDir;
+        private final List<User> users;
+        private final List<Category> categories;
+        private final List<Tag> tags;
+        private final List<Article> articles;
+        private final List<ArticleTag> articleTags;
+
+        ParsedBackup(Path tempDir, List<User> users, List<Category> categories, List<Tag> tags,
+                     List<Article> articles, List<ArticleTag> articleTags) {
+            this.tempDir = tempDir;
+            this.users = users;
+            this.categories = categories;
+            this.tags = tags;
+            this.articles = articles;
+            this.articleTags = articleTags;
+        }
+
+        Path filesDir() {
+            return tempDir.resolve("files");
+        }
+
+        @Override
+        public void close() {
+            deleteDirectory(tempDir.toFile());
+        }
+    }
+
+    /**
+     * 从 ZIP 文件解压并校验备份数据（不写数据库，可在事务外执行）
      *
      * @param zipPath ZIP 文件路径
-     * @return 导入结果统计
+     * @return 解析后的备份数据
      */
-    public Map<String, Integer> importBackup(Path zipPath) throws IOException {
-        log.info("开始导入 JSON 备份: {}", zipPath);
+    public ParsedBackup parse(Path zipPath) throws IOException {
+        log.info("开始解析 JSON 备份: {}", zipPath);
 
-        // 解压到临时目录
         Path tempDir = Files.createTempDirectory("qblog-restore-");
+        boolean failed = true;
         try {
-            // 解压 ZIP 文件
             extractZip(zipPath, tempDir);
 
             // 验证 manifest.json
@@ -77,35 +113,79 @@ public class JsonBackupImporter {
                     || !"2.0".equals(manifest.get("version"))) {
                 throw new IOException("不支持的备份格式或版本");
             }
-            // 在数据库写入前验证所有数据文件，避免损坏的后续文件导致半恢复。
-            for (String table : List.of("user", "category", "tag", "article", "article_tag")) {
-                Path data = tempDir.resolve("data").resolve(table + ".json");
-                var tree = Files.isRegularFile(data) ? objectMapper.readTree(data.toFile()) : null;
-                if (tree == null || !tree.isArray()) {
-                    throw new IOException("备份缺少有效的数据文件：" + table);
-                }
-            }
-            log.info("备份版本: {}, 时间: {}", manifest.get("version"), manifest.get("timestamp"));
-
-            // 导入数据（按依赖顺序）
+            // 在数据库写入前验证并解析所有数据文件，避免损坏的后续文件导致半恢复。
             Path dataDir = tempDir.resolve("data");
-            Map<String, Integer> counts = new LinkedHashMap<>();
+            List<User> users = parseList(dataDir, "user", User.class);
+            List<Category> categories = parseList(dataDir, "category", Category.class);
+            List<Tag> tags = parseList(dataDir, "tag", Tag.class);
+            List<Article> articles = parseList(dataDir, "article", Article.class);
+            List<ArticleTag> articleTags = parseList(dataDir, "article_tag", ArticleTag.class);
 
-            counts.put("user", importUsers(dataDir));
-            counts.put("category", importCategories(dataDir));
-            counts.put("tag", importTags(dataDir));
-            counts.put("article", importArticles(dataDir));
-            counts.put("article_tag", importArticleTags(dataDir));
-
-            // 恢复上传文件
-            restoreUploadFiles(tempDir.resolve("files"));
-
-            log.info("JSON 备份导入完成: {}", counts);
-            return counts;
+            log.info("备份版本: {}, 时间: {}", manifest.get("version"), manifest.get("timestamp"));
+            failed = false;
+            return new ParsedBackup(tempDir, users, categories, tags, articles, articleTags);
         } finally {
-            // 清理临时目录
-            deleteDirectory(tempDir.toFile());
+            if (failed) {
+                deleteDirectory(tempDir.toFile());
+            }
         }
+    }
+
+    /**
+     * 执行恢复：清空业务表后按备份中的显式主键重放（应在事务内调用）
+     *
+     * @return 各表恢复的记录数
+     */
+    public Map<String, Integer> restore(ParsedBackup backup) throws IOException {
+        log.info("开始清空并重放备份数据");
+
+        // 按外键依赖顺序清空：这是快照恢复语义，恢复后数据库与备份时点完全一致
+        articleTagMapper.delete(new QueryWrapper<>());
+        articleMapper.delete(new QueryWrapper<>());
+        tagMapper.delete(new QueryWrapper<>());
+        categoryMapper.delete(new QueryWrapper<>());
+        userMapper.delete(new QueryWrapper<>());
+
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        counts.put("user", insertAll("user", backup.users, userMapper::insertWithId));
+        counts.put("category", insertAll("category", backup.categories, categoryMapper::insertWithId));
+        counts.put("tag", insertAll("tag", backup.tags, tagMapper::insertWithId));
+        counts.put("article", insertAll("article", backup.articles, articleMapper::insertWithId));
+        counts.put("article_tag", insertAll("article_tag", backup.articleTags, articleTagMapper::insertWithId));
+
+        // 恢复上传文件
+        restoreUploadFiles(backup.filesDir());
+
+        log.info("JSON 备份恢复完成: {}", counts);
+        return counts;
+    }
+
+    /**
+     * 一步式导入（解析 + 恢复）。生产路径应使用 parse/restore 以便把解压挡在事务外。
+     */
+    public Map<String, Integer> importBackup(Path zipPath) throws IOException {
+        try (ParsedBackup backup = parse(zipPath)) {
+            return restore(backup);
+        }
+    }
+
+    private <T> List<T> parseList(Path dataDir, String table, Class<T> type) throws IOException {
+        Path file = dataDir.resolve(table + ".json");
+        if (!Files.isRegularFile(file) || !objectMapper.readTree(file.toFile()).isArray()) {
+            throw new IOException("备份缺少有效的数据文件：" + table);
+        }
+        JavaType listType = objectMapper.getTypeFactory().constructCollectionType(List.class, type);
+        return objectMapper.readValue(file.toFile(), listType);
+    }
+
+    private <T> int insertAll(String table, List<T> rows, java.util.function.ToIntFunction<T> insert) {
+        int count = 0;
+        for (T row : rows) {
+            insert.applyAsInt(row);
+            count++;
+        }
+        log.info("恢复{}数据: {} 条", table, count);
+        return count;
     }
 
     /**
@@ -165,157 +245,6 @@ public class JsonBackupImporter {
     }
 
     /**
-     * 导入用户数据
-     */
-    private int importUsers(Path dataDir) throws IOException {
-        Path filePath = dataDir.resolve("user.json");
-        if (!Files.exists(filePath)) {
-            log.debug("user.json 不存在，跳过");
-            return 0;
-        }
-
-        JavaType type = objectMapper.getTypeFactory().constructCollectionType(List.class, User.class);
-        List<User> users = objectMapper.readValue(filePath.toFile(), type);
-
-        int count = 0;
-        for (User user : users) {
-            // 检查是否存在，存在则更新，不存在则插入
-            User existing = userMapper.selectById(user.getId());
-            if (existing != null) {
-                userMapper.updateById(user);
-                log.debug("更新用户: id={}, username={}", user.getId(), user.getUsername());
-            } else {
-                userMapper.insert(user);
-                log.debug("插入用户: id={}, username={}", user.getId(), user.getUsername());
-            }
-            count++;
-        }
-
-        log.info("导入用户数据: {} 条", count);
-        return count;
-    }
-
-    /**
-     * 导入分类数据
-     */
-    private int importCategories(Path dataDir) throws IOException {
-        Path filePath = dataDir.resolve("category.json");
-        if (!Files.exists(filePath)) {
-            log.debug("category.json 不存在，跳过");
-            return 0;
-        }
-
-        JavaType type = objectMapper.getTypeFactory().constructCollectionType(List.class, Category.class);
-        List<Category> categories = objectMapper.readValue(filePath.toFile(), type);
-
-        int count = 0;
-        for (Category category : categories) {
-            Category existing = categoryMapper.selectById(category.getId());
-            if (existing != null) {
-                categoryMapper.updateById(category);
-                log.debug("更新分类: id={}, name={}", category.getId(), category.getName());
-            } else {
-                categoryMapper.insert(category);
-                log.debug("插入分类: id={}, name={}", category.getId(), category.getName());
-            }
-            count++;
-        }
-
-        log.info("导入分类数据: {} 条", count);
-        return count;
-    }
-
-    /**
-     * 导入标签数据
-     */
-    private int importTags(Path dataDir) throws IOException {
-        Path filePath = dataDir.resolve("tag.json");
-        if (!Files.exists(filePath)) {
-            log.debug("tag.json 不存在，跳过");
-            return 0;
-        }
-
-        JavaType type = objectMapper.getTypeFactory().constructCollectionType(List.class, Tag.class);
-        List<Tag> tags = objectMapper.readValue(filePath.toFile(), type);
-
-        int count = 0;
-        for (Tag tag : tags) {
-            Tag existing = tagMapper.selectById(tag.getId());
-            if (existing != null) {
-                tagMapper.updateById(tag);
-                log.debug("更新标签: id={}, name={}", tag.getId(), tag.getName());
-            } else {
-                tagMapper.insert(tag);
-                log.debug("插入标签: id={}, name={}", tag.getId(), tag.getName());
-            }
-            count++;
-        }
-
-        log.info("导入标签数据: {} 条", count);
-        return count;
-    }
-
-    /**
-     * 导入文章数据
-     */
-    private int importArticles(Path dataDir) throws IOException {
-        Path filePath = dataDir.resolve("article.json");
-        if (!Files.exists(filePath)) {
-            log.debug("article.json 不存在，跳过");
-            return 0;
-        }
-
-        JavaType type = objectMapper.getTypeFactory().constructCollectionType(List.class, Article.class);
-        List<Article> articles = objectMapper.readValue(filePath.toFile(), type);
-
-        int count = 0;
-        for (Article article : articles) {
-            Article existing = articleMapper.selectById(article.getId());
-            if (existing != null) {
-                articleMapper.updateById(article);
-                log.debug("更新文章: id={}, title={}", article.getId(), article.getTitle());
-            } else {
-                articleMapper.insert(article);
-                log.debug("插入文章: id={}, title={}", article.getId(), article.getTitle());
-            }
-            count++;
-        }
-
-        log.info("导入文章数据: {} 条", count);
-        return count;
-    }
-
-    /**
-     * 导入文章标签关联数据
-     */
-    private int importArticleTags(Path dataDir) throws IOException {
-        Path filePath = dataDir.resolve("article_tag.json");
-        if (!Files.exists(filePath)) {
-            log.debug("article_tag.json 不存在，跳过");
-            return 0;
-        }
-
-        JavaType type = objectMapper.getTypeFactory().constructCollectionType(List.class, ArticleTag.class);
-        List<ArticleTag> articleTags = objectMapper.readValue(filePath.toFile(), type);
-
-        int count = 0;
-        for (ArticleTag articleTag : articleTags) {
-            ArticleTag existing = articleTagMapper.selectById(articleTag.getId());
-            if (existing != null) {
-                articleTagMapper.updateById(articleTag);
-                log.debug("更新文章标签关联: id={}", articleTag.getId());
-            } else {
-                articleTagMapper.insert(articleTag);
-                log.debug("插入文章标签关联: id={}", articleTag.getId());
-            }
-            count++;
-        }
-
-        log.info("导入文章标签关联数据: {} 条", count);
-        return count;
-    }
-
-    /**
      * 恢复上传文件
      */
     private void restoreUploadFiles(Path filesDir) throws IOException {
@@ -330,7 +259,7 @@ public class JsonBackupImporter {
             return;
         }
 
-        Path targetUploads = Paths.get("uploads");
+        Path targetUploads = Paths.get(uploadDirectory);
         Files.createDirectories(targetUploads);
 
         try (var paths = Files.walk(uploadsSource)) {
@@ -353,7 +282,7 @@ public class JsonBackupImporter {
     /**
      * 递归删除目录
      */
-    private void deleteDirectory(File directory) {
+    private static void deleteDirectory(File directory) {
         if (directory.exists()) {
             File[] files = directory.listFiles();
             if (files != null) {

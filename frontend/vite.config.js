@@ -27,9 +27,15 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'markdown': ['markdown-it']
+        // 按依赖族分包：博客页不必下载知识库编辑器（tiptap），博客页缓存不受发版影响
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (/[\\/]node_modules[\\/](vue|vue-router|pinia|@vue)[\\/]/.test(id)) return 'vue-vendor'
+          if (id.includes('element-plus') || id.includes('@element-plus')) return 'element-plus'
+          if (id.includes('@tiptap') || id.includes('prosemirror')) return 'editor'
+          if (id.includes('highlight.js')) return 'highlight'
+          if (id.includes('markdown-it')) return 'markdown'
+          return undefined
         }
       }
     },
@@ -43,8 +49,8 @@ export default defineConfig({
         target: 'http://localhost:8081',
         changeOrigin: true,
         secure: false,
-        configure: (proxy, options) => {
-          proxy.on('proxyReq', (proxyReq, req, res) => {
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
             // 仅对非 multipart 请求设置 Content-Type，避免破坏文件上传
             const contentType = proxyReq.getHeader('Content-Type')
             if (!contentType || !contentType.includes('multipart')) {
@@ -54,7 +60,7 @@ export default defineConfig({
               }
             }
           })
-          proxy.on('proxyRes', (proxyRes, req, res) => {
+          proxy.on('proxyRes', (proxyRes) => {
             // 仅对 JSON 响应设置编码
             const resContentType = proxyRes.headers['content-type']
             if (resContentType && resContentType.includes('application/json')) {

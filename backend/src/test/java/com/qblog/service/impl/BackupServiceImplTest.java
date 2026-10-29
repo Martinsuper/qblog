@@ -4,6 +4,8 @@ import com.qblog.mapper.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionTemplate;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.*;
@@ -14,7 +16,8 @@ class BackupServiceImplTest {
 
     private BackupServiceImpl service(Path directory) {
         BackupServiceImpl service = new BackupServiceImpl(mock(UserMapper.class), mock(CategoryMapper.class),
-                mock(TagMapper.class), mock(ArticleMapper.class), mock(ArticleTagMapper.class));
+                mock(TagMapper.class), mock(ArticleMapper.class), mock(ArticleTagMapper.class),
+                new TransactionTemplate(mock(org.springframework.transaction.PlatformTransactionManager.class)));
         ReflectionTestUtils.setField(service, "backupDirectory", directory.toString());
         service.init();
         return service;
@@ -36,7 +39,10 @@ class BackupServiceImplTest {
         Path directory = temp.resolve("backups");
         BackupServiceImpl service = service(directory);
         Files.write(directory.resolve("qblog-backup-20260227-210546.zip"), new byte[]{1, 2});
-        assertArrayEquals(new byte[]{1, 2}, service.downloadBackup("qblog-backup-20260227-210546"));
+        var resource = service.downloadBackup("qblog-backup-20260227-210546");
+        try (var is = resource.getInputStream()) {
+            assertArrayEquals(new byte[]{1, 2}, is.readAllBytes());
+        }
     }
 
     @Test void refusesNonDirectoryBackupLocation() throws Exception {

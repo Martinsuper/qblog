@@ -59,34 +59,27 @@ public class BackupController {
     }
 
     /**
-     * 下载备份文件
+     * 下载备份文件（流式输出，避免整包载入内存）
      */
     @Operation(summary = "下载备份文件")
     @GetMapping("/download/{id}")
-    public ResponseEntity<ByteArrayResource> downloadBackup(@PathVariable String id)
+    public ResponseEntity<org.springframework.core.io.Resource> downloadBackup(@PathVariable String id)
             throws java.io.IOException {
-        // 读取备份文件
-        byte[] data = backupService.downloadBackup(id);
-
-        // 查找备份文件 (ZIP 格式)
-        java.nio.file.Path backupPath = java.nio.file.Paths.get("backups");
-        java.io.File zipFile = backupPath.resolve(id + ".zip").toFile();
-
-        MediaType contentType = MediaType.parseMediaType("application/zip");
+        org.springframework.core.io.Resource resource = backupService.downloadBackup(id);
 
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(contentType);
+        headers.setContentType(MediaType.parseMediaType("application/zip"));
         headers.setContentDisposition(
             org.springframework.http.ContentDisposition
                 .attachment()
-                .filename(zipFile.getName())
+                .filename(resource.getFilename())
                 .build()
         );
 
         return ResponseEntity.ok()
             .headers(headers)
-            .contentLength(data.length)
-            .body(new ByteArrayResource(data));
+            .contentLength(resource.contentLength())
+            .body(resource);
     }
 
     /**

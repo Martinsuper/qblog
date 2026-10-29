@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login, register, getCurrentUser } from '@/api/auth'
+import { login, getCurrentUser } from '@/api/auth'
 import { getToken, setToken, clearToken, getCachedUserInfo, USER_INFO_KEY } from '@/utils/auth'
 
 export const useUserStore = defineStore('user', () => {
@@ -27,11 +27,6 @@ export const useUserStore = defineStore('user', () => {
     return res
   }
 
-  // 注册
-  async function userRegister(registerForm) {
-    return await register(registerForm)
-  }
-
   // 获取用户信息
   async function fetchUserInfo() {
     const res = await getCurrentUser()
@@ -54,7 +49,6 @@ export const useUserStore = defineStore('user', () => {
     isLoggedIn,
     isAdmin,
     userLogin,
-    userRegister,
     fetchUserInfo,
     userLogout
   }

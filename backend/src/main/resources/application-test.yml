@@ -30,7 +30,7 @@ mybatis-plus:
 
 # JWT 配置
 jwt:
-  secret: test-secret-key
+  secret: test-secret-key-for-qblog-jwt-signing-0123456789
   expiration: 86400000
 
 # 日志配置

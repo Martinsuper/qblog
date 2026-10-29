@@ -4,8 +4,15 @@
       <div class="flex-1 min-w-0">
         <!-- 加载骨架屏 -->
         <template v-if="loading">
-          <div v-for="n in 5" :key="n" class="skeleton-item card mb-4">
-            <el-skeleton :rows="2" animated />
+          <div
+            v-for="n in 5"
+            :key="n"
+            class="skeleton-item card mb-4"
+          >
+            <el-skeleton
+              :rows="2"
+              animated
+            />
           </div>
         </template>
 
@@ -19,7 +26,11 @@
             />
           </div>
 
-          <el-empty v-if="articleList.length === 0" description="暂无文章" class="py-12" />
+          <el-empty
+            v-if="articleList.length === 0"
+            description="暂无文章"
+            class="py-12"
+          />
 
           <el-pagination
             v-if="total > 0"
@@ -31,12 +42,15 @@
             :pager-count="isMobile ? 5 : 7"
             class="flex justify-center mt-8"
             @current-change="onPageChange"
-            @size-change="fetchArticles"
+            @size-change="onSizeChange"
           />
         </template>
       </div>
 
-      <aside v-if="showSidebar" class="w-full lg:w-70 flex-shrink-0">
+      <aside
+        v-if="showSidebar"
+        class="w-full lg:w-70 flex-shrink-0"
+      >
         <Sidebar />
       </aside>
     </div>
@@ -115,6 +129,12 @@ const onPageChange = () => {
   nextTick(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   })
+}
+
+// 改变每页数量后回到第一页，避免落在超出范围的空页
+const onSizeChange = () => {
+  currentPage.value = 1
+  fetchArticles()
 }
 
 watch(() => [props.categoryId, props.tagId, route.params.id, route.query.keyword], () => {

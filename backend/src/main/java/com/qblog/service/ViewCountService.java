@@ -57,7 +57,10 @@ public class ViewCountService {
         if (!shouldCount(articleId, visitorKey)) return;
         if (redisTemplate != null) {
             try {
-                redisTemplate.opsForValue().increment(CURRENT + articleId);
+                String key = CURRENT + articleId;
+                redisTemplate.opsForValue().increment(key);
+                // 滑动 TTL：文章删除或不再被访问后计数 key 自动消失，SCAN 集合不会无限增长
+                redisTemplate.expire(key, Duration.ofDays(7));
                 return;
             } catch (Exception e) {
                 // An ambiguous Redis result may duplicate, but must not break reads.

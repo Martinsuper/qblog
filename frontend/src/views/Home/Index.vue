@@ -5,16 +5,31 @@
         <!-- 加载骨架屏 -->
         <template v-if="loading">
           <div class="skeleton-hero card mb-6">
-            <el-skeleton :rows="3" animated />
+            <el-skeleton
+              :rows="3"
+              animated
+            />
           </div>
-          <div v-for="n in 4" :key="n" class="skeleton-item card mb-4">
-            <el-skeleton :rows="2" animated />
+          <div
+            v-for="n in 4"
+            :key="n"
+            class="skeleton-item card mb-4"
+          >
+            <el-skeleton
+              :rows="2"
+              animated
+            />
           </div>
         </template>
 
         <template v-else>
           <!-- 置顶/最新一篇 -->
-          <ArticleCard v-if="topArticle" :article="topArticle" :is-top="true" class="mb-6" />
+          <ArticleCard
+            v-if="topArticle"
+            :article="topArticle"
+            :is-top="true"
+            class="mb-6"
+          />
 
           <h3 class="section-title text-base font-medium mb-4 pl-3">
             最新文章
@@ -30,8 +45,13 @@
             />
           </div>
 
-          <div v-if="articleList.length > 0" class="mt-8 text-center">
-            <el-button @click="$router.push('/archives')">查看更多文章</el-button>
+          <div
+            v-if="articleList.length > 0"
+            class="mt-8 text-center"
+          >
+            <el-button @click="$router.push('/archives')">
+              查看更多文章
+            </el-button>
           </div>
 
           <el-empty
@@ -39,9 +59,15 @@
             :description="loadError"
             class="py-12"
           >
-            <el-button @click="fetchArticles">重试</el-button>
+            <el-button @click="fetchArticles">
+              重试
+            </el-button>
           </el-empty>
-          <el-empty v-else-if="articleList.length === 0 && !topArticle" description="暂无文章" class="py-12" />
+          <el-empty
+            v-else-if="articleList.length === 0 && !topArticle"
+            description="暂无文章"
+            class="py-12"
+          />
         </template>
       </div>
 

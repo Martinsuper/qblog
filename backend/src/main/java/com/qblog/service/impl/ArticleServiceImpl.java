@@ -1,6 +1,7 @@
 package com.qblog.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -23,7 +24,6 @@ import com.qblog.model.vo.TagVO;
 import com.qblog.model.vo.UserVO;
 import com.qblog.service.ArticleService;
 import com.qblog.service.ArticleTagService;
-import com.qblog.service.CacheService;
 import com.qblog.service.CategoryService;
 import com.qblog.service.TagService;
 import com.qblog.service.UserService;
@@ -31,8 +31,6 @@ import com.qblog.service.ViewCountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -55,12 +53,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private final CategoryService categoryService;
     private final TagService tagService;
     private final ArticleTagService articleTagService;
-    private final CacheService cacheService;
     private final ViewCountService viewCountService;
-
-    private static final String CACHE_ARTICLE_DETAIL = "article:detail:";
-    private static final String CACHE_ARTICLE_HOT = "article:hot";
-    private static final String CACHE_ARTICLE_LATEST = "article:latest";
 
     // List queries must not load the potentially large Markdown body.
     private LambdaQueryWrapper<Article> listQuery() {
@@ -202,6 +195,13 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     /**
      * 组装文章详情 VO（填充作者/分类/标签）
      */
+    @Override
+    public ArticleVO getArticleForMcp(Long id) {
+        Article article = getById(id);
+        if (article == null || Integer.valueOf(2).equals(article.getStatus())) throw new ResourceNotFoundException("文章", id);
+        return assembleArticleVO(article);
+    }
+
     private ArticleVO assembleArticleVO(Article article) {
         ArticleVO result = BeanUtil.copyProperties(article, ArticleVO.class);
 
@@ -251,6 +251,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Transactional(rollbackFor = Exception.class)
     public ArticleVO createArticle(ArticleDTO articleDTO) {
         Article article = BeanUtil.copyProperties(articleDTO, Article.class);
+        // 创建时不带 status 默认存为草稿，而不是意外发布
+        article.setStatus(articleDTO.getStatus() != null ? articleDTO.getStatus() : 0);
+        article.setVersion(0L);
 
         // 作者为当前登录用户
         Long authorId = SecurityUtils.getCurrentUserId();
@@ -259,13 +262,12 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
         article.setAuthorId(authorId);
 
-        if (articleDTO.getStatus() == 1) {
+        if (Integer.valueOf(1).equals(article.getStatus())) {
             article.setPublishTime(LocalDateTime.now());
         }
 
         save(article);
         saveArticleTags(article.getId(), articleDTO.getTagIds());
-        clearArticleCache(article.getId());
 
         return assembleArticleVO(article);
     }
@@ -278,21 +280,28 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             throw new ResourceNotFoundException("文章", id);
         }
 
-        BeanUtil.copyProperties(articleDTO, article);
+        // 忽略 null 字段：部分更新不得清空未传字段（摘要/封面/分类），status 为 null 表示保持原状态
+        if (articleDTO.getVersion() == null || !articleDTO.getVersion().equals(article.getVersion())) {
+            throw new com.qblog.common.exception.BusinessException(409, "文章已被修改，请重新载入后合并更改");
+        }
+        BeanUtil.copyProperties(articleDTO, article, CopyOptions.create().ignoreNullValue());
+        article.setId(id);
+        article.setVersion(articleDTO.getVersion() + 1);
 
-        if (articleDTO.getStatus() == 1 && article.getPublishTime() == null) {
+        if (Integer.valueOf(1).equals(articleDTO.getStatus()) && article.getPublishTime() == null) {
             article.setPublishTime(LocalDateTime.now());
         }
 
-        updateById(article);
+        boolean updated = update(article, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Article>()
+            .eq(Article::getId, id).eq(Article::getVersion, articleDTO.getVersion()).ne(Article::getStatus, 2));
+        if (!updated) throw new com.qblog.common.exception.BusinessException(409, "文章已被修改，请重新载入后合并更改");
 
-        // 处理文章标签关联：先删除旧的，再添加新的
-        articleTagService.remove(new LambdaQueryWrapper<ArticleTag>()
-            .eq(ArticleTag::getArticleId, id));
-        saveArticleTags(id, articleDTO.getTagIds());
-
-        // 清除文章缓存
-        clearArticleCache(id);
+        // 仅当请求显式携带 tagIds 时才替换标签关联，避免部分更新把标签清空
+        if (articleDTO.getTagIds() != null) {
+            articleTagService.remove(new LambdaQueryWrapper<ArticleTag>()
+                .eq(ArticleTag::getArticleId, id));
+            saveArticleTags(id, articleDTO.getTagIds());
+        }
 
         return assembleArticleVO(article);
     }
@@ -317,9 +326,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (article != null) {
             article.setStatus(2); // 标记为已删除
             updateById(article);
-
-            // 清除文章缓存
-            clearArticleCache(id);
         }
     }
 
@@ -529,24 +535,4 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         return "anonymous";
     }
 
-    /**
-     * 清除文章相关缓存
-     */
-    private void clearArticleCache(Long articleId) {
-        Runnable invalidate = () -> {
-            cacheService.delete(CACHE_ARTICLE_DETAIL + articleId);
-            cacheService.deleteByPattern(CACHE_ARTICLE_HOT + "*");
-            cacheService.deleteByPattern(CACHE_ARTICLE_LATEST + "*");
-        };
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    invalidate.run();
-                }
-            });
-        } else {
-            invalidate.run();
-        }
-    }
 }

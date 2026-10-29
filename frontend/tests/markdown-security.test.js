@@ -3,11 +3,10 @@ import assert from 'node:assert/strict'
 import MarkdownIt from 'markdown-it'
 import { tipContainerPlugin } from '../src/utils/markdownPlugins/tipContainer.js'
 import { codeCopyPlugin } from '../src/utils/markdownPlugins/codeCopy.js'
-import { plantumlPlugin } from '../src/utils/markdownPlugins/plantuml.js'
 
 function renderer() {
   const md = new MarkdownIt({ html: false })
-  md.use(plantumlPlugin).use(tipContainerPlugin).use(codeCopyPlugin)
+  md.use(tipContainerPlugin).use(codeCopyPlugin)
   return md
 }
 
@@ -36,9 +35,15 @@ test('code content cannot escape the hidden copy textarea', () => {
   assert.equal((html.match(/<\/textarea>/g) || []).length, 1)
 })
 
-test('normal code copy markup and PlantUML rendering remain available', () => {
+test('normal code copy markup remains available', () => {
   const md = renderer()
   assert.ok(md.render('```js\nconst n = 1\n```').includes('class="code-copy-btn"'))
-  assert.ok(md.render('```plantuml\n@startuml\nAlice -> Bob\n@enduml\n```')
-    .includes('src="https://www.plantuml.com/plantuml/svg/'))
+})
+
+test('plantuml content stays local instead of being sent to an external renderer', () => {
+  // 私有工作台不允许把笔记内容编码后发往 www.plantuml.com
+  const html = renderer().render('```plantuml\n@startuml\nAlice -> Bob\n@enduml\n```')
+  assert.ok(!html.includes('plantuml.com'))
+  assert.ok(!html.includes('<img'))
+  assert.ok(html.includes('@startuml'))
 })

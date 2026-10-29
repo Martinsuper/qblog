@@ -13,7 +13,6 @@ export function headingAnchorPlugin(md) {
 
   md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
     const token = tokens[idx]
-    const level = parseInt(token.tag.slice(1)) // h1, h2, h3...
 
     // 获取标题内容
     const nextToken = tokens[idx + 1]

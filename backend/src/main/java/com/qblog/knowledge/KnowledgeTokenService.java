@@ -52,10 +52,10 @@ public class KnowledgeTokenService {
                 || request.expiresAt() == null || !request.expiresAt().isAfter(Instant.now())
                 || request.expiresAt().isAfter(Instant.now().plus(365, ChronoUnit.DAYS))
                 || request.scopes() == null || request.scopes().isEmpty()
-                || !Set.of("READ", "WRITE").containsAll(request.scopes()) || request.directoryScope() == null)
+                || !Set.of("READ", "WRITE", "ARTICLE_READ", "ARTICLE_WRITE", "ARTICLE_PUBLISH", "ARTICLE_DELETE").containsAll(request.scopes()) || request.directoryScope() == null)
             throw new BusinessException(400, "Invalid token configuration");
         DirectoryScope scope = request.directoryScope();
-        if ((!scope.all() && !scope.inbox() && scope.directoryIds().isEmpty())
+        if (((request.scopes().contains("READ") || request.scopes().contains("WRITE")) && !scope.all() && !scope.inbox() && scope.directoryIds().isEmpty())
                 || (scope.all() && (scope.inbox() || !scope.directoryIds().isEmpty()))
                 || scope.directoryIds().stream().anyMatch(id -> id == null || id <= 0))
             throw new BusinessException(400, "An explicit directory scope is required");

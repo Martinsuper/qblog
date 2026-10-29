@@ -13,7 +13,6 @@ import yaml from 'highlight.js/lib/languages/yaml'
 import { computed } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import {
-  plantumlPlugin,
   tipContainerPlugin,
   headingAnchorPlugin,
   codeCopyPlugin
@@ -58,7 +57,6 @@ function createRenderer(theme) {
   }
 
   // 应用插件
-  plantumlPlugin(md)
   tipContainerPlugin(md)
   headingAnchorPlugin(md)
 

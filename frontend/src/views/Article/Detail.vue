@@ -2,24 +2,38 @@
   <div class="article-detail-page">
     <!-- 加载骨架屏 -->
     <el-card v-if="loading">
-      <el-skeleton :rows="10" animated />
+      <el-skeleton
+        :rows="10"
+        animated
+      />
     </el-card>
 
-    <article v-else-if="article" class="article-content">
+    <article
+      v-else-if="article"
+      class="article-content"
+    >
       <el-card>
         <!-- 文章头部 -->
         <div class="article-header">
-          <h1 class="article-title">{{ article.title }}</h1>
+          <h1 class="article-title">
+            {{ article.title }}
+          </h1>
 
           <div class="article-meta">
             <div class="author-info">
-              <el-avatar :size="32" :src="article.author?.avatar">
+              <el-avatar
+                :size="32"
+                :src="article.author?.avatar"
+              >
                 {{ article.author?.nickname?.charAt(0) }}
               </el-avatar>
               <span class="author-name">{{ article.author?.nickname || '管理员' }}</span>
             </div>
             <div class="meta-items">
-              <span class="meta-item" :title="formatDateTime(article.publishTime)">
+              <span
+                class="meta-item"
+                :title="formatDateTime(article.publishTime)"
+              >
                 <el-icon><Calendar /></el-icon>
                 {{ formatRelativeTime(article.publishTime) }}
               </span>
@@ -34,14 +48,23 @@
                 约 {{ readingMinutes }} 分钟
               </span>
 
-              <span v-if="article.status === 0" class="draft-badge">草稿</span>
+              <span
+                v-if="article.status === 0"
+                class="draft-badge"
+              >草稿</span>
             </div>
           </div>
         </div>
 
         <!-- 目录 -->
-        <nav v-if="toc.length >= 3" class="article-toc" aria-label="文章目录">
-          <div class="toc-title">目录</div>
+        <nav
+          v-if="toc.length >= 3"
+          class="article-toc"
+          aria-label="文章目录"
+        >
+          <div class="toc-title">
+            目录
+          </div>
           <ul class="toc-list">
             <li
               v-for="item in toc"
@@ -54,21 +77,38 @@
         </nav>
 
         <!-- 封面图 -->
-        <div v-if="article.coverImage" class="article-cover">
-          <img :src="article.coverImage" alt="封面图" loading="lazy" decoding="async" />
+        <div
+          v-if="article.coverImage"
+          class="article-cover"
+        >
+          <img
+            :src="article.coverImage"
+            alt="封面图"
+            loading="lazy"
+            decoding="async"
+          >
         </div>
 
         <!-- 文章内容 -->
-        <div :class="markdownClass" v-html="renderedContent"></div>
+        <div
+          :class="markdownClass"
+          v-html="renderedContent"
+        />
 
         <!-- 标签 -->
-        <div v-if="article.tags && article.tags.length > 0" class="article-tags">
+        <div
+          v-if="article.tags && article.tags.length > 0"
+          class="article-tags"
+        >
           <router-link
             v-for="tag in article.tags"
             :key="tag.id"
-            :to="`/articles?tagId=${tag.id}`"
+            :to="`/tag/${tag.id}`"
           >
-            <el-tag size="small" style="margin-right: 10px; margin-bottom: 10px; cursor: pointer;">
+            <el-tag
+              size="small"
+              style="margin-right: 10px; margin-bottom: 10px; cursor: pointer;"
+            >
               {{ tag.name }}
             </el-tag>
           </router-link>
@@ -76,10 +116,16 @@
       </el-card>
     </article>
 
-    <el-empty v-else description="文章不存在" />
+    <el-empty
+      v-else
+      description="文章不存在"
+    />
 
     <!-- 相关文章 -->
-    <el-card v-if="relatedArticles.length > 0" class="related-articles-card">
+    <el-card
+      v-if="relatedArticles.length > 0"
+      class="related-articles-card"
+    >
       <template #header>
         <span class="related-title">相关文章</span>
       </template>
@@ -90,7 +136,9 @@
           :to="`/article/${related.id}`"
           class="related-item"
         >
-          <div class="related-item-title">{{ related.title }}</div>
+          <div class="related-item-title">
+            {{ related.title }}
+          </div>
           <div class="related-item-meta">
             <span><el-icon><View /></el-icon> {{ related.viewCount }}</span>
             <span>{{ formatRelativeTime(related.publishTime) }}</span>
@@ -105,7 +153,6 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { createLatestRequest } from '@/utils/latestRequest'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { Calendar, View, Timer } from '@element-plus/icons-vue'
 import { useMarkdown } from '@/composables/useMarkdown'
 import { formatRelativeTime, formatDateTime, estimateReadingMinutes } from '@/composables/useTime'
@@ -165,8 +212,8 @@ const fetchArticle = async () => {
     fetchRelatedArticles(id, isCurrent)
   } catch (error) {
     if (!isCurrent()) return
+    // 失败提示由 axios 拦截器统一弹出
     console.error('获取文章失败:', error)
-    ElMessage.error('获取文章失败')
   } finally {
     if (isCurrent()) loading.value = false
   }

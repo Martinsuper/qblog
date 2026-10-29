@@ -32,11 +32,11 @@ echo "前端构建完成: dist/ 目录"
 # 4. 停止旧服务
 echo "[4/6] 停止旧服务..."
 cd ../docker
-docker compose -f docker-compose.caddy.yml down
+docker compose -f docker-compose.server.yml down
 
 # 5. 启动新服务
 echo "[5/6] 启动新服务..."
-docker compose -f docker-compose.caddy.yml up -d --build
+docker compose -f docker-compose.server.yml up -d --build
 
 # 6. 等待服务就绪并验证
 echo "[6/6] 验证服务状态..."

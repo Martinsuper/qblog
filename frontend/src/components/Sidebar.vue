@@ -2,12 +2,19 @@
   <aside class="sidebar space-y-5">
     <!-- 分类 -->
     <div class="card">
-      <h4 class="font-medium mb-3 flex items-center gap-2" style="color: var(--text-primary)">
+      <h4
+        class="font-medium mb-3 flex items-center gap-2"
+        style="color: var(--text-primary)"
+      >
         <span>📁</span>
         <span>分类</span>
       </h4>
       <ul class="space-y-2">
-        <li v-for="cat in categories" :key="cat.id" class="category-list-item flex items-center justify-between text-sm">
+        <li
+          v-for="cat in categories"
+          :key="cat.id"
+          class="category-list-item flex items-center justify-between text-sm"
+        >
           <router-link
             :to="`/category/${cat.id}`"
             class="flex-1 truncate"
@@ -15,7 +22,11 @@
           >
             {{ cat.name }}
           </router-link>
-          <span v-if="cat.articleCount !== undefined" class="text-xs ml-2" style="color: var(--text-tertiary)">
+          <span
+            v-if="cat.articleCount !== undefined"
+            class="text-xs ml-2"
+            style="color: var(--text-tertiary)"
+          >
             {{ cat.articleCount }}
           </span>
         </li>
@@ -24,7 +35,10 @@
 
     <!-- 热门文章 -->
     <div class="card">
-      <h4 class="font-medium mb-3 flex items-center gap-2" style="color: var(--text-primary)">
+      <h4
+        class="font-medium mb-3 flex items-center gap-2"
+        style="color: var(--text-primary)"
+      >
         <span>🔥</span>
         <span>热门文章</span>
       </h4>
@@ -32,7 +46,8 @@
         <li
           v-for="(article, index) in hotArticles"
           :key="article.id"
-          class="hot-article-item flex items-start gap-2">
+          class="hot-article-item flex items-start gap-2"
+        >
           <span
             class="flex-shrink-0 w-5 h-5 rounded text-xs flex items-center justify-center font-medium"
             :class="[
@@ -51,7 +66,10 @@
           >
             {{ article.title }}
           </router-link>
-          <span class="text-xs flex-shrink-0" style="color: var(--text-tertiary)">
+          <span
+            class="text-xs flex-shrink-0"
+            style="color: var(--text-tertiary)"
+          >
             {{ article.viewCount }}
           </span>
         </li>
@@ -60,7 +78,10 @@
 
     <!-- 标签 -->
     <div class="card">
-      <h4 class="font-medium mb-3 flex items-center gap-2" style="color: var(--text-primary)">
+      <h4
+        class="font-medium mb-3 flex items-center gap-2"
+        style="color: var(--text-primary)"
+      >
         <span>🏷️</span>
         <span>标签</span>
       </h4>
@@ -85,20 +106,46 @@ import { getHotArticles } from '@/api/article'
 import { getCategoryList } from '@/api/category'
 import { getTagList } from '@/api/tag'
 
+// 模块级缓存：同一会话内多次导航不重复请求，5 分钟过期
+const CACHE_TTL = 5 * 60 * 1000
+let cache = null
+let cacheAt = 0
+let inflight = null
+
 const hotArticles = ref([])
 const categories = ref([])
 const tags = ref([])
 
 const fetchData = async () => {
+  const now = Date.now()
+  if (cache && now - cacheAt < CACHE_TTL) {
+    hotArticles.value = cache.hot
+    categories.value = cache.categories
+    tags.value = cache.tags
+    return
+  }
   try {
-    const [hotRes, catRes, tagRes] = await Promise.all([
-      getHotArticles({ limit: 10 }),
-      getCategoryList(),
-      getTagList()
-    ])
-    hotArticles.value = hotRes.data || []
-    categories.value = catRes.data || []
-    tags.value = tagRes.data || []
+    if (!inflight) {
+      inflight = Promise.all([
+        getHotArticles({ limit: 10 }),
+        getCategoryList(),
+        getTagList()
+      ]).then(([hotRes, catRes, tagRes]) => {
+        cache = {
+          hot: hotRes.data || [],
+          categories: catRes.data || [],
+          tags: tagRes.data || []
+        }
+        cacheAt = Date.now()
+        return cache
+      }).finally(() => {
+        inflight = null
+      })
+    }
+    const data = await inflight
+    hotArticles.value = data.hot
+    categories.value = data.categories
+    tags.value = data.tags
   } catch (error) {
     console.error('侧边栏数据加载失败:', error)
   }

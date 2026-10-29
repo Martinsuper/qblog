@@ -3,28 +3,57 @@
     <!-- 顶部导航栏 -->
     <header class="editor-header">
       <div class="header-left">
-        <el-button link @click="goBack" class="back-btn">
+        <el-button
+          link
+          class="back-btn"
+          @click="goBack"
+        >
           <el-icon><ArrowLeft /></el-icon>
         </el-button>
-        <h1 class="page-title">{{ isEdit ? '编辑文章' : '写文章' }}</h1>
-        <span v-if="autoSaveStatus" class="auto-save-status">{{ autoSaveStatus }}</span>
+        <h1 class="page-title">
+          {{ isEdit ? '编辑文章' : '写文章' }}
+        </h1>
+        <span
+          v-if="autoSaveStatus"
+          class="auto-save-status"
+        >{{ autoSaveStatus }}</span>
       </div>
       <div class="header-right">
-        <el-button :type="showPreview ? 'primary' : 'default'" @click="togglePreview">
+        <el-button
+          :type="showPreview ? 'primary' : 'default'"
+          @click="togglePreview"
+        >
           <el-icon><View /></el-icon>
           {{ showPreview ? '关闭预览' : '分屏预览' }}
         </el-button>
-        <el-button @click="handleSaveDraft" :loading="saving">
+        <el-button
+          :loading="saving"
+          @click="handleSaveDraft"
+        >
           <el-icon><Document /></el-icon>
           存草稿
         </el-button>
-        <el-button type="primary" @click="openSettingsModal">
+        <el-button
+          type="primary"
+          @click="openPublishSettings"
+        >
           <el-icon><Check /></el-icon>
           发布
         </el-button>
       </div>
     </header>
 
+    <div
+      v-if="conflict"
+      class="conflict-notice"
+    >
+      文章已在其他位置更新，保存已暂停。请下载当前内容，再重新载入页面以合并修改。<el-button
+        link
+        @click="downloadConflict"
+      >
+        下载当前内容
+      </el-button>
+    </div>
     <!-- 标题区域 -->
     <div class="title-area">
       <div class="title-input-wrapper">
@@ -33,7 +62,7 @@
           class="title-input"
           placeholder="请输入文章标题（5-100字）"
           maxlength="100"
-        />
+        >
         <span class="char-count">{{ articleForm.title.length }}/100</span>
       </div>
       <div class="meta-tags">
@@ -52,77 +81,116 @@
         >
           🏷️ {{ tag.name }}
         </el-tag>
-        <span v-if="!selectedCategory && selectedTags.length === 0" class="meta-empty" @click="openSettingsModal">
+        <span
+          v-if="!selectedCategory && selectedTags.length === 0"
+          class="meta-empty"
+          @click="openSettingsModal"
+        >
           点击设置分类和标签
         </span>
       </div>
     </div>
 
     <!-- 编辑器面板 -->
-    <div class="editor-panel" ref="editorPanelRef">
+    <div
+      ref="editorPanelRef"
+      class="editor-panel"
+    >
       <!-- 工具栏 -->
       <div class="toolbar">
         <div class="toolbar-left">
-          <el-button link @click="insertText('# ', '标题')" title="标题">
+          <el-button
+            link
+            title="标题"
+            @click="insertText('# ', '标题')"
+          >
             <el-icon><Document /></el-icon>
           </el-button>
-          <el-button link @click="insertText('**', '**')" title="加粗">
+          <el-button
+            link
+            title="加粗"
+            @click="insertText('**', '**')"
+          >
             <el-icon><EditIcon /></el-icon>
           </el-button>
-          <el-button link @click="insertText('*', '*')" title="斜体">
+          <el-button
+            link
+            title="斜体"
+            @click="insertText('*', '*')"
+          >
             <el-icon><EditIcon /></el-icon>
           </el-button>
-          <el-button link @click="insertText('[', '](url)')" title="链接">
+          <el-button
+            link
+            title="链接"
+            @click="insertText('[', '](url)')"
+          >
             <el-icon><LinkIcon /></el-icon>
           </el-button>
-          <el-button link @click="insertText('![', '](url)')" title="图片">
+          <el-button
+            link
+            title="图片"
+            @click="insertText('![', '](url)')"
+          >
             <el-icon><PictureIcon /></el-icon>
           </el-button>
-          <el-button link @click="insertCodeBlock()" title="代码块">
+          <el-button
+            link
+            title="代码块"
+            @click="insertCodeBlock()"
+          >
             <el-icon><Document /></el-icon>
           </el-button>
-          <el-button link @click="insertTable()" title="表格">
+          <el-button
+            link
+            title="表格"
+            @click="insertTable()"
+          >
             <el-icon><Grid /></el-icon>
           </el-button>
           <el-divider direction="vertical" />
           <el-dropdown trigger="click">
-            <el-button link title="插入图表">
-              <el-icon><Connection /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item @click="insertPlantUML('sequence')">时序图</el-dropdown-item>
-                <el-dropdown-item @click="insertPlantUML('class')">类图</el-dropdown-item>
-                <el-dropdown-item @click="insertPlantUML('usecase')">用例图</el-dropdown-item>
-                <el-dropdown-item @click="insertPlantUML('activity')">活动图</el-dropdown-item>
-                <el-dropdown-item @click="insertPlantUML('component')">组件图</el-dropdown-item>
-                <el-dropdown-item @click="insertPlantUML('deployment')">部署图</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <el-dropdown trigger="click">
-            <el-button link title="插入容器">
+            <el-button
+              link
+              title="插入容器"
+            >
               <el-icon><MessageBox /></el-icon>
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item @click="insertContainer('tip')">💡 提示容器</el-dropdown-item>
-                <el-dropdown-item @click="insertContainer('warning')">⚠️ 警告容器</el-dropdown-item>
-                <el-dropdown-item @click="insertContainer('danger')">🚨 危险容器</el-dropdown-item>
-                <el-dropdown-item @click="insertContainer('info')">ℹ️ 信息容器</el-dropdown-item>
+                <el-dropdown-item @click="insertContainer('tip')">
+                  💡 提示容器
+                </el-dropdown-item>
+                <el-dropdown-item @click="insertContainer('warning')">
+                  ⚠️ 警告容器
+                </el-dropdown-item>
+                <el-dropdown-item @click="insertContainer('danger')">
+                  🚨 危险容器
+                </el-dropdown-item>
+                <el-dropdown-item @click="insertContainer('info')">
+                  ℹ️ 信息容器
+                </el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
         </div>
         <div class="toolbar-right">
-          <el-button link :class="{ active: isFullscreen }" @click="toggleFullscreen" title="全屏">
+          <el-button
+            link
+            :class="{ active: isFullscreen }"
+            title="全屏"
+            @click="toggleFullscreen"
+          >
             <el-icon><FullScreen /></el-icon>
           </el-button>
         </div>
       </div>
 
       <!-- 编辑/预览区域 -->
-      <div class="editor-container" :class="{ 'split-mode': showPreview }">
+      <div
+        class="editor-container"
+        :class="{ 'split-mode': showPreview }"
+      >
         <!-- 编辑区 -->
         <div class="editor-wrapper">
           <textarea
@@ -137,9 +205,9 @@
           <!-- 快捷命令菜单 -->
           <div
             v-if="showCommandMenu"
+            ref="commandMenuRef"
             class="command-menu"
             :style="commandMenuStyle"
-            ref="commandMenuRef"
           >
             <div class="command-menu-header">
               <span class="command-menu-title">快捷命令</span>
@@ -161,15 +229,25 @@
                 </div>
                 <span class="command-shortcut">/{{ cmd.name }}</span>
               </div>
-              <div v-if="filteredCommands.length === 0" class="command-empty">
+              <div
+                v-if="filteredCommands.length === 0"
+                class="command-empty"
+              >
                 未找到匹配的命令
               </div>
             </div>
           </div>
         </div>
         <!-- 预览区（分屏时显示） -->
-        <div v-if="showPreview" class="preview-wrapper" ref="previewRef">
-          <div :class="markdownClass" v-html="renderedContent"></div>
+        <div
+          v-if="showPreview"
+          ref="previewRef"
+          class="preview-wrapper"
+        >
+          <div
+            :class="markdownClass"
+            v-html="renderedContent"
+          />
         </div>
       </div>
 
@@ -188,7 +266,7 @@
     <!-- 设置模态框 -->
     <el-dialog
       v-model="showSettingsModal"
-      title="文章设置"
+      :title="settingsForPublish ? '发布文章' : '文章设置'"
       width="480px"
       :close-on-click-modal="false"
       class="settings-dialog"
@@ -196,21 +274,34 @@
       <el-form label-position="top">
         <el-form-item label="封面图片">
           <el-upload
+            v-loading="uploadingCover"
             class="cover-uploader"
-            action="/api/v1/upload/image"
             :show-file-list="false"
-            :on-success="handleCoverSuccess"
             :before-upload="beforeCoverUpload"
+            :http-request="uploadCover"
           >
-            <img v-if="articleForm.coverImage" :src="articleForm.coverImage" class="cover-img" />
-            <div v-else class="cover-placeholder">
-              <el-icon class="cover-icon"><Plus /></el-icon>
+            <img
+              v-if="articleForm.coverImage"
+              :src="articleForm.coverImage"
+              class="cover-img"
+            >
+            <div
+              v-else
+              class="cover-placeholder"
+            >
+              <el-icon class="cover-icon">
+                <Plus />
+              </el-icon>
               <span>上传封面</span>
             </div>
           </el-upload>
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="articleForm.categoryId" placeholder="选择分类" class="full-width">
+          <el-select
+            v-model="articleForm.categoryId"
+            placeholder="选择分类"
+            class="full-width"
+          >
             <el-option
               v-for="cat in categories"
               :key="cat.id"
@@ -224,7 +315,6 @@
             v-model="articleForm.tagIds"
             multiple
             placeholder="添加标签"
-            allow-create
             filterable
             class="full-width"
           >
@@ -248,8 +338,15 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="closeSettingsModal">取消</el-button>
-        <el-button type="primary" @click="handlePublish" :loading="publishing">
+        <el-button @click="closeSettingsModal">
+          {{ settingsForPublish ? '取消' : '完成' }}
+        </el-button>
+        <el-button
+          v-if="settingsForPublish"
+          type="primary"
+          :loading="publishing"
+          @click="handlePublish"
+        >
           保存并发布
         </el-button>
       </template>
@@ -258,7 +355,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useMarkdown } from '@/composables/useMarkdown'
@@ -273,14 +370,13 @@ import {
   InfoFilled,
   Edit as EditIcon,
   FullScreen,
-  Connection,
   MessageBox,
-  Grid,
-  Edit
+  Grid
 } from '@element-plus/icons-vue'
 import { createArticle, updateArticle, getArticleDetail } from '@/api/article'
 import { getCategoryList } from '@/api/category'
 import { getTagList } from '@/api/tag'
+import { uploadImage } from '@/api/upload'
 import { createArticleSaveQueue } from '@/utils/articleSaveQueue'
 
 const route = useRoute()
@@ -295,12 +391,15 @@ const categories = ref([])
 const tags = ref([])
 const showPreview = ref(false)
 const saving = ref(false)
+const conflict = ref(false)
 const publishing = ref(false)
+const uploadingCover = ref(false)
 const isFullscreen = ref(false)
 const editorPanelRef = ref(null)
 
 // 新增状态
 const showSettingsModal = ref(false)
+const settingsForPublish = ref(false)
 const autoSaveStatus = ref('')
 
 // 自动保存
@@ -322,6 +421,7 @@ const debouncedSave = async () => {
     const now = new Date()
     autoSaveStatus.value = `自动保存 · ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
   } catch (error) {
+    autoSaveStatus.value = conflict.value ? '版本冲突，保存已暂停' : '自动保存失败，请手动保存'
     console.error('自动保存失败:', error)
   }
 }
@@ -420,10 +520,6 @@ const commands = [
   { name: 'warning', label: '警告容器', description: '警告信息框', icon: '⚠️', action: () => insertContainer('warning') },
   { name: 'danger', label: '危险容器', description: '危险警告框', icon: '🚨', action: () => insertContainer('danger') },
   { name: 'info', label: '信息容器', description: '信息提示框', icon: 'ℹ️', action: () => insertContainer('info') },
-  // 图表
-  { name: 'plantuml', label: 'PlantUML', description: 'UML 图表', icon: '📈', action: () => insertPlantUML('sequence') },
-  { name: 'sequence', label: '时序图', description: '时序图', icon: '⏱', action: () => insertPlantUML('sequence') },
-  { name: 'class', label: '类图', description: '类图', icon: '📦', action: () => insertPlantUML('class') },
 ]
 
 // 过滤后的命令列表
@@ -439,6 +535,7 @@ const filteredCommands = computed(() => {
 
 const articleForm = reactive({
   id: null,
+  version: 0,
   title: '',
   summary: '',
   content: '',
@@ -452,22 +549,31 @@ let editorReady = false
 let editorDisposed = false
 const saveQueue = createArticleSaveQueue({
   getSnapshot: () => {
-    const { id, ...fields } = articleForm
-    return { ...fields, tagIds: [...fields.tagIds] }
+    const { id, version, tagIds, ...fields } = articleForm
+    return { ...fields, tagIds: [...tagIds] }
   },
   persist: async (snapshot) => {
+    if (conflict.value) throw new Error('文章版本冲突，请先处理')
     if (articleForm.id) {
-      await updateArticle(articleForm.id, snapshot)
+      let res
+      try { res = await updateArticle(articleForm.id, { ...snapshot, version: articleForm.version }) }
+      catch (error) { if (error.response?.status === 409) { conflict.value = true; autoSaveStatus.value = '版本冲突，保存已暂停' } throw error }
+      articleForm.version = res.data.version
     } else {
       const res = await createArticle(snapshot)
       if (!res.data?.id) throw new Error('保存成功但未返回文章 ID')
       articleForm.id = res.data.id
+      articleForm.version = res.data.version
       isEdit.value = true
     }
   },
   onSaved: (snapshot) => { articleForm.status = snapshot.status }
 })
 saveQueue.markSaved()
+
+watch(() => [articleForm.title, articleForm.content, articleForm.summary, articleForm.coverImage, articleForm.categoryId, [...articleForm.tagIds]], () => {
+  if (editorReady) triggerDebouncedSave()
+})
 
 // 渲染后的内容
 const renderedContent = computed(() => {
@@ -481,6 +587,10 @@ const wordCount = computed(() => {
   return articleForm.content.replace(/\s/g, '').length
 })
 
+const downloadConflict = () => {
+  const url = URL.createObjectURL(new Blob([articleForm.content], { type: 'text/markdown;charset=utf-8' }))
+  const link = document.createElement('a'); link.href = url; link.download = 'article-draft.md'; link.click(); URL.revokeObjectURL(url)
+}
 const goBack = () => {
   router.back()
 }
@@ -497,7 +607,8 @@ const handleScroll = () => {
   const previewElement = previewRef.value
 
   // 计算滚动比例
-  const scrollRatio = editorElement.scrollTop / (editorElement.scrollHeight - editorElement.clientHeight)
+  const scrollRange = editorElement.scrollHeight - editorElement.clientHeight
+  const scrollRatio = scrollRange > 0 ? editorElement.scrollTop / scrollRange : 0
 
   // 同步预览区滚动
   previewElement.scrollTop = scrollRatio * (previewElement.scrollHeight - previewElement.clientHeight)
@@ -540,7 +651,7 @@ onUnmounted(() => {
 })
 
 // 处理编辑器输入事件
-const handleEditorInput = (e) => {
+const handleEditorInput = () => {
   const textarea = editorRef.value
   if (!textarea) return
 
@@ -730,89 +841,6 @@ const insertTable = () => {
   })
 }
 
-// PlantUML 模板
-const plantUMLTemplates = {
-  sequence: `@startuml
-用户 -> 系统: 请求
-系统 --> 用户: 响应
-@enduml`,
-  class: `@startuml
-class User {
-  +id: Long
-  +name: String
-  +login()
-}
-class Article {
-  +id: Long
-  +title: String
-  +content: String
-}
-User --> Article: 发布
-@enduml`,
-  usecase: `@startuml
-:user: as 用户
-:系统: as 系统
-
-用户 --> (登录)
-用户 --> (查看文章)
-用户 --> (发表评论)
-(登录) --> 系统
-@enduml`,
-  activity: `@startuml
-start
-:接收请求;
-if (验证通过？) then (是)
-  :处理业务;
-  stop
-else (否)
-  :返回错误;
-  stop
-endif
-@enduml`,
-  component: `@startuml
-[前端] --> [API 网关]
-[API 网关] --> [服务 A]
-[API 网关] --> [服务 B]
-[服务 A] --> [(数据库 A)]
-[服务 B] --> [(数据库 B)]
-@enduml`,
-  deployment: `@startuml
-node "服务器" {
-  component "应用服务" as app
-  database "数据库" as db
-}
-
-internet --> app
-app --> db
-@enduml`
-}
-
-const insertPlantUML = (type) => {
-  const template = plantUMLTemplates[type] || plantUMLTemplates.sequence
-  const textarea = editorRef.value
-  if (!textarea) return
-
-  // 保存当前滚动位置
-  const scrollTop = textarea.scrollTop
-
-  const start = textarea.selectionStart
-  const end = textarea.selectionEnd
-
-  // 在光标位置插入 PlantUML 代码块
-  const plantumlBlock = `\n\`\`\`plantuml\n${template}\n\`\`\`\n`
-
-  const newText = articleForm.content.substring(0, start) + plantumlBlock + articleForm.content.substring(end)
-  articleForm.content = newText
-
-  nextTick(() => {
-    textarea.focus()
-    // 恢复滚动位置
-    textarea.scrollTop = scrollTop
-    // 将光标定位到代码块开始位置（在 plantuml 关键字后面）
-    const newCursorPos = start + 12 // \n\`\`\`plantuml\n 的长度
-    textarea.setSelectionRange(newCursorPos, newCursorPos)
-  })
-}
 
 // 插入容器
 const insertContainer = (type) => {
@@ -871,6 +899,7 @@ const fetchArticle = async () => {
 
       // 直接逐个字段赋值，确保响应式更新
       articleForm.id = data.id || Number(id)
+      articleForm.version = data.version
       articleForm.title = data.title || ''
       articleForm.summary = data.summary || ''
       articleForm.content = data.content || ''
@@ -882,24 +911,26 @@ const fetchArticle = async () => {
         .filter(id => !isNaN(id) && id > 0)
       articleForm.status = data.status ?? 0
       saveQueue.markSaved()
-
-      // 验证内容是否真的填充了
-      if (data.content && articleForm.content === '') {
-        console.error('❌ 内容字段填充失败！')
-      }
     } catch (error) {
+      // 失败提示由 axios 拦截器统一弹出
       console.error('获取文章失败:', error)
-      ElMessage.error('获取文章失败：' + (error.message || '未知错误'))
       return false
     }
   }
   return true
 }
 
-const handleCoverSuccess = (response) => {
-  if (response.code === 200) {
-    articleForm.coverImage = response.data.url
+// 封面上传：走统一 request（带 token、统一错误提示），后端返回 { url }
+const uploadCover = async ({ file }) => {
+  uploadingCover.value = true
+  try {
+    const res = await uploadImage(file)
+    articleForm.coverImage = res.data.url
     ElMessage.success('封面上传成功')
+  } catch (error) {
+    console.error('封面上传失败:', error)
+  } finally {
+    uploadingCover.value = false
   }
 }
 
@@ -929,6 +960,12 @@ const handleSaveDraft = async () => {
 
 // 打开设置模态框
 const openSettingsModal = () => {
+  settingsForPublish.value = false
+  showSettingsModal.value = true
+}
+
+const openPublishSettings = () => {
+  settingsForPublish.value = true
   showSettingsModal.value = true
 }
 
@@ -949,8 +986,6 @@ const handlePublish = async () => {
     return
   }
 
-  closeSettingsModal()
-
   try {
     publishing.value = true
     await saveQueue.save({ status: 1 })
@@ -969,6 +1004,7 @@ const handlePublish = async () => {
 </script>
 
 <style lang="scss" scoped>
+.conflict-notice { padding: 12px 24px; background: #fff5e6; color: #805c25; }
 .article-editor {
   display: flex;
   flex-direction: column;
@@ -1092,6 +1128,7 @@ const handlePublish = async () => {
 // 编辑器面板
 .editor-panel {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: var(--bg-secondary);
@@ -1427,9 +1464,18 @@ const handlePublish = async () => {
     font-size: 16px;
   }
 
-  .header-right .el-button span {
-    display: none;
-  }
+  .editor-header { gap: 8px; }
+  .header-left { gap: 4px; }
+  .header-left .auto-save-status { display: none; }
+  .header-right { display: flex; gap: 4px; }
+  .header-right .el-button { margin-left: 0; padding: 8px; }
+  .header-right .el-icon { display: none; }
+  .toolbar-left { overflow-x: auto; min-width: 0; }
+  .toolbar { gap: 8px; }
+  .editor-container.split-mode .editor-wrapper { display: none; }
+  .editor-container.split-mode .preview-wrapper { width: 100%; }
+  .footer-tip { min-width: 0; }
+  .word-count { white-space: nowrap; }
 
   .title-area {
     padding: 16px;

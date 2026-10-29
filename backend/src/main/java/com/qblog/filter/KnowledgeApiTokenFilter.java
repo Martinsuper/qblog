@@ -26,6 +26,7 @@ public class KnowledgeApiTokenFilter extends OncePerRequestFilter {
             catch (RuntimeException failure) { principal = null; }
             if (principal == null) { reject(response, 401); return; }
             var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of(new SimpleGrantedAuthority("MCP_TOKEN")));
+            auth.setDetails(java.util.Map.of("userId", principal.userId()));
             SecurityContextHolder.getContext().setAuthentication(auth);
         } else if ("/mcp".equals(path)) { reject(response, 401); return; }
         chain.doFilter(request,response);

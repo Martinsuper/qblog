@@ -13,6 +13,8 @@ public class ArticleVO {
 
     private Long id;
 
+    private Long version;
+
     private String title;
 
     private String summary;

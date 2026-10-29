@@ -11,7 +11,7 @@ services:
       MYSQL_PASSWORD: qblog123
       TZ: Asia/Shanghai
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     volumes:
       - ./data/mysql:/var/lib/mysql
       - ./logs/mysql:/var/log/mysql
@@ -34,7 +34,7 @@ services:
     container_name: qblog-redis
     restart: always
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - ./data/redis:/data
     command: redis-server --appendonly yes

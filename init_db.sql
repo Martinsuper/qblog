@@ -56,6 +56,7 @@ CREATE TABLE `article` (
   `category_id` bigint DEFAULT NULL COMMENT '分类ID',
   `status` tinyint DEFAULT 0 COMMENT '状态 0-草稿 1-发布 2-私密',
   `view_count` int DEFAULT 0 COMMENT '浏览数',
+  `version` bigint NOT NULL DEFAULT 0 COMMENT '文章版本',
   `like_count` int DEFAULT 0 COMMENT '点赞数',
   `comment_count` int DEFAULT 0 COMMENT '评论数',
   `top` tinyint DEFAULT 0 COMMENT '置顶 0-否 1-是',

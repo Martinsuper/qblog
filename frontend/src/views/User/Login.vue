@@ -1,10 +1,19 @@
 <template>
   <div class="login-container">
     <div class="login-card glass animate-fade-in-up">
-      <h2 class="login-title">YOUNOTE</h2>
-      <p class="login-subtitle">登录你的私人知识库</p>
+      <h2 class="login-title">
+        YOUNOTE
+      </h2>
+      <p class="login-subtitle">
+        登录你的私人知识库
+      </p>
 
-      <el-form ref="formRef" :model="loginForm" :rules="rules" class="login-form">
+      <el-form
+        ref="formRef"
+        :model="loginForm"
+        :rules="rules"
+        class="login-form"
+      >
         <el-form-item prop="username">
           <el-input
             v-model="loginForm.username"
@@ -46,7 +55,10 @@
         </el-form-item>
 
         <div class="form-footer">
-          <el-checkbox v-model="loginForm.remember" label="记住我" />
+          <el-checkbox
+            v-model="loginForm.remember"
+            label="记住我"
+          />
           <span class="private-label">私人空间 · 不开放注册</span>
         </div>
       </el-form>
@@ -56,12 +68,13 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const formRef = ref()
 const loading = ref(false)
@@ -93,7 +106,8 @@ const handleLogin = async () => {
           return
         }
         ElMessage.success('登录成功')
-        router.push('/')
+        // 回到登录前想访问的页面（路由守卫会写入 ?redirect=）
+        router.push(route.query.redirect || '/')
       } catch (error) {
         console.error('登录失败:', error)
       } finally {

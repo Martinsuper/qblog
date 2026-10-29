@@ -77,6 +77,7 @@ CREATE TABLE `article` (
     `author_id` BIGINT DEFAULT NULL COMMENT '作者 ID',
     `category_id` BIGINT DEFAULT NULL COMMENT '分类 ID',
     `view_count` INT DEFAULT 0 COMMENT '浏览量',
+  `version` BIGINT NOT NULL DEFAULT 0 COMMENT '文章版本',
     `like_count` INT DEFAULT 0 COMMENT '点赞数',
     `top` TINYINT DEFAULT 0 COMMENT '是否置顶：0-否，1-是',
     `status` TINYINT DEFAULT 1 COMMENT '状态：0-草稿，1-已发布',

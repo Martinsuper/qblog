@@ -31,6 +31,8 @@ public interface ArticleService extends IService<Article> {
      */
     ArticleVO getArticleDetail(Long id);
 
+    ArticleVO getArticleForMcp(Long id);
+
     /**
      * 创建文章（返回组装好的详情 VO，不触发缓存与浏览量计数）
      */

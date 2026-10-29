@@ -1,10 +1,23 @@
 <template>
   <div class="admin-layout">
     <!-- 侧边栏 -->
-    <aside class="admin-sidebar" :class="{ collapsed: sidebarCollapsed }">
+    <aside
+      class="admin-sidebar"
+      :class="{ collapsed: sidebarCollapsed }"
+    >
       <div class="sidebar-header">
-        <h1 v-show="!sidebarCollapsed" class="logo">博客管理后台</h1>
-        <h1 v-show="sidebarCollapsed" class="logo-short">管理</h1>
+        <h1
+          v-show="!sidebarCollapsed"
+          class="logo"
+        >
+          博客管理后台
+        </h1>
+        <h1
+          v-show="sidebarCollapsed"
+          class="logo-short"
+        >
+          管理
+        </h1>
       </div>
       
       <el-menu
@@ -14,34 +27,63 @@
         router
         @select="handleMenuSelect"
       >
-        <el-menu-item index="/admin/articles" route="/admin/articles">
+        <el-menu-item
+          index="/admin/articles"
+          route="/admin/articles"
+        >
           <el-icon><Document /></el-icon>
-          <template #title>文章管理</template>
+          <template #title>
+            文章管理
+          </template>
         </el-menu-item>
 
-        <el-menu-item index="/admin/categories" route="/admin/categories">
+        <el-menu-item
+          index="/admin/categories"
+          route="/admin/categories"
+        >
           <el-icon><Folder /></el-icon>
-          <template #title>分类管理</template>
+          <template #title>
+            分类管理
+          </template>
         </el-menu-item>
 
-        <el-menu-item index="/admin/tags" route="/admin/tags">
+        <el-menu-item
+          index="/admin/tags"
+          route="/admin/tags"
+        >
           <el-icon><PriceTag /></el-icon>
-          <template #title>标签管理</template>
+          <template #title>
+            标签管理
+          </template>
         </el-menu-item>
 
-        <el-menu-item index="/admin/create" route="/admin/create">
+        <el-menu-item
+          index="/admin/create"
+          route="/admin/create"
+        >
           <el-icon><Edit /></el-icon>
-          <template #title>写文章</template>
+          <template #title>
+            写文章
+          </template>
         </el-menu-item>
 
-        <el-menu-item index="/admin/backup" route="/admin/backup">
+        <el-menu-item
+          index="/admin/backup"
+          route="/admin/backup"
+        >
           <el-icon><Download /></el-icon>
-          <template #title>备份管理</template>
+          <template #title>
+            备份管理
+          </template>
         </el-menu-item>
       </el-menu>
       
       <div class="sidebar-footer">
-        <el-button link @click="goHome" class="footer-btn">
+        <el-button
+          link
+          class="footer-btn"
+          @click="goHome"
+        >
           <el-icon><HomeFilled /></el-icon>
           <span v-show="!sidebarCollapsed">返回首页</span>
         </el-button>
@@ -49,11 +91,18 @@
     </aside>
 
     <!-- 主内容区 -->
-    <div class="admin-main" :class="{ collapsed: sidebarCollapsed }">
+    <div
+      class="admin-main"
+      :class="{ collapsed: sidebarCollapsed }"
+    >
       <!-- 顶部导航栏 -->
       <header class="admin-header">
         <div class="header-left">
-          <el-button link class="collapse-btn" @click="toggleSidebar">
+          <el-button
+            link
+            class="collapse-btn"
+            @click="toggleSidebar"
+          >
             <el-icon>
               <ArrowLeft v-if="!sidebarCollapsed" />
               <ArrowRight v-else />
@@ -61,20 +110,32 @@
           </el-button>
           <el-breadcrumb separator="/">
             <el-breadcrumb-item>首页</el-breadcrumb-item>
-            <el-breadcrumb-item v-if="breadcrumb">{{ breadcrumb }}</el-breadcrumb-item>
+            <el-breadcrumb-item v-if="breadcrumb">
+              {{ breadcrumb }}
+            </el-breadcrumb-item>
           </el-breadcrumb>
         </div>
         
         <div class="header-right">
           <el-dropdown @command="handleCommand">
             <span class="user-info">
-              <el-avatar :size="32" :src="userAvatar" />
+              <el-avatar
+                :size="32"
+                :src="userAvatar"
+              />
               <span class="username">{{ userName }}</span>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人中心</el-dropdown-item>
-                <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+                <el-dropdown-item command="profile">
+                  个人中心
+                </el-dropdown-item>
+                <el-dropdown-item
+                  command="logout"
+                  divided
+                >
+                  退出登录
+                </el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>

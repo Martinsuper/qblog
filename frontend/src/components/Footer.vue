@@ -8,7 +8,11 @@
           <span class="copyright">© {{ currentYear }} All Rights Reserved</span>
         </div>
         <div class="footer-links">
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a
+            href="https://github.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >GitHub</a>
         </div>
       </div>
     </div>

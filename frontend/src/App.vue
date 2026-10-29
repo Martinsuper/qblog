@@ -1,12 +1,18 @@
 <template>
   <el-config-provider :locale="zhCn">
-    <div class="app-wrapper" :class="{ 'admin-mode': isAdminRoute }">
+    <div
+      class="app-wrapper"
+      :class="{ 'admin-mode': isAdminRoute }"
+    >
       <template v-if="!isStandaloneRoute">
         <Navbar />
         <main class="main-content">
           <div class="container">
             <router-view v-slot="{ Component }">
-              <transition name="page" mode="out-in">
+              <transition
+                name="page"
+                mode="out-in"
+              >
                 <component :is="Component" />
               </transition>
             </router-view>

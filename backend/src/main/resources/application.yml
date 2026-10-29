@@ -19,6 +19,9 @@ spring:
       charset: UTF-8
       enabled: true
       force: true
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
 
   # MySQL 数据库配置
   datasource:
@@ -66,8 +69,6 @@ mybatis-plus:
 jwt:
   secret: ${JWT_SECRET:qblog-secret-key-2024-abcdefghijklmnopqrstuvwxyz-1234567890}
   expiration: 86400000  # 24 小时
-  header: Authorization
-  prefix: Bearer
 
 # 日志配置
 logging:
@@ -88,3 +89,7 @@ knife4j:
 backup:
   directory: ${BACKUP_DIRECTORY:backups}
   cron: ${BACKUP_CRON:0 0 2 * * ?}  # 默认每天凌晨 2 点执行
+
+# 上传配置
+upload:
+  directory: ${UPLOAD_DIRECTORY:uploads}

@@ -11,3 +11,5 @@ export const removeFolder = id => request.delete(`/knowledge/folders/${id}`)
 export const listApiTokens = () => request.get('/knowledge/tokens')
 export const createApiToken = data => request.post('/knowledge/tokens', data)
 export const revokeApiToken = id => request.delete(`/knowledge/tokens/${id}`)
+
+export const listMcpCalls = () => request.get('/knowledge/tokens/calls')

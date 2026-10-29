@@ -61,6 +61,8 @@ public class Article implements Serializable {
      */
     private Integer status;
 
+    private Long version;
+
     /**
      * 是否置顶：0-否 1-是
      */

@@ -1,75 +1,534 @@
 <template>
-  <div class="seven" :data-color="color" @keydown="focusSearchShortcut" @click="menuOpen = false">
+  <div
+    class="seven"
+    :data-color="color"
+    @keydown="focusSearchShortcut"
+    @click="menuOpen = false"
+  >
     <header>
-      <router-link class="brand" to="/" aria-label="知识库首页"><span class="brand-mark">y</span>YOUNOTE <small>知识库</small></router-link>
-      <div class="workspace">个人工作区 <span class="slash">/</span><span class="workspace-name">知识库</span></div>
-      <label class="global-search"><span><KnowledgeIcon name="search"/></span><input ref="globalInput" type="search" :value="search" placeholder="搜索整个知识库…" aria-label="全文搜索整个知识库" @input="$emit('search', $event.target.value)"><kbd>/</kbd></label>
-      <div class="header-right" @click.stop>
-        <button class="btn" @click="assistantOpen = true"><KnowledgeIcon name="spark"/>知识助手</button>
-        <button class="avatar" title="工作区菜单" aria-label="工作区菜单" :aria-expanded="menuOpen" @click="menuOpen = !menuOpen">YN</button>
-        <div v-if="menuOpen" class="workspace-menu" @keydown.esc="menuOpen = false">
-          <button @click="menuOpen = false; $emit('appearance')">外观与布局</button>
-          <button @click="menuOpen = false; $emit('manage-folder')">新建目录</button>
-          <router-link to="/settings/tokens">MCP 接入</router-link>
-          <router-link to="/user/profile">账号与密码</router-link>
-          <button @click="$emit('logout')">退出登录</button>
+      <router-link
+        class="brand"
+        to="/"
+        aria-label="知识库首页"
+      >
+        <span class="brand-mark">y</span>YOUNOTE <small>知识库</small>
+      </router-link>
+      <div class="workspace">
+        个人工作区 <span class="slash">/</span><span class="workspace-name">知识库</span>
+      </div>
+      <label class="global-search"><span><KnowledgeIcon name="search" /></span><input
+        ref="globalInput"
+        type="search"
+        :value="search"
+        placeholder="搜索整个知识库…"
+        aria-label="全文搜索整个知识库"
+        @input="$emit('search', $event.target.value)"
+      ><kbd>/</kbd></label>
+      <div
+        class="header-right"
+        @click.stop
+      >
+        <button
+          class="btn"
+          @click="assistantOpen = true"
+        >
+          <KnowledgeIcon name="spark" />知识助手
+        </button>
+        <button
+          class="avatar"
+          title="工作区菜单"
+          aria-label="工作区菜单"
+          :aria-expanded="menuOpen"
+          @click="menuOpen = !menuOpen"
+        >
+          YN
+        </button>
+        <div
+          v-if="menuOpen"
+          class="workspace-menu"
+          @keydown.esc="menuOpen = false"
+        >
+          <button @click="menuOpen = false; $emit('appearance')">
+            外观与布局
+          </button>
+          <button @click="menuOpen = false; $emit('manage-folder')">
+            新建目录
+          </button>
+          <router-link to="/settings/tokens">
+            MCP 接入
+          </router-link>
+          <router-link to="/user/profile">
+            账号与密码
+          </router-link>
+          <button @click="$emit('logout')">
+            退出登录
+          </button>
         </div>
       </div>
     </header>
-    <div class="demo-bar"><span><b>方案 G · 目录型知识库</b><span class="extra">&#12288;/&#12288;以阅读、检索与整理为中心</span></span><span>私人知识工作区 · 已连接服务器&#12288; <button class="appearance-link" @click="$emit('appearance')">外观与布局 ↗</button></span></div>
-    <nav class="mobile-nav" aria-label="切换工作区域"><button v-for="(label, view) in viewLabels" :key="view" :class="{ active: mobileView === view }" @click="$emit('view', view)">{{ label }}</button></nav>
-    <main class="app" :data-view="mobileView">
-      <aside class="sidebar" aria-label="知识库导航">
-        <div class="section-label">工作区 <span>PRIVATE</span></div>
-        <button v-for="item in scopes" :key="item.value" class="nav-row" :class="{ active: scope === item.value }" @click="$emit('scope', item.value)"><KnowledgeIcon :name="item.icon"/>{{ item.label }}<span class="count">{{ counts[item.value] ?? '—' }}</span></button>
+    <div class="demo-bar">
+      <span><b>方案 G · 目录型知识库</b><span class="extra">&#12288;/&#12288;以阅读、检索与整理为中心</span></span><span>私人知识工作区 · 已连接服务器&#12288; <button
+        class="appearance-link"
+        @click="$emit('appearance')"
+      >外观与布局 ↗</button></span>
+    </div>
+    <nav
+      class="mobile-nav"
+      aria-label="切换工作区域"
+    >
+      <button
+        v-for="(label, view) in viewLabels"
+        :key="view"
+        :class="{ active: mobileView === view }"
+        @click="$emit('view', view)"
+      >
+        {{ label }}
+      </button>
+    </nav>
+    <main
+      class="app"
+      :data-view="mobileView"
+    >
+      <aside
+        class="sidebar"
+        aria-label="知识库导航"
+      >
+        <div class="section-label">
+          工作区 <span>PRIVATE</span>
+        </div>
+        <button
+          v-for="item in scopes"
+          :key="item.value"
+          class="nav-row"
+          :class="{ active: scope === item.value }"
+          @click="$emit('scope', item.value)"
+        >
+          <KnowledgeIcon :name="item.icon" />{{ item.label }}<span class="count">{{ counts[item.value] ?? '—' }}</span>
+        </button>
         <hr>
-        <div class="section-label">知识目录 <button class="icon-btn" title="折叠或展开全部目录" aria-label="折叠或展开全部目录" style="width:22px;height:22px" @click="$emit('collapse-all')"><KnowledgeIcon name="fold"/></button></div>
-        <div class="tree-filter"><input v-model="treeSearch" type="search" placeholder="筛选目录…" aria-label="筛选知识目录"></div>
-        <nav class="folder-tree" aria-label="多级知识目录">
-          <div v-for="folder in displayedFolders" :key="folder.id" class="tree-row" :class="{ active: String(scope) === String(folder.id), child: folder.depth > 0 }" :style="{ '--depth': folder.depth }" @contextmenu.prevent="$emit('manage-folder', folder)">
-            <button v-if="folder.hasChildren" class="tree-toggle" :class="{ open: !collapsed.has(folder.id) }" :aria-expanded="!collapsed.has(folder.id)" :aria-label="`${collapsed.has(folder.id) ? '展开' : '折叠'}${folder.name}`" @click="$emit('collapse', folder.id)"><KnowledgeIcon name="chevron"/></button><span v-else class="tree-toggle"></span>
-            <button class="tree-name" @click="$emit('scope', folder.id)"><KnowledgeIcon name="folder"/><span class="folder-label">{{ folder.name }}</span><span class="count">{{ folder.count }}</span></button>
-            <button class="tree-manage" title="管理目录" :aria-label="`管理目录 ${folder.name}`" @click="$emit('manage-folder', folder)">⋯</button>
+        <div class="section-label">
+          知识目录 <button
+            class="icon-btn"
+            title="折叠或展开全部目录"
+            aria-label="折叠或展开全部目录"
+            style="width:22px;height:22px"
+            @click="$emit('collapse-all')"
+          >
+            <KnowledgeIcon name="fold" />
+          </button>
+        </div>
+        <div class="tree-filter">
+          <input
+            v-model="treeSearch"
+            type="search"
+            placeholder="筛选目录…"
+            aria-label="筛选知识目录"
+          >
+        </div>
+        <nav
+          class="folder-tree"
+          aria-label="多级知识目录"
+        >
+          <div
+            v-for="folder in displayedFolders"
+            :key="folder.id"
+            class="tree-row"
+            :class="{ active: String(scope) === String(folder.id), child: folder.depth > 0 }"
+            :style="{ '--depth': folder.depth }"
+            @contextmenu.prevent="$emit('manage-folder', folder)"
+          >
+            <button
+              v-if="folder.hasChildren"
+              class="tree-toggle"
+              :class="{ open: !collapsed.has(folder.id) }"
+              :aria-expanded="!collapsed.has(folder.id)"
+              :aria-label="`${collapsed.has(folder.id) ? '展开' : '折叠'}${folder.name}`"
+              @click="$emit('collapse', folder.id)"
+            >
+              <KnowledgeIcon name="chevron" />
+            </button><span
+              v-else
+              class="tree-toggle"
+            />
+            <button
+              class="tree-name"
+              @click="$emit('scope', folder.id)"
+            >
+              <KnowledgeIcon name="folder" /><span class="folder-label">{{ folder.name }}</span><span class="count">{{ folder.count }}</span>
+            </button>
+            <button
+              class="tree-manage"
+              title="管理目录"
+              :aria-label="`管理目录 ${folder.name}`"
+              @click="$emit('manage-folder', folder)"
+            >
+              ⋯
+            </button>
           </div>
         </nav>
-        <div class="sidebar-bottom"><div class="local-info"><strong><span class="storage-dot"></span>私人知识工作区</strong><br>笔记安全保存到服务器<br>{{ counts.all ?? 0 }} 篇笔记 · {{ folders.length }} 个目录<br><button class="about-link" @click="$emit('appearance')">外观与布局 ↗</button></div></div>
+        <div class="sidebar-bottom">
+          <div class="local-info">
+            <strong><span class="storage-dot" />私人知识工作区</strong><br>笔记安全保存到服务器<br>{{ counts.all ?? 0 }} 篇笔记 · {{ folders.length }} 个目录<br><button
+              class="about-link"
+              @click="$emit('appearance')"
+            >
+              外观与布局 ↗
+            </button>
+          </div>
+        </div>
       </aside>
-      <section class="list-pane" aria-label="笔记列表">
-        <div class="list-head"><div class="list-title-row"><h2>{{ scopeTitle }} <span>{{ total }}</span></h2><button class="icon-btn" title="新建笔记" aria-label="新建笔记" @click="$emit('new-note')"><KnowledgeIcon name="plus"/></button></div>
-          <label class="list-search"><KnowledgeIcon name="search"/><input type="search" :value="listSearch" placeholder="在当前目录中搜索正文…" aria-label="搜索当前笔记列表" @input="$emit('list-search', $event.target.value)"></label>
-          <div class="filters"><select :value="tag" aria-label="按标签筛选" @change="$emit('tag', $event.target.value)"><option value="">全部标签</option><option v-for="value in tagOptions" :key="value" :value="value">{{ value }}</option></select><select :value="source" aria-label="按来源筛选" @change="$emit('source', $event.target.value)"><option value="">全部来源</option><option value="manual">手动创建</option><option value="mcp">MCP 导入</option></select></div>
+      <section
+        class="list-pane"
+        aria-label="笔记列表"
+      >
+        <div class="list-head">
+          <div class="list-title-row">
+            <h2>{{ scopeTitle }} <span>{{ total }}</span></h2><button
+              class="icon-btn"
+              title="新建笔记"
+              aria-label="新建笔记"
+              @click="$emit('new-note')"
+            >
+              <KnowledgeIcon name="plus" />
+            </button>
+          </div>
+          <label class="list-search"><KnowledgeIcon name="search" /><input
+            type="search"
+            :value="listSearch"
+            placeholder="在当前目录中搜索正文…"
+            aria-label="搜索当前笔记列表"
+            @input="$emit('list-search', $event.target.value)"
+          ></label>
+          <div class="filters">
+            <select
+              :value="tag"
+              aria-label="按标签筛选"
+              @change="$emit('tag', $event.target.value)"
+            >
+              <option value="">
+                全部标签
+              </option><option
+                v-for="value in tagOptions"
+                :key="value"
+                :value="value"
+              >
+                {{ value }}
+              </option>
+            </select><select
+              :value="source"
+              aria-label="按来源筛选"
+              @change="$emit('source', $event.target.value)"
+            >
+              <option value="">
+                全部来源
+              </option><option value="manual">
+                手动创建
+              </option><option value="mcp">
+                MCP 导入
+              </option>
+            </select>
+          </div>
         </div>
-        <div class="list-caption"><span>{{ total }} 篇笔记</span><button class="sort-button" title="切换排序" @click="$emit('sort')">{{ sort === 'title' ? '标题排序 A–Z' : '最近更新 ↓' }}</button></div>
+        <div class="list-caption">
+          <span>{{ total }} 篇笔记</span><button
+            class="sort-button"
+            title="切换排序"
+            @click="$emit('sort')"
+          >
+            {{ sort === 'title' ? '标题排序 A–Z' : '最近更新 ↓' }}
+          </button>
+        </div>
         <div class="note-list">
-          <div v-if="listError" class="empty">加载失败，请重试。<p><button class="btn" @click="$emit('retry-list')">重新加载</button></p></div>
-          <div v-else-if="loadingList" class="empty">正在加载笔记…</div>
-          <template v-else><button v-for="note in notes" :key="note.id" class="note-item" :class="{ selected: active?.id === note.id }" :aria-pressed="active?.id === note.id" @click="$emit('open-note', note.id)"><h3>{{ note.title }} <span v-if="note.favorite" class="note-star">☆</span></h3><div class="excerpt">{{ note.summary || '暂无摘要' }}</div><div class="note-meta"><span class="pill" :class="{ 'source-mcp': note.source === 'mcp' }">{{ note.source === 'mcp' ? 'MCP 导入' : '手动' }}</span><span>{{ (note.tags || []).slice(0, 2).join(' · ') }}</span><span class="date">{{ shortDate(note.updateTime) }}</span></div></button><div v-if="!notes.length" class="empty">没有匹配的笔记<p><button class="btn" @click="$emit('new-note')">写下第一篇笔记</button></p></div></template>
+          <div
+            v-if="listError"
+            class="empty"
+          >
+            加载失败，请重试。<p>
+              <button
+                class="btn"
+                @click="$emit('retry-list')"
+              >
+                重新加载
+              </button>
+            </p>
+          </div>
+          <div
+            v-else-if="loadingList"
+            class="empty"
+          >
+            正在加载笔记…
+          </div>
+          <template v-else>
+            <button
+              v-for="note in notes"
+              :key="note.id"
+              class="note-item"
+              :class="{ selected: active?.id === note.id }"
+              :aria-pressed="active?.id === note.id"
+              @click="$emit('open-note', note.id)"
+            >
+              <h3>
+                {{ note.title }} <span
+                  v-if="note.favorite"
+                  class="note-star"
+                >☆</span>
+              </h3><div class="excerpt">
+                {{ note.summary || '暂无摘要' }}
+              </div><div class="note-meta">
+                <span
+                  class="pill"
+                  :class="{ 'source-mcp': note.source === 'mcp' }"
+                >{{ note.source === 'mcp' ? 'MCP 导入' : '手动' }}</span><span>{{ (note.tags || []).slice(0, 2).join(' · ') }}</span><span class="date">{{ shortDate(note.updateTime) }}</span>
+              </div>
+            </button><div
+              v-if="!notes.length"
+              class="empty"
+            >
+              没有匹配的笔记<p>
+                <button
+                  class="btn"
+                  @click="$emit('new-note')"
+                >
+                  写下第一篇笔记
+                </button>
+              </p>
+            </div>
+          </template>
         </div>
-        <div class="list-foot"><template v-if="total > pageSize"><button :disabled="page <= 1 || loadingList" aria-label="上一页" @click="$emit('page', -1)">←</button> {{ page }} / {{ Math.ceil(total / pageSize) }} <button :disabled="page * pageSize >= total || loadingList" aria-label="下一页" @click="$emit('page', 1)">→</button></template><template v-else>正文参与搜索 · 标签 / 来源可组合筛选</template></div>
+        <div class="list-foot">
+          <template v-if="total > pageSize">
+            <button
+              :disabled="page <= 1 || loadingList"
+              aria-label="上一页"
+              @click="$emit('page', -1)"
+            >
+              ←
+            </button> {{ page }} / {{ Math.ceil(total / pageSize) }} <button
+              :disabled="page * pageSize >= total || loadingList"
+              aria-label="下一页"
+              @click="$emit('page', 1)"
+            >
+              →
+            </button>
+          </template><template v-else>
+            正文参与搜索 · 标签 / 来源可组合筛选
+          </template>
+        </div>
       </section>
-      <section ref="readerElement" class="reader" aria-label="笔记正文">
-        <div class="reader-toolbar"><div class="doc-crumb">{{ active ? folderName(active.folderId) : '知识库' }}</div><template v-if="active"><button class="icon-btn" :class="{ on: draft.favorite }" :title="draft.favorite ? '取消收藏' : '收藏笔记'" :aria-label="draft.favorite ? '取消收藏' : '收藏笔记'" :aria-pressed="draft.favorite" @click="$emit('favorite')"><KnowledgeIcon name="star"/></button><button class="btn" @click="$emit('move')"><KnowledgeIcon name="folder"/>移动</button><button class="icon-btn" :class="{ on: infoOpen }" title="切换正文目录与来源信息" aria-label="切换正文目录与来源信息" :aria-expanded="infoOpen" @click="toggleInfo"><KnowledgeIcon name="panel"/></button></template></div>
-        <div v-if="loadingNote" class="empty">正在打开文档…</div><div v-else-if="!active" class="empty">从左侧打开一篇笔记，开始阅读和整理。</div>
-        <div v-else class="reading-area">
+      <section
+        ref="readerElement"
+        class="reader"
+        aria-label="笔记正文"
+      >
+        <div class="reader-toolbar">
+          <div class="doc-crumb">
+            {{ active ? folderName(active.folderId) : '知识库' }}
+          </div><template v-if="active">
+            <button
+              class="icon-btn"
+              :class="{ on: draft.favorite }"
+              :title="draft.favorite ? '取消收藏' : '收藏笔记'"
+              :aria-label="draft.favorite ? '取消收藏' : '收藏笔记'"
+              :aria-pressed="draft.favorite"
+              @click="$emit('favorite')"
+            >
+              <KnowledgeIcon name="star" />
+            </button><button
+              class="btn"
+              @click="$emit('move')"
+            >
+              <KnowledgeIcon name="folder" />移动
+            </button><button
+              class="icon-btn"
+              :class="{ on: infoOpen }"
+              title="切换正文目录与来源信息"
+              aria-label="切换正文目录与来源信息"
+              :aria-expanded="infoOpen"
+              @click="toggleInfo"
+            >
+              <KnowledgeIcon name="panel" />
+            </button>
+          </template>
+        </div>
+        <div
+          v-if="loadingNote"
+          class="empty"
+        >
+          正在打开文档…
+        </div><div
+          v-else-if="!active"
+          class="empty"
+        >
+          从左侧打开一篇笔记，开始阅读和整理。
+        </div>
+        <div
+          v-else
+          class="reading-area"
+        >
           <article class="document">
-            <div class="eyebrow">KNOWLEDGE / {{ leafFolder(active.folderId) }}</div>
-            <textarea ref="titleElement" class="document-title" rows="1" :value="draft.title" maxlength="120" aria-label="笔记标题" @input="titleInput" @keydown.enter.prevent></textarea>
-            <div class="doc-properties"><span>{{ active.source === 'mcp' ? 'MCP 导入' : '手动创建' }}</span><span class="divider">/</span><span>更新于 {{ fullDate(active.updateTime) }}</span><span class="divider">/</span><span>{{ draft.content.replace(/\s/g, '').length.toLocaleString() }} 字符</span><span class="divider">/</span><span class="status pending">索引未配置</span></div>
-            <div class="tags"><button v-for="value in draft.tags" :key="value" class="tag-btn" @click="$emit('filter-tag', value)"># {{ value }}</button><button class="tag-btn tag-edit" title="编辑标签" aria-label="编辑标签" @click="$emit('tags')"><KnowledgeIcon name="plus"/></button></div>
-            <div v-if="conflicted" class="save-alert" role="alert">此笔记已被其他窗口或 MCP 更新，自动保存已暂停。当前草稿仍保留。<div><button class="btn" @click="$emit('download-draft')">下载当前草稿</button><button class="btn" @click="$emit('reload-conflict')">载入最新版本</button></div></div>
-            <div v-else-if="saveFailed" class="save-alert" role="alert">{{ saveStatus }}<button class="btn" @click="$emit('save')">重试保存</button></div>
-            <div class="markdown"><KnowledgeEditor :key="active.id" :model-value="draft.content" quiet-toolbar @update:model-value="contentInput" @headings="headings = $event"/></div>
-            <div class="doc-end"><span>YOUNOTE · 让知识有序可寻</span><span role="status" aria-live="polite">{{ saveStatus || '直接编辑 · 停顿后自动保存' }}</span></div>
+            <div class="eyebrow">
+              KNOWLEDGE / {{ leafFolder(active.folderId) }}
+            </div>
+            <textarea
+              ref="titleElement"
+              class="document-title"
+              rows="1"
+              :value="draft.title"
+              maxlength="120"
+              aria-label="笔记标题"
+              @input="titleInput"
+              @keydown.enter.prevent
+            />
+            <div class="doc-properties">
+              <span>{{ active.source === 'mcp' ? 'MCP 导入' : '手动创建' }}</span><span class="divider">/</span><span>更新于 {{ fullDate(active.updateTime) }}</span><span class="divider">/</span><span>{{ draft.content.replace(/\s/g, '').length.toLocaleString() }} 字符</span><span class="divider">/</span><span class="status pending">索引未配置</span>
+            </div>
+            <div class="tags">
+              <button
+                v-for="value in draft.tags"
+                :key="value"
+                class="tag-btn"
+                @click="$emit('filter-tag', value)"
+              >
+                # {{ value }}
+              </button><button
+                class="tag-btn tag-edit"
+                title="编辑标签"
+                aria-label="编辑标签"
+                @click="$emit('tags')"
+              >
+                <KnowledgeIcon name="plus" />
+              </button>
+            </div>
+            <div
+              v-if="conflicted"
+              class="save-alert"
+              role="alert"
+            >
+              此笔记已被其他窗口或 MCP 更新，自动保存已暂停。当前草稿仍保留。<div>
+                <button
+                  class="btn"
+                  @click="$emit('download-draft')"
+                >
+                  下载当前草稿
+                </button><button
+                  class="btn"
+                  @click="$emit('reload-conflict')"
+                >
+                  载入最新版本
+                </button>
+              </div>
+            </div>
+            <div
+              v-else-if="saveFailed"
+              class="save-alert"
+              role="alert"
+            >
+              {{ saveStatus }}<button
+                class="btn"
+                @click="$emit('save')"
+              >
+                重试保存
+              </button>
+            </div>
+            <div class="markdown">
+              <KnowledgeEditor
+                :key="active.id"
+                :model-value="draft.content"
+                quiet-toolbar
+                @update:model-value="contentInput"
+                @headings="headings = $event"
+              />
+            </div>
+            <div class="doc-end">
+              <span>YOUNOTE · 让知识有序可寻</span><span
+                role="status"
+                aria-live="polite"
+              >{{ saveStatus || '直接编辑 · 停顿后自动保存' }}</span>
+            </div>
           </article>
-          <aside v-show="infoOpen || narrowExpanded" class="info-rail" :class="{ expanded: narrowExpanded }" aria-label="正文目录与来源">
-            <div class="rail-title">本文目录</div><nav class="toc" aria-label="本文目录"><button v-for="(heading, index) in headings" :key="index" :class="{ nested: heading.level > 2 }" @click="scrollToHeading(index)">{{ heading.text }}</button><span v-if="!headings.length" class="tiny muted">暂无小标题</span></nav>
-            <div class="source-block"><div class="rail-title">来源与记录</div><strong>{{ active.source === 'mcp' ? 'MCP 导入' : '手动创建' }}</strong><p>目录：{{ folderName(active.folderId) }}<br>内容类型：私人笔记</p><p><span class="status pending">索引未配置</span></p><br><div class="rail-title">最近更新记录</div><p>{{ fullDate(active.updateTime) }}<br>版本 {{ active.version }}</p><p v-if="active.sourceTool" class="mono">工具：{{ active.sourceTool }}</p><button class="record-actions" @click="recordOpen = true">笔记管理 ↗</button></div>
+          <aside
+            v-show="infoOpen || narrowExpanded"
+            class="info-rail"
+            :class="{ expanded: narrowExpanded }"
+            aria-label="正文目录与来源"
+          >
+            <div class="rail-title">
+              本文目录
+            </div><nav
+              class="toc"
+              aria-label="本文目录"
+            >
+              <button
+                v-for="(heading, index) in headings"
+                :key="index"
+                :class="{ nested: heading.level > 2 }"
+                @click="scrollToHeading(index)"
+              >
+                {{ heading.text }}
+              </button><span
+                v-if="!headings.length"
+                class="tiny muted"
+              >暂无小标题</span>
+            </nav>
+            <div class="source-block">
+              <div class="rail-title">
+                来源与记录
+              </div><strong>{{ active.source === 'mcp' ? 'MCP 导入' : '手动创建' }}</strong><p>目录：{{ folderName(active.folderId) }}<br>内容类型：私人笔记</p><p><span class="status pending">索引未配置</span></p><br><div class="rail-title">
+                最近更新记录
+              </div><p>{{ fullDate(active.updateTime) }}<br>版本 {{ active.version }}</p><p
+                v-if="active.sourceTool"
+                class="mono"
+              >
+                工具：{{ active.sourceTool }}
+              </p><button
+                class="record-actions"
+                @click="recordOpen = true"
+              >
+                笔记管理 ↗
+              </button>
+            </div>
           </aside>
         </div>
       </section>
     </main>
-    <el-dialog v-model="assistantOpen" title="知识助手" width="560px" class="kb-dialog"><p>AI 服务尚未配置。你可以先浏览和整理已有笔记。</p><div class="assistant-summary">{{ counts.all ?? 0 }} 篇笔记 · {{ counts.inbox ?? 0 }} 篇待归档 · {{ counts.favorites ?? 0 }} 篇收藏</div><div class="assistant-buttons"><el-button @click="assistantOpen = false; $emit('scope', 'inbox')">查看待归档笔记</el-button><el-button @click="assistantOpen = false; $emit('source', 'mcp')">检查 MCP 来源</el-button></div><template #footer><el-button @click="assistantOpen = false">返回阅读</el-button></template></el-dialog>
-    <el-dialog v-model="recordOpen" title="笔记管理" width="430px" class="kb-dialog"><p>笔记保存在服务器。自动保存会检测与其他窗口或 MCP 的版本冲突。</p><template #footer><el-button @click="recordOpen = false; $emit('download-draft')">下载 Markdown</el-button><el-button type="danger" plain @click="recordOpen = false; $emit('delete')">删除笔记</el-button></template></el-dialog>
+    <el-dialog
+      v-model="assistantOpen"
+      title="知识助手"
+      width="560px"
+      class="kb-dialog"
+    >
+      <p>AI 服务尚未配置。你可以先浏览和整理已有笔记。</p><div class="assistant-summary">
+        {{ counts.all ?? 0 }} 篇笔记 · {{ counts.inbox ?? 0 }} 篇待归档 · {{ counts.favorites ?? 0 }} 篇收藏
+      </div><div class="assistant-buttons">
+        <el-button @click="assistantOpen = false; $emit('scope', 'inbox')">
+          查看待归档笔记
+        </el-button><el-button @click="assistantOpen = false; $emit('source', 'mcp')">
+          检查 MCP 来源
+        </el-button>
+      </div><template #footer>
+        <el-button @click="assistantOpen = false">
+          返回阅读
+        </el-button>
+      </template>
+    </el-dialog>
+    <el-dialog
+      v-model="recordOpen"
+      title="笔记管理"
+      width="430px"
+      class="kb-dialog"
+    >
+      <p>笔记保存在服务器。自动保存会检测与其他窗口或 MCP 的版本冲突。</p><template #footer>
+        <el-button @click="recordOpen = false; $emit('download-draft')">
+          下载 Markdown
+        </el-button><el-button
+          type="danger"
+          plain
+          @click="recordOpen = false; $emit('delete')"
+        >
+          删除笔记
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 

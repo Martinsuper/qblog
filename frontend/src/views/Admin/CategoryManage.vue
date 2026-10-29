@@ -2,17 +2,22 @@
   <div class="category-manage">
     <div class="manage-card">
       <div class="card-header">
-        <h3 class="card-title">分类管理</h3>
+        <h3 class="card-title">
+          分类管理
+        </h3>
         <div class="card-actions">
-          <el-button type="primary" @click="handleAdd">
+          <el-button
+            type="primary"
+            @click="handleAdd"
+          >
             <el-icon><Plus /></el-icon>
             新增分类
           </el-button>
           <el-button
             v-if="isDirty"
             type="success"
-            @click="saveAllChanges"
             :loading="savingSort"
+            @click="saveAllChanges"
           >
             <el-icon><Finished /></el-icon>
             保存排序
@@ -31,17 +36,45 @@
 
       <!-- 手动拖拽模式的列表实现 -->
       <div
-        class="draggable-container"
         v-loading="loading"
+        class="draggable-container"
       >
         <!-- 表格头部 -->
         <div class="table-header">
-          <div class="header-cell" style="width: 50px;"></div>
-          <div class="header-cell" style="width: 80px;">ID</div>
-          <div class="header-cell" style="flex: 1;">分类名称</div>
-          <div class="header-cell" style="flex: 1.5;">描述</div>
-          <div class="header-cell" style="width: 180px;">创建时间</div>
-          <div class="header-cell" style="width: 200px;">操作</div>
+          <div
+            class="header-cell"
+            style="width: 50px;"
+          />
+          <div
+            class="header-cell"
+            style="width: 80px;"
+          >
+            ID
+          </div>
+          <div
+            class="header-cell"
+            style="flex: 1;"
+          >
+            分类名称
+          </div>
+          <div
+            class="header-cell"
+            style="flex: 1.5;"
+          >
+            描述
+          </div>
+          <div
+            class="header-cell"
+            style="width: 180px;"
+          >
+            创建时间
+          </div>
+          <div
+            class="header-cell"
+            style="width: 200px;"
+          >
+            操作
+          </div>
         </div>
 
         <!-- 拖拽列表 -->
@@ -66,20 +99,58 @@
             @dragenter="handleDragEnter($event, index)"
           >
             <div class="row-content">
-              <div class="row-cell" style="width: 50px;">
-                <el-icon class="drag-handle" :class="{ dragging: isDragging }">
+              <div
+                class="row-cell"
+                style="width: 50px;"
+              >
+                <el-icon
+                  class="drag-handle"
+                  :class="{ dragging: isDragging }"
+                >
                   <Rank />
                 </el-icon>
               </div>
-              <div class="row-cell" style="width: 80px;">{{ item.id }}</div>
-              <div class="row-cell" style="flex: 1;">{{ item.name }}</div>
-              <div class="row-cell" style="flex: 1.5;" :title="item.description">{{ item.description }}</div>
-              <div class="row-cell" style="width: 180px;">{{ formatDate(item.createTime) }}</div>
-              <div class="row-cell actions" style="width: 200px;">
-                <el-button link type="primary" @click="handleEdit(item)">
+              <div
+                class="row-cell"
+                style="width: 80px;"
+              >
+                {{ item.id }}
+              </div>
+              <div
+                class="row-cell"
+                style="flex: 1;"
+              >
+                {{ item.name }}
+              </div>
+              <div
+                class="row-cell"
+                style="flex: 1.5;"
+                :title="item.description"
+              >
+                {{ item.description }}
+              </div>
+              <div
+                class="row-cell"
+                style="width: 180px;"
+              >
+                {{ formatDateTime(item.createTime) }}
+              </div>
+              <div
+                class="row-cell actions"
+                style="width: 200px;"
+              >
+                <el-button
+                  link
+                  type="primary"
+                  @click="handleEdit(item)"
+                >
                   编辑
                 </el-button>
-                <el-button link type="danger" @click="handleDelete(item)">
+                <el-button
+                  link
+                  type="danger"
+                  @click="handleDelete(item)"
+                >
                   删除
                 </el-button>
               </div>
@@ -102,7 +173,10 @@
         :rules="formRules"
         label-width="80px"
       >
-        <el-form-item label="分类名称" prop="name">
+        <el-form-item
+          label="分类名称"
+          prop="name"
+        >
           <el-input
             v-model="formData.name"
             placeholder="请输入分类名称"
@@ -110,7 +184,10 @@
             show-word-limit
           />
         </el-form-item>
-        <el-form-item label="分类描述" prop="description">
+        <el-form-item
+          label="分类描述"
+          prop="description"
+        >
           <el-input
             v-model="formData.description"
             type="textarea"
@@ -122,8 +199,14 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">
+        <el-button @click="dialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="submitting"
+          @click="handleSubmit"
+        >
           确定
         </el-button>
       </template>
@@ -133,9 +216,10 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
-import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Rank, Finished } from '@element-plus/icons-vue'
 import { getCategoryList, createCategory, updateCategory, deleteCategory, updateCategorySort } from '@/api/category'
+import { formatDateTime } from '@/composables/useTime'
 
 // 状态管理
 const loading = ref(false)
@@ -179,22 +263,6 @@ const formRules = {
   ]
 }
 
-// 日期格式化函数
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return dateStr // 如果无法解析日期，则返回原值
-
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  const seconds = String(date.getSeconds()).padStart(2, '0')
-
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-}
-
 const fetchCategories = async () => {
   loading.value = true
   try {
@@ -202,8 +270,8 @@ const fetchCategories = async () => {
     categories.value = res.data || []
     originalCategories.value = JSON.parse(JSON.stringify(res.data || [])) // 保存原始状态副本
   } catch (error) {
+    // 失败提示由 axios 拦截器统一弹出
     console.error('获取分类失败:', error)
-    ElMessage.error('获取分类失败')
   } finally {
     loading.value = false
   }
@@ -242,7 +310,7 @@ const handleDragOver = (event, index) => {
 }
 
 // 拖拽进入
-const handleDragEnter = (event, index) => {
+const handleDragEnter = (event) => {
   event.preventDefault()
 }
 
@@ -292,15 +360,6 @@ const handleDrop = async (event) => {
   newCategories.splice(targetIndex, 0, movedItem)
   categories.value = newCategories
 
-  // 显示拖拽成功的通知
-  const draggedItem = movedItem
-  ElNotification({
-    title: '拖拽成功',
-    message: `分类 "${draggedItem.name}" 已重新排序`,
-    type: 'success',
-    duration: 2000
-  })
-
   // 自动保存排序到后端
   await saveSortAutomatically()
 
@@ -330,9 +389,6 @@ const saveSortAutomatically = async () => {
 
     // 更新原始状态为当前状态
     originalCategories.value = JSON.parse(JSON.stringify(categories.value))
-
-    // 只显示一次成功提示（避免与拖拽成功提示重复）
-    console.log('排序已自动保存到后端')
   } catch (error) {
     console.error('自动保存排序失败:', error)
     ElMessage.error('排序保存失败，请手动保存')
@@ -420,7 +476,6 @@ const handleDelete = async (row) => {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除失败:', error)
-      ElMessage.error('删除失败')
     }
   }
 }
@@ -450,7 +505,6 @@ const handleSubmit = async () => {
       await fetchCategories() // 重新获取分类列表以确保排序正确
     } catch (error) {
       console.error('提交失败:', error)
-      ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
     } finally {
       submitting.value = false
     }

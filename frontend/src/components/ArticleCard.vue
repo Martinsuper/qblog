@@ -4,32 +4,59 @@
     class="article-card card"
     :class="{ 'flex flex-col md:flex-row overflow-hidden': horizontal }"
   >
-    <div v-if="article.coverImage && horizontal" class="cover-wrap w-full md:w-60 flex-shrink-0">
+    <div
+      v-if="article.coverImage && horizontal"
+      class="cover-wrap w-full md:w-60 flex-shrink-0"
+    >
       <img
         :src="article.coverImage"
         alt="文章封面"
         loading="lazy"
         decoding="async"
         class="w-full h-40 md:h-full object-cover"
-      />
+      >
     </div>
 
-    <div class="flex-1" :class="horizontal ? 'p-4 md:p-5' : ''">
-      <h3 :class="titleClass" class="title-text">
-        <span v-if="isTop" class="top-badge">置顶</span>
+    <div
+      class="flex-1"
+      :class="horizontal ? 'p-4 md:p-5' : ''"
+    >
+      <h3
+        :class="titleClass"
+        class="title-text"
+      >
+        <span
+          v-if="isTop"
+          class="top-badge"
+        >置顶</span>
         {{ article.title }}
       </h3>
-      <p class="text-sm mb-3 line-clamp-2" style="color: var(--text-secondary)">
+      <p
+        class="text-sm mb-3 line-clamp-2"
+        style="color: var(--text-secondary)"
+      >
         {{ article.summary }}
       </p>
-      <div class="flex flex-wrap items-center gap-3 text-xs" style="color: var(--text-tertiary)">
-        <span class="flex items-center gap-1" v-if="showAuthor">
-          <el-avatar :size="20" :src="article.author?.avatar">
+      <div
+        class="flex flex-wrap items-center gap-3 text-xs"
+        style="color: var(--text-tertiary)"
+      >
+        <span
+          v-if="showAuthor"
+          class="flex items-center gap-1"
+        >
+          <el-avatar
+            :size="20"
+            :src="article.author?.avatar"
+          >
             {{ article.author?.nickname?.charAt(0) }}
           </el-avatar>
           {{ article.author?.nickname || '管理员' }}
         </span>
-        <span class="flex items-center gap-1" :title="formatDateTime(article.createTime || article.publishTime)">
+        <span
+          class="flex items-center gap-1"
+          :title="formatDateTime(article.createTime || article.publishTime)"
+        >
           <el-icon><Calendar /></el-icon>
           {{ formatRelativeTime(article.publishTime || article.createTime) }}
         </span>

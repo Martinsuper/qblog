@@ -3,6 +3,7 @@ package com.qblog.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.qblog.entity.Tag;
 import com.qblog.model.vo.TagVO;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
@@ -22,4 +23,10 @@ public interface TagMapper extends BaseMapper<Tag> {
             "LEFT JOIN article a ON at.article_id = a.id AND a.status = 1 " +
             "GROUP BY t.id, t.name, t.create_time ORDER BY t.create_time DESC")
     List<TagVO> selectTagListWithArticleCount();
+
+    /**
+     * 按显式主键插入（备份恢复专用），保留原 id 供 tag_id 引用
+     */
+    @Insert("INSERT INTO tag (id, name, create_time) VALUES (#{id}, #{name}, #{createTime})")
+    int insertWithId(Tag tag);
 }
