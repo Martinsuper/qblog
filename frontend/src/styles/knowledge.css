@@ -132,10 +132,7 @@
 .kb-conflict button { border:1px solid var(--kb-line); padding:4px 8px; margin:8px 7px 0 0; background:var(--kb-panel); color:var(--kb-text); }
 /* Real document editor: scroll remains on .kb-reading, never the editable body. */
 .kb .knowledge-editor { min-width:0; }
-.kb .format-bar { display:flex; align-items:center; flex-wrap:wrap; gap:3px; padding:7px; margin-bottom:18px; border:1px solid var(--kb-line); border-radius:7px; background:var(--kb-surface); }
-.kb .format-bar button { display:grid; place-items:center; min-width:29px; height:28px; font-size:11px; color:var(--kb-text); }
-.kb .format-bar button.active { color:var(--kb-accent); background:var(--kb-tint); }
-.kb .format-bar>span { margin-left:auto; padding:3px 5px; color:var(--kb-muted); font-size:8px; }
+.kb .format-bar { margin-bottom:18px; }
 .kb .tiptap { min-height:300px; outline:none; color:var(--kb-text); font-size:13px; line-height:1.95; overflow-wrap:anywhere; }
 .kb .tiptap>:first-child { margin-top:0; }
 .kb .tiptap p { margin:0 0 1.15em; }
@@ -297,7 +294,6 @@ html[data-theme='dark'] .kb-dialog { --kb-dialog-bg:#202a37; --kb-dialog-text:#d
   .kb .kb-doc-title { font-size:24px; }
   .kb-doc-meta { font-size:8px; gap:5px 10px; }
   .kb .format-bar { gap:1px; padding:5px; }
-  .kb .format-bar>span { width:100%; text-align:right; font-size:8px; }
   .kb .tiptap { font-size:13px; }
   .kb .tiptap pre { padding:14px; }
   .kb .tiptap :is(th,td) { padding:7px; font-size:11px; }

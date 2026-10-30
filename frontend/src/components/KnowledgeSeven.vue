@@ -1,6 +1,7 @@
 <template>
   <div
     class="seven"
+    :class="{ 'focus-mode': focusMode }"
     :data-color="color"
     @keydown="focusSearchShortcut"
     @click="menuOpen = false"
@@ -347,6 +348,13 @@
               @click="toggleInfo"
             >
               <KnowledgeIcon name="panel" />
+            </button><button
+              class="icon-btn"
+              title="专注模式：隐藏界面并进入全屏（Esc 退出）"
+              aria-label="专注模式"
+              @click="toggleFocusMode"
+            >
+              <KnowledgeIcon name="focus" />
             </button>
           </template>
         </div>
@@ -491,6 +499,32 @@
         </div>
       </section>
     </main>
+    <div
+      v-if="focusMode"
+      class="focus-exit"
+    >
+      <button
+        class="btn"
+        :title="nativeFullscreen ? '还原窗口大小' : '进入浏览器全屏'"
+        @click="toggleNativeFullscreen"
+      >
+        <KnowledgeIcon name="expand" />{{ nativeFullscreen ? '还原' : '全屏' }}
+      </button><button
+        class="btn"
+        title="退出专注（Esc）"
+        @click="exitFocusMode"
+      >
+        <KnowledgeIcon name="x" />退出专注
+      </button>
+    </div>
+    <div
+      v-if="focusMode"
+      class="focus-status"
+      role="status"
+      aria-live="polite"
+    >
+      {{ saveStatus || '编辑中 · 停顿后自动保存' }}
+    </div>
     <el-dialog
       v-model="assistantOpen"
       title="知识助手"
@@ -547,6 +581,8 @@ const props = defineProps({
 })
 const emit = defineEmits(['appearance', 'logout', 'scope', 'search', 'list-search', 'tag', 'source', 'sort', 'view', 'collapse', 'collapse-all', 'manage-folder', 'new-note', 'open-note', 'retry-list', 'page', 'favorite', 'move', 'tags', 'dirty', 'save', 'download-draft', 'reload-conflict', 'filter-tag', 'delete', 'reader-element'])
 const treeSearch = ref(''), menuOpen = ref(false), assistantOpen = ref(false), recordOpen = ref(false)
+const focusMode = ref(false), nativeFullscreen = ref(false)
+let ownFullscreenExit = false
 const infoOpen = ref(true), narrowExpanded = ref(false), readerElement = ref(null), titleElement = ref(null), globalInput = ref(null), headings = ref([])
 const scopes = [{ value: 'all', label: '全部笔记', icon: 'layers' }, { value: 'inbox', label: '收件箱', icon: 'inbox' }, { value: 'favorites', label: '我的收藏', icon: 'star' }]
 const viewLabels = { tree: '目录', list: '笔记列表', reader: '正文阅读' }
@@ -567,6 +603,25 @@ function titleInput(event) { props.draft.title = event.target.value; resizeTitle
 function contentInput(value) { props.draft.content = value; emit('dirty') }
 function scrollToHeading(index) { readerElement.value?.querySelectorAll('.tiptap h1, .tiptap h2, .tiptap h3')[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
 function toggleInfo() { if (window.innerWidth <= 1100) narrowExpanded.value = !narrowExpanded.value; else infoOpen.value = !infoOpen.value }
+function requestNativeFullscreen() { try { document.documentElement.requestFullscreen?.()?.catch(() => {}) } catch { /* 请求被拒绝或环境不支持时，仅保留隐藏界面的专注态 */ } }
+function toggleFocusMode() { focusMode.value = true; requestNativeFullscreen() }
+function exitFocusMode() { focusMode.value = false; leaveNativeFullscreen() }
+function leaveNativeFullscreen() { if (!document.fullscreenElement) return; ownFullscreenExit = true; document.exitFullscreen().catch(() => {}) }
+function toggleNativeFullscreen() { if (document.fullscreenElement) leaveNativeFullscreen(); else requestNativeFullscreen() }
+function handleFocusShortcut(event) {
+  if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'f') { event.preventDefault(); focusMode.value ? exitFocusMode() : toggleFocusMode(); return }
+  // 原生全屏由浏览器接管 Esc；斜杠菜单打开时 Esc 只负责关菜单
+  if (event.key === 'Escape' && focusMode.value && !document.fullscreenElement && !document.querySelector('.slash-menu')) exitFocusMode()
+}
+function handleFullscreenChange() {
+  nativeFullscreen.value = Boolean(document.fullscreenElement)
+  // 自己点「还原」触发的退出保持专注态；用户按 Esc 退出全屏则一并退出专注
+  const ownExit = ownFullscreenExit
+  ownFullscreenExit = false
+  if (!document.fullscreenElement && focusMode.value && !ownExit) focusMode.value = false
+}
+window.addEventListener('keydown', handleFocusShortcut)
+window.addEventListener('fullscreenchange', handleFullscreenChange)
 function focusSearchShortcut(event) { if (event.key === '/' && !event.target.closest('input,textarea,[contenteditable=true]')) { event.preventDefault(); globalInput.value?.focus() } if (event.key === 'Escape') menuOpen.value = false }
 watch(readerElement, element => emit('reader-element', element), { immediate: true })
 watch(() => [props.active?.id, props.draft.title, props.loadingNote], () => nextTick(resizeTitle), { immediate: true })
@@ -582,7 +637,12 @@ watch(titleElement, element => {
   })
   titleObserver.observe(element)
 })
-onBeforeUnmount(() => titleObserver?.disconnect())
+onBeforeUnmount(() => {
+  titleObserver?.disconnect()
+  window.removeEventListener('keydown', handleFocusShortcut)
+  window.removeEventListener('fullscreenchange', handleFullscreenChange)
+  if (focusMode.value && document.fullscreenElement) document.exitFullscreen().catch(() => {})
+})
 </script>
 
 <style scoped src="../styles/knowledge-seven.css"></style>
@@ -641,11 +701,7 @@ onBeforeUnmount(() => titleObserver?.disconnect())
 .markdown :deep(.tiptap img) { max-width:100%; height:auto; }
 .markdown :deep(.tiptap .selectedCell) { background:#eaf0f9; }
 .markdown :deep(.knowledge-editor) { position:relative; }
-.markdown :deep(.format-bar) { position:absolute; bottom:100%; left:0; z-index:3; align-items:center; gap:3px; display:none; padding:5px; border:1px solid var(--line); background:var(--panel); border-radius:5px; box-shadow:0 3px 14px #20334b16; }
-.markdown :deep(.knowledge-editor:focus-within .format-bar) { display:flex; }
-.markdown :deep(.format-bar button) { width:27px; height:27px; font-size:11px; border-radius:3px; }
-.markdown :deep(.format-bar button:hover),.markdown :deep(.format-bar button.active) { background:var(--blue-bg); }
-.markdown :deep(.format-bar>span) { display:none; }
+.markdown :deep(.format-bar) { position:absolute; bottom:calc(100% + 6px); left:0; z-index:3; }
 @media(min-width:1700px) { .document-title { font-size:29px; } .markdown :deep(.tiptap) { font-size:14px; } }
 @media(max-width:1260px) { .document-title { font-size:23px; min-height:34.5px; } }
 @media(max-width:900px) { .document-title { font-size:22px; min-height:33px; } }
@@ -664,4 +720,27 @@ onBeforeUnmount(() => titleObserver?.disconnect())
 .seven[data-color='dark'] :deep(.tiptap h2),.seven[data-color='dark'] :deep(.tiptap h3),.seven[data-color='dark'] :deep(.tiptap strong) { color:var(--ink); border-color:var(--line); }
 .seven[data-color='dark'] :deep(.tiptap th),.seven[data-color='dark'] :deep(.tiptap td) { color:var(--ink); border-color:var(--line); }
 .seven[data-color='dark'] :deep(.tiptap pre),.seven[data-color='dark'] :deep(.tiptap th),.seven[data-color='dark'] :deep(.tiptap code),.seven[data-color='dark'] :deep(.tiptap blockquote) { background:var(--soft); color:var(--muted); border-color:var(--line); }
+</style>
+
+<style scoped>
+/* 专注模式：隐藏整个工作台界面，仅保留标题与正文 */
+.seven.focus-mode header,.seven.focus-mode .demo-bar,.seven.focus-mode .mobile-nav,.seven.focus-mode .sidebar,.seven.focus-mode .list-pane,.seven.focus-mode .reader-toolbar,.seven.focus-mode .info-rail,.seven.focus-mode .eyebrow,.seven.focus-mode .doc-properties,.seven.focus-mode .tags,.seven.focus-mode .doc-end { display:none }
+.seven.focus-mode .app { height:100dvh; grid-template-columns:minmax(0,1fr); }
+.seven.focus-mode .reader { display:block; background:var(--bg); }
+.seven.focus-mode .reading-area { max-width:none; justify-content:center; padding-top:9vh; }
+.seven.focus-mode .document { flex:none; width:min(730px,100%); margin:0 auto; }
+.seven.focus-mode .document-title { font-size:30px; }
+.seven.focus-mode :deep(.tiptap) { font-size:14.5px; line-height:2; }
+.seven.focus-mode :deep(.tiptap h2) { font-size:19px; }
+.seven.focus-mode :deep(.tiptap h3) { font-size:15.5px; }
+/* 专注模式下格式工具栏悬浮顶部居中，避免元信息行隐藏后遮挡标题 */
+.seven.focus-mode .markdown :deep(.format-bar) { position:fixed; top:12px; bottom:auto; left:50%; transform:translateX(-50%); box-shadow:0 6px 20px #20334b26; }
+@media(max-width:900px) {
+  .seven.focus-mode .markdown :deep(.format-bar) { top:auto; bottom:14px; }
+  .seven.focus-mode .focus-status { bottom:56px; }
+}
+.focus-exit { position:fixed; top:14px; right:16px; z-index:40; display:flex; gap:7px; opacity:.4; transition:opacity .18s; }
+.focus-exit:hover,.focus-exit:focus-within { opacity:1; }
+.focus-exit .btn { box-shadow:0 4px 16px #20334b1a; }
+.focus-status { position:fixed; right:16px; bottom:12px; z-index:40; padding:4px 10px; border-radius:20px; background:var(--panel); border:1px solid var(--line); color:var(--muted); font-size:10px; opacity:.75; }
 </style>

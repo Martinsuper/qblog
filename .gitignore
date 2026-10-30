@@ -69,3 +69,6 @@ backend/backups/*
 # 上传的图片（运行时产物）
 backend/uploads/*
 !backend/uploads/.gitkeep
+
+# ZCode 本地会话元数据
+.zcode/
