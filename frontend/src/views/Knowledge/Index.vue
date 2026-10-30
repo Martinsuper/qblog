@@ -84,7 +84,7 @@
           @input="scheduleSearch"
         ><button @click="settingsOpen = true">
           ◧ 外观与布局
-        </button><router-link to="/admin/backup">
+        </button><router-link to="/settings/backup">
           备份与导出
         </router-link><router-link to="/settings/tokens">
           MCP 接入

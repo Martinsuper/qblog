@@ -13,3 +13,7 @@ export const createApiToken = data => request.post('/knowledge/tokens', data)
 export const revokeApiToken = id => request.delete(`/knowledge/tokens/${id}`)
 
 export const listMcpCalls = () => request.get('/knowledge/tokens/calls')
+
+// 备份与导出（blob 直接返回，用于浏览器端触发下载）
+export const exportNotesMarkdown = () => request.get('/knowledge/export/markdown', { responseType: 'blob' })
+export const exportKnowledgeSnapshot = () => request.get('/knowledge/backup/export', { responseType: 'blob' })

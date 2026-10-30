@@ -48,7 +48,7 @@
           <button @click="menuOpen = false; $emit('manage-folder')">
             新建目录
           </button>
-          <router-link to="/admin/backup">
+          <router-link to="/settings/backup">
             备份与导出
           </router-link>
           <router-link to="/settings/tokens">

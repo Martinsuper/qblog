@@ -66,16 +66,6 @@
             写文章
           </template>
         </el-menu-item>
-
-        <el-menu-item
-          index="/admin/backup"
-          route="/admin/backup"
-        >
-          <el-icon><Download /></el-icon>
-          <template #title>
-            备份管理
-          </template>
-        </el-menu-item>
       </el-menu>
       
       <div class="sidebar-footer">
@@ -161,7 +151,6 @@ import {
   Edit,
   Folder,
   HomeFilled,
-  Download,
   PriceTag
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
@@ -181,8 +170,7 @@ const breadcrumb = computed(() => {
     '/admin/articles': '文章管理',
     '/admin/categories': '分类管理',
     '/admin/tags': '标签管理',
-    '/admin/create': '写文章',
-    '/admin/backup': '备份管理'
+    '/admin/create': '写文章'
   }
   return menuMap[route.path] || ''
 })

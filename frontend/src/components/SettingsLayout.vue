@@ -52,7 +52,7 @@ onMounted(() => { applyAppearance(); media.addEventListener('change', applyAppea
 onBeforeUnmount(() => media.removeEventListener('change', applyAppearance))
 const items = [
   { path: '/settings/appearance', label: '外观与布局' },
-  { path: '/admin/backup', label: '备份与导出' },
+  { path: '/settings/backup', label: '备份与导出' },
   { path: '/settings/tokens', label: 'API 与 MCP' },
   { path: '/user/profile', label: '账号与密码' }
 ]

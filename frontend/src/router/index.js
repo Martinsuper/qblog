@@ -73,6 +73,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true, standalone: true }
     },
     {
+      path: '/settings/backup',
+      name: 'knowledge-backup',
+      component: () => import('@/views/Knowledge/Backup.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true, standalone: true }
+    },
+    {
       path: '/user',
       name: 'user-center',
       redirect: '/user/profile',
@@ -114,8 +120,8 @@ const router = createRouter({
         },
         {
           path: 'backup',
-          name: 'admin-backup',
-          component: () => import('@/views/Admin/BackupManage.vue')
+          // 备份与导出已收敛到知识库工作区设置页；旧入口重定向到新家
+          redirect: '/settings/backup'
         }
       ]
     }
