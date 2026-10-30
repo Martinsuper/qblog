@@ -26,7 +26,7 @@ request.interceptors.request.use(
 const forceLogout = () => {
   clearToken()
   localStorage.removeItem('userInfo')
-  window.location.href = '/login'
+  window.location.href = `${import.meta.env.BASE_URL}login`
 }
 
 // 响应拦截器
