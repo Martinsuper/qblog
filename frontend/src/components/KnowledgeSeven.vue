@@ -42,9 +42,9 @@
           class="workspace-menu"
           @keydown.esc="menuOpen = false"
         >
-          <button @click="menuOpen = false; $emit('appearance')">
+          <router-link to="/settings/appearance">
             外观与布局
-          </button>
+          </router-link>
           <button @click="menuOpen = false; $emit('manage-folder')">
             新建目录
           </button>

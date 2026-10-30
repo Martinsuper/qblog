@@ -56,6 +56,17 @@ const router = createRouter({
       redirect: '/login'
     },
     {
+      path: '/settings',
+      redirect: '/settings/appearance',
+      meta: { requiresAuth: true, requiresAdmin: true, standalone: true }
+    },
+    {
+      path: '/settings/appearance',
+      name: 'knowledge-appearance',
+      component: () => import('@/views/Knowledge/Appearance.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true, standalone: true }
+    },
+    {
       path: '/settings/tokens',
       name: 'knowledge-tokens',
       component: () => import('@/views/Knowledge/Tokens.vue'),

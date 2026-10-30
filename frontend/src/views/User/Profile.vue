@@ -1,21 +1,24 @@
 <template>
-  <div class="py-6 md:py-8">
-    <div class="max-w-2xl mx-auto">
-      <!-- 基本信息卡片 -->
-      <div class="card p-6 md:p-8 mb-4">
-        <h3
+  <SettingsLayout
+    title="账号与密码"
+    description="查看账号信息，管理登录密码。"
+  >
+    <div class="profile-content">
+      <!-- 基本信息 -->
+      <div class="card profile-card">
+        <h1
           class="text-xl font-semibold mb-6"
           style="color: var(--text-primary)"
         >
-          个人中心
-        </h3>
+          账号信息
+        </h1>
         <el-form
           :model="userForm"
           label-width="100px"
         >
           <el-form-item label="头像">
             <el-avatar
-              :size="80"
+              :size="48"
               :src="userForm.avatar"
             >
               {{ userForm.nickname?.charAt(0) }}
@@ -28,53 +31,25 @@
             />
           </el-form-item>
           <el-form-item label="昵称">
-            <el-input v-model="userForm.nickname" />
+            <el-input
+              v-model="userForm.nickname"
+              disabled
+            />
           </el-form-item>
           <el-form-item label="邮箱">
-            <el-input v-model="userForm.email" />
-          </el-form-item>
-          <el-form-item>
-            <el-button
-              type="primary"
-              @click="handleUpdate"
-            >
-              保存修改
-            </el-button>
+            <el-input
+              v-model="userForm.email"
+              disabled
+            />
           </el-form-item>
         </el-form>
       </div>
 
-      <!-- 阅读设置卡片 -->
-      <div class="card p-6 md:p-8 mb-4">
-        <h3
-          class="text-xl font-semibold mb-6"
-          style="color: var(--text-primary)"
-        >
-          阅读设置
-        </h3>
-        <el-form label-width="100px">
-          <el-form-item label="渲染风格">
-            <el-radio-group
-              v-model="markdownTheme"
-              class="theme-radio-group"
-              @change="handleThemeChange"
-            >
-              <el-radio label="vuepress">
-                <span class="theme-name">VuePress</span>
-                <span class="theme-desc">文档风格，适合技术文章</span>
-              </el-radio>
-              <el-radio label="github">
-                <span class="theme-name">GitHub</span>
-                <span class="theme-desc">简洁风格，类似 GitHub README</span>
-              </el-radio>
-              <el-radio label="astro">
-                <span class="theme-name">Astro</span>
-                <span class="theme-desc">清爽风格，专注于阅读体验</span>
-              </el-radio>
-            </el-radio-group>
-          </el-form-item>
-        </el-form>
-      </div>
+      <p class="profile-note">
+        账号资料暂不支持在线修改。阅读风格已移至<router-link to="/settings/appearance">
+          外观与布局
+        </router-link>。
+      </p>
 
       <!-- 修改密码折叠区域 -->
       <el-collapse class="card">
@@ -138,18 +113,17 @@
         </el-collapse-item>
       </el-collapse>
     </div>
-  </div>
+  </SettingsLayout>
 </template>
 
 <script setup>
-import { reactive, ref, computed, onMounted } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
+import SettingsLayout from '@/components/SettingsLayout.vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import { useSettingsStore } from '@/stores/settings'
 import { changePassword } from '@/api/auth'
 
 const userStore = useUserStore()
-const settingsStore = useSettingsStore()
 
 const userForm = reactive({
   username: '',
@@ -166,23 +140,6 @@ const passwordForm = reactive({
   newPassword: '',
   confirmPassword: ''
 })
-
-// Markdown 主题
-const markdownTheme = computed({
-  get: () => settingsStore.markdownTheme,
-  set: (value) => settingsStore.setMarkdownTheme(value)
-})
-
-// 处理主题变更
-const handleThemeChange = (value) => {
-  settingsStore.setMarkdownTheme(value)
-  const themeNames = {
-    vuepress: 'VuePress',
-    github: 'GitHub',
-    astro: 'Astro'
-  }
-  ElMessage.success(`已切换到 ${themeNames[value]} 风格`)
-}
 
 // 验证新密码与确认密码一致
 const validateConfirmPassword = (rule, value, callback) => {
@@ -222,10 +179,6 @@ const passwordRules = {
   ]
 }
 
-const handleUpdate = () => {
-  ElMessage.info('修改功能开发中...')
-}
-
 const handleChangePassword = async () => {
   const valid = await passwordFormRef.value.validate().catch(() => false)
   if (!valid) return
@@ -249,10 +202,9 @@ const resetPasswordForm = () => {
   passwordFormRef.value?.resetFields()
 }
 
-onMounted(() => {
-  if (userStore.userInfo) {
-    Object.assign(userForm, userStore.userInfo)
-  }
+onMounted(async () => {
+  if (userStore.userInfo) Object.assign(userForm, userStore.userInfo)
+  try { await userStore.fetchUserInfo(); Object.assign(userForm, userStore.userInfo) } catch { /* Request layer reports errors; keep cached account details. */ }
 })
 </script>
 
@@ -263,9 +215,12 @@ onMounted(() => {
   box-shadow: var(--shadow-sm);
 }
 
-.max-w-2xl {
-  max-width: 600px;
-}
+.profile-content { max-width:640px; }
+.profile-card { padding:20px; border:1px solid var(--border-color); box-shadow:none; }
+.profile-card h1 { font-size:16px; margin-bottom:20px; }
+.profile-note { margin:12px 0 20px; font-size:12px; color:var(--text-secondary); line-height:1.7; }
+.profile-note a { color:var(--color-primary); }
+@media(max-width:640px) { .profile-card { padding:16px; } }
 
 :deep(.el-collapse-item__header) {
   background: transparent;
