@@ -20,8 +20,9 @@ spring:
       enabled: true
       force: true
     multipart:
-      max-file-size: 5MB
-      max-request-size: 10MB
+      # 图片仍由 UploadController 单独限制为 5 MiB。
+      max-file-size: 100MB
+      max-request-size: 101MB
 
   # MySQL 数据库配置
   datasource:

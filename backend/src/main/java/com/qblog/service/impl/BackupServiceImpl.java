@@ -58,6 +58,8 @@ public class BackupServiceImpl implements BackupService {
     private final TagMapper tagMapper;
     private final ArticleMapper articleMapper;
     private final ArticleTagMapper articleTagMapper;
+    /** 知识库表没有 MyBatis 实体，备份/恢复走 JdbcTemplate（与调用方事务同源） */
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     @Value("${backup.directory:backups}")
     private String backupDirectory = "backups";
@@ -76,12 +78,14 @@ public class BackupServiceImpl implements BackupService {
                              TagMapper tagMapper,
                              ArticleMapper articleMapper,
                              ArticleTagMapper articleTagMapper,
+                             org.springframework.jdbc.core.JdbcTemplate jdbc,
                              TransactionTemplate transactionTemplate) {
         this.userMapper = userMapper;
         this.categoryMapper = categoryMapper;
         this.tagMapper = tagMapper;
         this.articleMapper = articleMapper;
         this.articleTagMapper = articleTagMapper;
+        this.jdbc = jdbc;
         this.transactionTemplate = transactionTemplate;
     }
 
@@ -136,9 +140,9 @@ public class BackupServiceImpl implements BackupService {
         Path zipPath = backupDirPath.resolve(zipFilename);
 
         try {
-            // 使用 JSON 导出器创建备份
+            // 使用 JSON 导出器创建备份（v3 全库：博客表 + 知识库 + 上传文件）
             JsonBackupExporter exporter = new JsonBackupExporter(
-                userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper
+                userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper, jdbc, uploadDirectory
             );
             exporter.exportBackup(zipPath, description);
 
@@ -309,7 +313,7 @@ public class BackupServiceImpl implements BackupService {
         }
 
         JsonBackupImporter importer = new JsonBackupImporter(
-            userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper, uploadDirectory
+            userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper, uploadDirectory, jdbc
         );
 
         // 解压与校验不占数据库事务；清表+重放在一个短事务内完成（快照语义）
@@ -365,7 +369,7 @@ public class BackupServiceImpl implements BackupService {
         }
 
         // 验证文件扩展名 - 仅支持 .zip (JSON 备份格式)
-        if (!originalFilename.endsWith(".zip")) {
+        if (!originalFilename.toLowerCase(Locale.ROOT).endsWith(".zip")) {
             throw new IllegalArgumentException("不支持的文件格式，仅支持 .zip 格式的 JSON 备份文件");
         }
 
@@ -404,7 +408,7 @@ public class BackupServiceImpl implements BackupService {
             // 立即恢复数据到数据库（解压校验在事务外，清表+重放在短事务内）
             log.info("开始从导入的备份恢复数据...");
             JsonBackupImporter importer = new JsonBackupImporter(
-                userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper, uploadDirectory
+                userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper, uploadDirectory, jdbc
             );
             JsonBackupImporter.ParsedBackup parsed;
             try {
@@ -519,12 +523,10 @@ public class BackupServiceImpl implements BackupService {
      */
     private Properties loadSettings() {
         Properties props = new Properties();
-        if (Files.exists(settingsFilePath)) {
-            try (InputStream is = Files.newInputStream(settingsFilePath)) {
-                props.load(is);
-            } catch (IOException e) {
-                log.error("加载备份设置失败", e);
-            }
+        try (InputStream is = Files.newInputStream(settingsFilePath)) {
+            props.load(is);
+        } catch (IOException e) {
+            throw new IllegalStateException("加载备份设置失败", e);
         }
         return props;
     }
@@ -536,7 +538,7 @@ public class BackupServiceImpl implements BackupService {
         try (OutputStream os = Files.newOutputStream(settingsFilePath)) {
             props.store(os, "Backup Settings");
         } catch (IOException e) {
-            log.error("保存备份设置失败", e);
+            throw new IllegalStateException("保存备份设置失败", e);
         }
     }
 

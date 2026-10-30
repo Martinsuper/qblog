@@ -15,9 +15,12 @@ import com.qblog.mapper.CategoryMapper;
 import com.qblog.mapper.TagMapper;
 import com.qblog.mapper.UserMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.io.*;
 import java.nio.file.*;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -26,9 +29,13 @@ import java.util.zip.ZipInputStream;
  * JSON 备份导入工具类
  * 恢复语义是"真实快照"：先清空业务表，再按备份中的主键原样重放，
  * 保证 article_tag / author_id / category_id 等引用与备份时的数据完全一致。
+ * v3 备份包含知识库表；v2 旧备份（仅博客表）恢复时不会触碰知识库数据。
  */
 @Slf4j
 public class JsonBackupImporter {
+
+    /** v3 备份的 manifest 版本；v2 是只含博客表的旧格式 */
+    private static final Set<String> SUPPORTED_VERSIONS = Set.of("2.0", "3.0");
 
     private final ObjectMapper objectMapper;
     private final UserMapper userMapper;
@@ -37,19 +44,22 @@ public class JsonBackupImporter {
     private final ArticleMapper articleMapper;
     private final ArticleTagMapper articleTagMapper;
     private final String uploadDirectory;
+    private final JdbcTemplate jdbc;
 
     public JsonBackupImporter(UserMapper userMapper,
                               CategoryMapper categoryMapper,
                               TagMapper tagMapper,
                               ArticleMapper articleMapper,
                               ArticleTagMapper articleTagMapper,
-                              String uploadDirectory) {
+                              String uploadDirectory,
+                              JdbcTemplate jdbc) {
         this.userMapper = userMapper;
         this.categoryMapper = categoryMapper;
         this.tagMapper = tagMapper;
         this.articleMapper = articleMapper;
         this.articleTagMapper = articleTagMapper;
         this.uploadDirectory = uploadDirectory;
+        this.jdbc = jdbc;
 
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
@@ -66,15 +76,29 @@ public class JsonBackupImporter {
         private final List<Tag> tags;
         private final List<Article> articles;
         private final List<ArticleTag> articleTags;
+        /** v2 旧备份不含知识库数据，恢复时不应触碰知识库表 */
+        private final List<Map<String, Object>> knowledgeWorkspaces;
+        private final List<Map<String, Object>> knowledgeFolders;
+        private final List<Map<String, Object>> knowledgeNotes;
 
         ParsedBackup(Path tempDir, List<User> users, List<Category> categories, List<Tag> tags,
-                     List<Article> articles, List<ArticleTag> articleTags) {
+                     List<Article> articles, List<ArticleTag> articleTags,
+                     List<Map<String, Object>> knowledgeWorkspaces,
+                     List<Map<String, Object>> knowledgeFolders,
+                     List<Map<String, Object>> knowledgeNotes) {
             this.tempDir = tempDir;
             this.users = users;
             this.categories = categories;
             this.tags = tags;
             this.articles = articles;
             this.articleTags = articleTags;
+            this.knowledgeWorkspaces = knowledgeWorkspaces;
+            this.knowledgeFolders = knowledgeFolders;
+            this.knowledgeNotes = knowledgeNotes;
+        }
+
+        boolean includesKnowledge() {
+            return knowledgeWorkspaces != null;
         }
 
         Path filesDir() {
@@ -109,10 +133,13 @@ public class JsonBackupImporter {
 
             // 读取并验证 manifest
             Map<String, Object> manifest = readManifest(manifestPath);
+            String version = String.valueOf(manifest.get("version"));
             if (!"QBlog".equals(manifest.get("application")) || !"json".equals(manifest.get("format"))
-                    || !"2.0".equals(manifest.get("version"))) {
-                throw new IOException("不支持的备份格式或版本");
+                    || !SUPPORTED_VERSIONS.contains(version)) {
+                throw new IOException("不支持的备份格式或版本：" + version);
             }
+            boolean v3 = "3.0".equals(version);
+
             // 在数据库写入前验证并解析所有数据文件，避免损坏的后续文件导致半恢复。
             Path dataDir = tempDir.resolve("data");
             List<User> users = parseList(dataDir, "user", User.class);
@@ -121,9 +148,24 @@ public class JsonBackupImporter {
             List<Article> articles = parseList(dataDir, "article", Article.class);
             List<ArticleTag> articleTags = parseList(dataDir, "article_tag", ArticleTag.class);
 
-            log.info("备份版本: {}, 时间: {}", manifest.get("version"), manifest.get("timestamp"));
+            // v3 全库备份：知识库三个分区缺一不可
+            List<Map<String, Object>> workspaces = null, folders = null, notes = null;
+            if (v3) {
+                workspaces = parseRows(dataDir, "knowledge_workspace");
+                folders = parseRows(dataDir, "knowledge_folder");
+                notes = parseRows(dataDir, "knowledge_note");
+                folders = sortKnowledgeFolders(folders);
+                for (Map<String, Object> note : notes) {
+                    if (note == null) throw new IOException("知识笔记行不能为空");
+                    flag(note.get("favorite"), "favorite");
+                    flag(note.get("deleted"), "deleted");
+                    noteVersion(note.get("version"));
+                }
+            }
+
+            log.info("备份版本: {}, 时间: {}", version, manifest.get("timestamp"));
             failed = false;
-            return new ParsedBackup(tempDir, users, categories, tags, articles, articleTags);
+            return new ParsedBackup(tempDir, users, categories, tags, articles, articleTags, workspaces, folders, notes);
         } finally {
             if (failed) {
                 deleteDirectory(tempDir.toFile());
@@ -153,11 +195,189 @@ public class JsonBackupImporter {
         counts.put("article", insertAll("article", backup.articles, articleMapper::insertWithId));
         counts.put("article_tag", insertAll("article_tag", backup.articleTags, articleTagMapper::insertWithId));
 
+        // v2 旧备份不含知识库分区，此时绝不能清空知识库表（笔记是主数据）
+        if (backup.includesKnowledge()) {
+            counts.putAll(restoreKnowledge(backup));
+        } else {
+            log.info("v2 旧备份不包含知识库数据，知识库表未改动");
+        }
+
         // 恢复上传文件
         restoreUploadFiles(backup.filesDir());
 
         log.info("JSON 备份恢复完成: {}", counts);
         return counts;
+    }
+
+    /**
+     * 知识库表恢复（JdbcTemplate，无 MyBatis 实体）。与博客表同一个数据源，
+     * 因此和调用方事务绑定在一起，失败整体回滚。
+     */
+    private Map<String, Integer> restoreKnowledge(ParsedBackup backup) throws IOException {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+
+        // InnoDB 逐行检查自引用外键，批量删除目录前先断开父子关系。
+        // 这些更新和删除都在调用方事务中，恢复失败时一起回滚。
+        jdbc.update("DELETE FROM knowledge_note");
+        jdbc.update("UPDATE knowledge_folder SET parent_id = NULL WHERE parent_id IS NOT NULL");
+        jdbc.update("DELETE FROM knowledge_folder");
+        jdbc.update("DELETE FROM knowledge_workspace");
+
+        int workspaces = 0;
+        for (Map<String, Object> row : backup.knowledgeWorkspaces) {
+            jdbc.update("INSERT INTO knowledge_workspace(id,name) VALUES(?,?)",
+                    asLong(row.get("id")), requireString(row, "name"));
+            workspaces++;
+        }
+
+        // parse 已验证并按父目录先于子目录的顺序排列。
+        int folders = 0;
+        for (Map<String, Object> row : backup.knowledgeFolders) {
+            jdbc.update("INSERT INTO knowledge_folder(id,workspace_id,parent_id,name,sort,create_time,update_time) "
+                    + "VALUES(?,?,?,?,?,?,?)",
+                    asLong(row.get("id")), asLong(row.get("workspace_id")), asNullableLong(row.get("parent_id")),
+                    requireString(row, "name"), asIntWithDefault(row.get("sort"), 0),
+                    timestamp(row.get("create_time")), timestamp(row.get("update_time")));
+            folders++;
+        }
+
+        int notes = 0;
+        for (Map<String, Object> row : backup.knowledgeNotes) {
+            jdbc.update("INSERT INTO knowledge_note(id,workspace_id,title,content,summary,folder_id,tags,"
+                            + "favorite,source,source_tool,external_id,version,deleted,create_time,update_time) "
+                            + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    asLong(row.get("id")), asLong(row.get("workspace_id")), requireString(row, "title"),
+                    requireString(row, "content"), Objects.requireNonNullElse(asString(row.get("summary")), ""),
+                    asNullableLong(row.get("folder_id")), tagsJson(row),
+                    flag(row.get("favorite"), "favorite"), Objects.requireNonNullElse(asString(row.get("source")), "manual"),
+                    asString(row.get("source_tool")), asString(row.get("external_id")),
+                    noteVersion(row.get("version")), flag(row.get("deleted"), "deleted"),
+                    timestamp(row.get("create_time")), timestamp(row.get("update_time")));
+            notes++;
+        }
+
+        counts.put("knowledge_workspace", workspaces);
+        counts.put("knowledge_folder", folders);
+        counts.put("knowledge_note", notes);
+        log.info("恢复知识库数据：workspace {} 条、目录 {} 条、笔记 {} 条", workspaces, folders, notes);
+        return counts;
+    }
+
+    /** 校验目录自引用并使用非递归拓扑排序，避免深层目录导致栈溢出。 */
+    private static List<Map<String, Object>> sortKnowledgeFolders(List<Map<String, Object>> rows) throws IOException {
+        Map<Long, Map<String, Object>> byId = new LinkedHashMap<>();
+        Map<Long, Long> parents = new HashMap<>();
+        Map<Long, List<Long>> children = new HashMap<>();
+        Deque<Long> ready = new ArrayDeque<>();
+        for (Map<String, Object> row : rows) {
+            if (row == null) throw new IOException("知识目录行不能为空");
+            long id = folderId(row.get("id"), "id");
+            folderId(row.get("workspace_id"), "workspace_id");
+            if (byId.putIfAbsent(id, row) != null) throw new IOException("知识目录 id 重复: " + id);
+            if (row.get("parent_id") != null) parents.put(id, folderId(row.get("parent_id"), "parent_id"));
+        }
+        for (Map.Entry<Long, Map<String, Object>> entry : byId.entrySet()) {
+            long id = entry.getKey();
+            Long parent = parents.get(id);
+            if (parent == null) {
+                ready.add(id);
+            } else {
+                Map<String, Object> parentRow = byId.get(parent);
+                if (parentRow == null) throw new IOException("知识目录父目录不存在: " + parent);
+                if (folderId(entry.getValue().get("workspace_id"), "workspace_id")
+                        != folderId(parentRow.get("workspace_id"), "workspace_id")) {
+                    throw new IOException("知识目录与父目录不属于同一工作区: " + id);
+                }
+                children.computeIfAbsent(parent, ignored -> new ArrayList<>()).add(id);
+            }
+        }
+        List<Map<String, Object>> sorted = new ArrayList<>(rows.size());
+        while (!ready.isEmpty()) {
+            long id = ready.remove();
+            sorted.add(byId.get(id));
+            ready.addAll(children.getOrDefault(id, Collections.emptyList()));
+        }
+        if (sorted.size() != rows.size()) throw new IOException("知识目录存在循环引用");
+        return sorted;
+    }
+
+    private static long folderId(Object value, String column) throws IOException {
+        if (value instanceof Integer || value instanceof Long) return ((Number) value).longValue();
+        if (value instanceof java.math.BigInteger number) {
+            try { return number.longValueExact(); } catch (ArithmeticException ignored) { }
+        }
+        throw new IOException("知识目录缺少有效整数列: " + column);
+    }
+
+    private static long noteVersion(Object value) throws IOException {
+        if (value == null) return 0L;
+        long version;
+        if (value instanceof Integer || value instanceof Long) {
+            version = ((Number) value).longValue();
+        } else if (value instanceof java.math.BigInteger number) {
+            try {
+                version = number.longValueExact();
+            } catch (ArithmeticException e) {
+                throw new IOException("知识笔记 version 超出 BIGINT 范围", e);
+            }
+        } else {
+            throw new IOException("知识笔记 version 必须为整数");
+        }
+        if (version < 0) throw new IOException("知识笔记 version 不能为负数");
+        return version;
+    }
+
+    private static int flag(Object value, String column) throws IOException {
+        if (value == null) return 0;
+        if (value instanceof Boolean bool) return bool ? 1 : 0;
+        if ((value instanceof Integer || value instanceof Long || value instanceof java.math.BigInteger)
+                && (value.toString().equals("0") || value.toString().equals("1"))) {
+            return ((Number) value).intValue();
+        }
+        throw new IOException("知识笔记旗标无效: " + column);
+    }
+
+    /** JSON 数字可能是 Integer/Long/BigInteger，统一取 long */
+    private static long asLong(Object value) {
+        if (value instanceof Number number) return number.longValue();
+        throw new IllegalArgumentException("备份行缺少整数列: " + value);
+    }
+
+    private static Long asNullableLong(Object value) {
+        return value == null ? null : asLong(value);
+    }
+
+    private static int asIntWithDefault(Object value, int fallback) {
+        return value instanceof Number number ? number.intValue() : fallback;
+    }
+
+    private static String asString(Object value) {
+        return value instanceof String text ? text : null;
+    }
+
+    private static String requireString(Map<String, Object> row, String column) {
+        Object value = row.get(column);
+        if (!(value instanceof String text)) throw new IllegalArgumentException("备份行缺少字符串列: " + column);
+        return text;
+    }
+
+    /** tags 列是 JSON 数组；导出为 JsonNode 数组，恢复时转回字符串满足 CHECK(JSON_VALID) */
+    private String tagsJson(Map<String, Object> row) {
+        Object value = row.get("tags");
+        if (value == null) return "[]";
+        if (value instanceof String text) return text;
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("tags 列无法序列化为 JSON", e);
+        }
+    }
+
+    /** 导出的时间为 ISO 字符串，例如 2026-10-30T02:00:00.123456 */
+    private static Timestamp timestamp(Object value) {
+        if (value instanceof String text) return Timestamp.valueOf(LocalDateTime.parse(text));
+        if (value instanceof Number number) return new Timestamp(number.longValue());
+        throw new IllegalArgumentException("备份行缺少时间列: " + value);
     }
 
     /**
@@ -175,6 +395,16 @@ public class JsonBackupImporter {
             throw new IOException("备份缺少有效的数据文件：" + table);
         }
         JavaType listType = objectMapper.getTypeFactory().constructCollectionType(List.class, type);
+        return objectMapper.readValue(file.toFile(), listType);
+    }
+
+    /** 知识库表没有实体类，按原始 Map 行解析 */
+    private List<Map<String, Object>> parseRows(Path dataDir, String table) throws IOException {
+        Path file = dataDir.resolve(table + ".json");
+        if (!Files.isRegularFile(file) || !objectMapper.readTree(file.toFile()).isArray()) {
+            throw new IOException("备份缺少有效的数据文件：" + table);
+        }
+        JavaType listType = objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class);
         return objectMapper.readValue(file.toFile(), listType);
     }
 
@@ -248,13 +478,12 @@ public class JsonBackupImporter {
      * 恢复上传文件
      */
     private void restoreUploadFiles(Path filesDir) throws IOException {
-        if (!Files.exists(filesDir)) {
-            log.debug("files 目录不存在，跳过文件恢复");
-            return;
-        }
-
         Path uploadsSource = filesDir.resolve("uploads");
-        if (!Files.exists(uploadsSource)) {
+        try {
+            if (!Files.readAttributes(uploadsSource, java.nio.file.attribute.BasicFileAttributes.class).isDirectory()) {
+                throw new IOException("备份 uploads 不是目录: " + uploadsSource);
+            }
+        } catch (NoSuchFileException e) {
             log.debug("uploads 目录不存在，跳过文件恢复");
             return;
         }
@@ -262,19 +491,18 @@ public class JsonBackupImporter {
         Path targetUploads = Paths.get(uploadDirectory);
         Files.createDirectories(targetUploads);
 
-        try (var paths = Files.walk(uploadsSource)) {
-            paths.filter(Files::isRegularFile)
-            .forEach(sourcePath -> {
-                try {
-                    Path relativePath = uploadsSource.relativize(sourcePath);
-                    Path targetPath = targetUploads.resolve(relativePath.toString());
+        // 文件遍历及复制失败都交给调用方处理，不能将部分恢复报告为成功。
+        Files.walkFileTree(uploadsSource, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult visitFile(Path sourcePath, java.nio.file.attribute.BasicFileAttributes attrs) throws IOException {
+                if (attrs.isRegularFile()) {
+                    Path targetPath = targetUploads.resolve(uploadsSource.relativize(sourcePath).toString());
                     Files.createDirectories(targetPath.getParent());
                     Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
-                } catch (IOException e) {
-                    log.warn("恢复文件失败: {}", sourcePath, e);
                 }
-            });
-        }
+                return FileVisitResult.CONTINUE;
+            }
+        });
 
         log.info("上传文件恢复完成");
     }
