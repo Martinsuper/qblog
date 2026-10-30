@@ -2,6 +2,7 @@ package com.qblog.knowledge;
 
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.qblog.common.exception.BusinessException;
 import com.qblog.knowledge.KnowledgeModels.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ public class McpController {
     public static final int MAX_BODY = 1024 * 1024;
     private final ObjectMapper json;
     private final KnowledgeService notes;
+    private final KnowledgeFolderService folders;
     @org.springframework.beans.factory.annotation.Autowired(required = false) private McpArticleTools articleTools;
     @org.springframework.beans.factory.annotation.Autowired(required = false) private McpCallLog callLog;
 
@@ -51,14 +53,14 @@ public class McpController {
                     return ResponseEntity.ok(error(id,-32602,"Invalid params"));
                 result = Map.of("protocolVersion",PROTOCOL,"capabilities",Map.of("tools",Map.of("listChanged",false)),
                         "serverInfo",Map.of("name","QBlog private knowledge","version","1.0.0"),
-                        "instructions","SQL text search; no vector retrieval. Stateless JSON transport; no sessions.");
+                        "instructions","SQL text search; no vector retrieval. Stateless JSON transport; no sessions. " + NoteMarkdownPolicy.INSTRUCTIONS);
             }
             case "ping" -> result = Map.of();
             case "tools/list" -> result = Map.of("tools",toolDefinitions());
             case "tools/call" -> {
                 if (!params.path("name").isTextual() || !params.path("arguments").isObject()) return ResponseEntity.ok(error(id,-32602,"Invalid params"));
                 String name = params.path("name").asText();
-                if (!Set.of("notes_search","notes_get","notes_create","notes_update","articles_search","articles_get","articles_create","articles_update","articles_publish","articles_delete").contains(name)) return ResponseEntity.ok(error(id,-32602,"Unknown tool"));
+                if (!Set.of("notes_search","notes_get","notes_create","notes_update","folders_list","folders_create","folders_update","folders_delete","articles_search","articles_get","articles_create","articles_update","articles_publish","articles_delete").contains(name)) return ResponseEntity.ok(error(id,-32602,"Unknown tool"));
                 long started = System.nanoTime();
                 boolean success = false;
                 var principal = (KnowledgeTokenService.Principal)authentication.getPrincipal();
@@ -66,8 +68,13 @@ public class McpController {
                     Object data = name.startsWith("articles_") ? articleTools.call(name,params.get("arguments"),principal) : call(name,params.get("arguments"),principal);
                     success = true;
                     result = Map.of("content",List.of(Map.of("type","text","text",json.writeValueAsString(data))),"isError",false);
+                } catch (NoteMarkdownPolicy.InvalidFormat invalid) {
+                    result = Map.of("content",List.of(Map.of("type","text","text",invalid.getMessage())),"isError",true);
                 } catch (com.qblog.common.exception.BusinessException denied) {
-                    String message = denied.getCode() == 409 && name.startsWith("articles_") ? "Article version conflict; read the latest article and merge changes" : "Tool request denied or invalid";
+                    // Identical masked errors for folder existence/emptiness/scope, mirroring note and article handling.
+                    boolean folderConflict = denied.getCode() == 409 && name.startsWith("folders_");
+                    String message = denied.getCode() == 409 && name.startsWith("articles_") ? "Article version conflict; read the latest article and merge changes"
+                            : folderConflict ? (name.equals("folders_delete") ? "Folder not found, still empty, or out of scope; only empty folders can be deleted" : "Folder limit reached or missing parent; list folders first") : "Tool request denied or invalid";
                     result = Map.of("content",List.of(Map.of("type","text","text",message)),"isError",true);
                 } catch (Exception denied) {
                     // Identical errors for nonexistent/out-of-scope records, external IDs and directories.
@@ -85,7 +92,7 @@ public class McpController {
     private Object call(String name, JsonNode args, KnowledgeTokenService.Principal token) {
         var directory = token.directoryScope();
         var scope = new KnowledgeScope(directory.directoryIds(),directory.all(),directory.inbox());
-        token.require(name.equals("notes_search") || name.equals("notes_get") ? "READ" : "WRITE");
+        token.require(Set.of("notes_search","notes_get","folders_list").contains(name) ? "READ" : "WRITE");
         switch (name) {
             case "notes_search": {
                 fields(args,Set.of("search","folderId","inbox","current","size","tag"));
@@ -117,20 +124,62 @@ public class McpController {
                 write.setSource(old.getSource()); write.setSourceTool(old.getSourceTool()); write.setExternalId(old.getExternalId());
                 return notes.update(id,write,scope);
             }
+            case "folders_list": {
+                fields(args,Set.of());
+                if (directory.all()) return folders.list();
+                // Scoped tokens only see their authorized folders; unauthorized ancestors are cut and children mount at the root.
+                if (directory.directoryIds().isEmpty()) return List.of();
+                return filterFoldersByScope(folders.list(), directory.directoryIds());
+            }
+            case "folders_create": {
+                // Creating/renaming/deleting folders reshapes the tree other tokens reference, so restricted to all-directory tokens.
+                if (!directory.all()) throw new BusinessException(403,"Folder management requires an all-directories token");
+                fields(args,Set.of("name","parentId","sort"));
+                if (!args.path("name").isTextual() || args.path("name").asText().isBlank()) throw new IllegalArgumentException();
+                if (args.hasNonNull("sort") && (!args.path("sort").isIntegralNumber() || args.path("sort").asLong() < 0)) throw new IllegalArgumentException();
+                FolderWrite write = json.convertValue(args,FolderWrite.class);
+                return folders.create(write);
+            }
+            case "folders_update": {
+                if (!directory.all()) throw new BusinessException(403,"Folder management requires an all-directories token");
+                fields(args,Set.of("id","name","parentId","sort"));
+                if (!args.path("name").isTextual() || args.path("name").asText().isBlank()) throw new IllegalArgumentException();
+                if (args.hasNonNull("sort") && (!args.path("sort").isIntegralNumber() || args.path("sort").asLong() < 0)) throw new IllegalArgumentException();
+                ObjectNode data = ((ObjectNode)args).deepCopy(); data.remove("id");
+                FolderWrite write = json.convertValue(data,FolderWrite.class);
+                return folders.update(id(args),write);
+            }
+            case "folders_delete": {
+                if (!directory.all()) throw new BusinessException(403,"Folder management requires an all-directories token");
+                fields(args,Set.of("id"));
+                folders.delete(id(args));
+                return Map.of("deleted",true,"id",id(args));
+            }
             default: throw new IllegalArgumentException();
         }
     }
+    /** Rebuilds the tree keeping only authorized folders; descendants of pruned folders surface as roots. */
+    private List<KnowledgeModels.FolderView> filterFoldersByScope(List<KnowledgeModels.FolderView> nodes, Set<Long> owned) {
+        List<KnowledgeModels.FolderView> out = new ArrayList<>();
+        for (var node : nodes) {
+            if (owned.contains(node.getId())) { node.setChildren(filterFoldersByScope(node.getChildren(), owned)); out.add(node); }
+            else out.addAll(filterFoldersByScope(node.getChildren(), owned));
+        }
+        return out;
+    }
     private void validateWrite(NoteWrite write) {
         if (write.getTitle()==null || write.getTitle().isBlank() || write.getTitle().length()>200 || write.getContent()==null || write.getContent().length()>900000) throw new IllegalArgumentException();
+        NoteMarkdownPolicy.validate(write.getContent());
     }
     private Long id(JsonNode args) { if (!args.path("id").isIntegralNumber() || !args.path("id").canConvertToLong() || args.path("id").asLong()<=0) throw new IllegalArgumentException(); return args.path("id").asLong(); }
     private void fields(JsonNode args,Set<String> allowed) {
         args.fieldNames().forEachRemaining(k -> {
             if (!allowed.contains(k)) throw new IllegalArgumentException();
             JsonNode value = args.get(k);
-            if (Set.of("id","folderId","version","current","size").contains(k)) {
-                if (value.isNull() && "folderId".equals(k)) return;
-                if (!value.isIntegralNumber() || !value.canConvertToLong() || value.asLong() < ("version".equals(k) ? 0 : 1)) throw new IllegalArgumentException();
+            if (Set.of("id","folderId","parentId","version","current","size","sort").contains(k)) {
+                if ((value.isNull() && Set.of("folderId","parentId").contains(k))) return;
+                boolean zeroFloor = "version".equals(k) || "sort".equals(k);
+                if (!value.isIntegralNumber() || !value.canConvertToLong() || value.asLong() < (zeroFloor ? 0 : 1)) throw new IllegalArgumentException();
             } else if (Set.of("favorite","inbox").contains(k)) {
                 if (!value.isBoolean()) throw new IllegalArgumentException();
             } else if ("tags".equals(k)) {
@@ -146,13 +195,18 @@ public class McpController {
     private List<Map<String,Object>> toolDefinitions() {
         Map<String,Object> text=Map.of("type","string"), number=Map.of("type","integer","minimum",1), folder=Map.of("type",List.of("integer","null"),"minimum",1);
         Map<String,Object> write=new LinkedHashMap<>(); write.put("title",text); write.put("content",text); write.put("summary",text); write.put("folderId",folder);
+        write.put("content",Map.of("type","string","description",NoteMarkdownPolicy.INSTRUCTIONS));
         write.put("tags",Map.of("type","array","items",text)); write.put("favorite",Map.of("type","boolean")); write.put("version",Map.of("type","integer","minimum",0));
         var create=new LinkedHashMap<>(write); create.put("externalId",text);
         var update=new LinkedHashMap<>(write); update.put("id",number);
         return List.of(tool("notes_search","SQL text search within authorized folders (not vector search)",Map.of("search",text,"folderId",folder,"inbox",Map.of("type","boolean"),"tag",text,"current",number,"size",Map.of("type","integer","minimum",1,"maximum",100)),List.of()),
                 tool("notes_get","Read an authorized note",Map.of("id",number),List.of("id")),
-                tool("notes_create","Create or idempotently upsert by this token's externalId",create,List.of("title","content")),
-                tool("notes_update","Replace a note; current version required; folderId omitted means inbox",update,List.of("id","title","content","version")),
+                tool("notes_create","Create or idempotently upsert by this token's externalId. Numbered Markdown headings required; do not add a table of contents; see content schema.",create,List.of("title","content")),
+                tool("notes_update","Replace a note; current version required; folderId omitted means inbox. Numbered Markdown headings required; do not add a table of contents; see content schema.",update,List.of("id","title","content","version")),
+                tool("folders_list","List the authorized folder tree with note counts",Map.of(),List.of()),
+                tool("folders_create","Create a folder under parentId (null = root). Tokens restricted to specific folders cannot change the tree",folderWriteSchema(text,folder,null),List.of("name")),
+                tool("folders_update","Rename, reorder or move a folder (parentId null = root; cycles rejected). Unrestricted tokens only",folderWriteSchema(text,folder,number),List.of("id","name")),
+                tool("folders_delete","Delete an empty folder (no notes, no subfolders). Unrestricted tokens only",Map.of("id",number),List.of("id")),
                 tool("articles_search","Search articles",Map.of("keyword",text,"page",number,"size",number),List.of()),
                 tool("articles_get","Read article and version",Map.of("id",number),List.of("id")),
                 tool("articles_create","Create a draft",Map.of("title",text,"content",text,"summary",text),List.of("title","content")),
@@ -162,5 +216,13 @@ public class McpController {
     }
     private Map<String,Object> tool(String name,String description,Map<String,Object> properties,List<String> required) {
         return Map.of("name",name,"description",description,"inputSchema",Map.of("type","object","properties",properties,"required",required,"additionalProperties",false));
+    }
+    private Map<String,Object> folderWriteSchema(Map<String,Object> text,Map<String,Object> folder,Map<String,Object> idProperty) {
+        Map<String,Object> schema = new LinkedHashMap<>();
+        if (idProperty != null) schema.put("id",idProperty);
+        schema.put("name",text);
+        schema.put("parentId",folder);
+        schema.put("sort",Map.of("type","integer","minimum",0));
+        return schema;
     }
 }

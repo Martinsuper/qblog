@@ -8,7 +8,7 @@
 - 服务端分页、标题/正文关键词搜索、来源和标签过滤、收藏、层级目录、收件箱、移动和删除。
 - 每篇笔记有 version，更新和删除执行乐观锁。409 冲突暂停自动保存，允许下载草稿后载入最新版本，不静默覆盖 MCP 或其他窗口修改。
 - MCP 独立 Token：仅一次显示完整凭证，服务器仅 SHA-256 摘要；可撤销、有效期<=365天、READ/WRITE 与目录精确范围。WRITE 不隐含 READ。目录范围不自动包含子目录；收件箱单独授权。
-- MCP Streamable HTTP，JSON 响应、stateless、协议 2025-03-26，工具 `notes_search` / `notes_get` / `notes_create` / `notes_update`。
+- MCP Streamable HTTP，JSON 响应、stateless、协议 2025-03-26，工具 `notes_search` / `notes_get` / `notes_create` / `notes_update`，目录工具 `folders_list` / `folders_create` / `folders_update` / `folders_delete`（目录变更仅对“全部目录”授权令牌开放，删除仅限空目录）。
 - 当前检索为 SQL 关键词查询，不是向量检索或 AI 问答；界面索引状态明确“未配置”。
 
 ## 数据与迁移
@@ -75,6 +75,35 @@ curl https://YOUR_HOST/api/mcp \
 
 创建工具参数：`title`, `content`, `folderId`（null为收件箱）, `tags`, `externalId`。同 Token 内稳定 externalId 支持幂等重试；内容不同时必须提供最新 version，否则返回工具错误。更新是完整替换，必须包含 title/content/version，省略 folderId 意味收件箱，**不是 PATCH**。先读取当前笔记再合并更新。Token 命名空间不同，不共享 externalId。
 
+## MCP 笔记格式强制校验
+
+`notes_create`（包括 externalId 幂等 upsert）和 `notes_update` 在写入前统一校验 Markdown；不合规返回 `result.isError: true` 和具体格式原因，不调用笔记写入服务。初始化 instructions、工具说明和 content 参数描述同时公布规则。
+
+- 正文不添加手写目录，直接编写编号章节，无需维护重复的目录列表。
+- 正文只允许二至四级章节，顶级使用 `## 一、标题`、`## 二、标题`，顿号后不加空格；子章节使用 `### 1.1 标题`、`#### 1.1.1 标题`，编号后一个空格。标题不得嵌套在列表等容器中。
+- 顶级中文序号从一开始连续递增，子章节以对应顶级章节的阿拉伯数字序号为前缀，如“二、安装”下使用“2.1 配置”。不重复、不跳号、不跳级；参考资料、附录同样编号。
+- 更新正文时检查全部章节编号，可用分隔线分隔章节。
+- 所有章节标题（含小标题）使用专业名词或动宾短语，同级结构平行、每个标题聚焦一个主题；建议 2–12 字，最多 20 个 Unicode 字符（不含编号）。避免口语化开头“这是什么”“能做什么”“怎么做”“如何做”，不使用冒号拼接说明、问号或感叹号，解释放入正文。例如“这是什么：让 AI 客户端访问笔记”改为“服务概述”，“更新与发布的注意事项”改为“更新与发布”。长度、首尾空白、上述标点和口语前缀由服务端校验；其余语义风格由 MCP 指令引导，不声称可自动判断所有专业性问题。
+- 使用 Markdown 语法树识别标题（包括 Setext 标题）；围栏代码、缩进代码和引用块中的示例标题不参与校验。
+- 仅约束 MCP 笔记写入，不改变文章工具或网页端编辑规则；已有笔记不自动迁移，也不影响读取，但下次通过 MCP 更新时必须提交合规正文。
+- 需要构建并部署新后端才会在远程端点生效；客户端随后重新连接以刷新工具说明。无需数据库迁移。
+
+最小合规正文：
+
+```markdown
+## 一、简介
+
+正文。
+
+### 1.1 使用方式
+
+操作说明。
+
+## 二、参考资料
+
+文档链接。
+```
+
 ## 验证边界
 
 - 自动化测试覆盖真实 Spring Security filter chain、Token 生命周期/摘要、跨目录 scope、MCP JSON-RPC、来源身份、版本冲突与保存排队竞态。
@@ -86,11 +115,11 @@ curl https://YOUR_HOST/api/mcp \
 
 1. 以管理员登录网站，打开“API 与 MCP”，进入“访问令牌”，创建一个有明确用途的令牌。选择读取或写入权限，并勾选所需的目录或收件箱。令牌只在创建时完整显示一次。
 2. 在支持 Streamable HTTP 和自定义请求头的 MCP 客户端中新增服务。地址使用页面显示的实际地址，请求头为 `Authorization: Bearer <令牌>`。上方 JSON 示例是一种客户端配置格式；具体字段以客户端文档为准。远程连接应使用 HTTPS。
-3. 重启或重新连接客户端，确认可以看到 `notes_search`、`notes_get`、`notes_create` 和 `notes_update`。先尝试搜索所授权目录中的笔记。
+3. 重启或重新连接客户端，确认可以看到 `notes_search`、`notes_get`、`notes_create`、`notes_update` 和目录工具 `folders_list` 等。先尝试搜索所授权目录中的笔记。
 4. 写入时确认令牌有写权限，目标目录在授权范围内。更新前先读取当前笔记和版本；目录权限不自动包含子目录，收件箱需要单独授权。
 5. 如果连接失败，检查服务地址能否从客户端访问、令牌是否过期或撤销、权限与目录范围是否匹配，以及客户端是否支持自定义 Authorization 请求头。浏览器客户端的来源还须在服务端 CORS 白名单中。
 
-令牌相当于访问凭证，不要提交到仓库或粘贴到公开场所；泄露后在令牌列表中立即撤销并重新创建。文章工具包括 `articles_search`、`articles_get`、`articles_create`、`articles_update` 、`articles_publish` 和 `articles_delete`。更新或发布前读取最新版本并传入 `version`；发生冲突后重新读取并合并。创建默认为草稿，发布及修改已发布文章需要独立的发布权限，删除需要单独授权并执行软删除。
+令牌相当于访问凭证，不要提交到仓库或粘贴到公开场所；泄露后在令牌列表中立即撤销并重新创建。文章工具包括 `articles_search`、`articles_get`、`articles_create`、`articles_update` 、`articles_publish` 和 `articles_delete`。更新或发布前读取最新版本并传入 `version`；发生冲突后重新读取并合并。创建默认为草稿，发布及修改已发布文章需要独立的发布权限，删除需要单独授权并执行软删除。目录工具 `folders_create` / `folders_update` / `folders_delete` 仅向“全部目录”授权的令牌开放；`folders_delete` 只能删除不含笔记与子目录的空目录。
 
 ## 文章 MCP 迁移
 

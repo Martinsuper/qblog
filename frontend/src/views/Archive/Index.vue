@@ -2,13 +2,16 @@
   <div class="py-6 md:py-8">
     <div class="card p-6 md:p-10">
       <div class="archive-header mb-10">
-        <h2
+        <h1
           class="text-2xl font-bold mb-2"
           style="color: var(--text-primary)"
         >
           时间轴
-        </h2>
-        <p class="text-sm text-gray-500">
+        </h1>
+        <p
+          class="text-sm"
+          style="color: var(--text-secondary)"
+        >
           目前共计 {{ total }} 篇文章。继续努力。
         </p>
       </div>
@@ -184,7 +187,7 @@ onMounted(fetchArticles)
   height: 10px;
   background: var(--color-primary);
   border-radius: 50%;
-  border: 2px solid white;
+  border: 2px solid var(--bg-secondary);
   box-shadow: 0 0 0 3px var(--color-primary-light);
   z-index: 1;
 }
@@ -207,11 +210,16 @@ onMounted(fetchArticles)
   transition: border-color 0.2s, transform 0.2s;
 }
 
-.article-item:hover,
-.article-item:focus-visible {
+.article-item:hover {
   border-bottom-color: var(--color-primary);
   transform: translateX(5px);
-  outline: none;
+}
+
+/* 鍵盘焦点给可见描边，不只依赖位移/颜色变化 */
+.article-item:focus-visible {
+  border-bottom-color: var(--color-primary);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .article-item::before {
@@ -220,7 +228,7 @@ onMounted(fetchArticles)
   left: -33px;
   width: 6px;
   height: 6px;
-  background: #bbb;
+  background: var(--text-tertiary);
   border-radius: 50%;
   transition: all 0.2s;
 }

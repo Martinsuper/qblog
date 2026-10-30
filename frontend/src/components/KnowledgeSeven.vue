@@ -480,7 +480,7 @@
               :class="{ on: infoOpen }"
               title="本文目录"
               aria-label="本文目录"
-              :aria-expanded="infoOpen || narrowExpanded"
+              :aria-expanded="infoOpen"
               @click="toggleInfo"
             >
               <KnowledgeIcon name="panel" />
@@ -592,11 +592,21 @@
                 class="document-title"
                 rows="1"
                 :value="draft.title"
+                :aria-invalid="titleMissing"
+                :aria-describedby="titleMissing ? 'note-title-error' : undefined"
                 maxlength="120"
                 aria-label="笔记标题"
                 @input="titleInput"
                 @keydown.enter.prevent
               />
+              <p
+                v-if="titleMissing"
+                id="note-title-error"
+                class="title-validation"
+                role="alert"
+              >
+                请填写标题后继续保存，正文仍保留在当前页面。
+              </p>
               <div class="tags">
                 <button
                   v-for="value in draft.tags"
@@ -634,16 +644,29 @@
                 </div>
               </div>
               <div
-                v-else-if="saveFailed"
-                class="save-alert"
+                v-else-if="saveFailed && !titleMissing"
+                class="save-alert save-error-card"
                 role="alert"
               >
-                {{ saveStatus }}<button
-                  class="btn"
-                  @click="$emit('save')"
-                >
-                  重试保存
-                </button>
+                <div class="save-error-copy">
+                  <strong>暂时无法保存</strong>
+                  <p>{{ saveErrorDetail }}</p>
+                  <small>当前草稿仍在此页面，请勿关闭或刷新。</small>
+                </div>
+                <div class="save-error-actions">
+                  <button
+                    class="btn"
+                    @click="$emit('save')"
+                  >
+                    重试保存
+                  </button>
+                  <button
+                    class="btn"
+                    @click="$emit('download-draft')"
+                  >
+                    下载草稿
+                  </button>
+                </div>
               </div>
               <div class="markdown">
                 <KnowledgeEditor
@@ -657,9 +680,9 @@
               </div>
             </article>
             <aside
-              v-if="headings.length && (infoOpen || narrowExpanded)"
+              v-if="headings.length && infoOpen"
               class="info-rail"
-              :class="{ expanded: narrowExpanded }"
+              :class="{ expanded: infoOpen }"
               aria-label="正文目录与来源"
             >
               <div class="rail-title">
@@ -690,7 +713,7 @@
           <span
             role="status"
             aria-live="polite"
-          >{{ saveStatus || '自动保存已开启' }}</span>
+          >{{ titleMissing ? '等待填写标题' : saveFailed ? '尚未保存 · 草稿已保留' : saveStatus || '自动保存已开启' }}</span>
         </div>
       </section>
     </main>
@@ -845,6 +868,11 @@ function toggleDensity() {
 }
 const contextMenu = ref(null), noteMenu = ref(null), contextMenuElement = ref(null)
 const emptyFeedback = computed(() => noteListFeedback(props))
+const titleMissing = computed(() => props.saveFailed && !props.conflicted && !props.draft.title.trim())
+const saveErrorDetail = computed(() => {
+  const detail = (props.saveStatus || '').replace(/^保存失败\s*·\s*/, '')
+  return !detail || /Request failed|Network Error|timeout/i.test(detail) ? '请检查网络连接，稍后再试。' : detail
+})
 function clearFilters() { for (const event of ['search', 'list-search', 'tag', 'source']) emit(event, '') }
 function navigateNotes(event) {
   if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
@@ -898,7 +926,7 @@ function endResize(event) { if (drag?.id === event.pointerId) drag = null }
 function resizeKey(event, index) { const step = event.shiftKey ? 40 : 10; const current = layout.value.widths[index]; let value; if (event.key === 'ArrowLeft') value = current - step; else if (event.key === 'ArrowRight') value = current + step; else if (event.key === 'Home') value = PANE_LIMITS[index].min; else if (event.key === 'End') value = Infinity; else return; event.preventDefault(); resizePane(index, value) }
 onMounted(() => { appObserver = new ResizeObserver(entries => { appWidth.value = entries[0].contentRect.width }); appObserver.observe(appElement.value) })
 let ownFullscreenExit = false
-const infoOpen = ref(false), narrowExpanded = ref(false), readerElement = ref(null), titleElement = ref(null), globalInput = ref(null), headings = ref([])
+const infoOpen = ref(true), readerElement = ref(null), titleElement = ref(null), globalInput = ref(null), headings = ref([])
 const scopes = [{ value: 'all', label: '全部笔记', icon: 'layers' }, { value: 'inbox', label: '收件箱', icon: 'inbox' }, { value: 'favorites', label: '我的收藏', icon: 'star' }]
 const viewLabels = { tree: '目录', list: '笔记列表', reader: '正文阅读' }
 const displayedFolders = computed(() => {
@@ -916,7 +944,7 @@ function resizeTitle() { if (titleElement.value) { titleElement.value.style.heig
 function titleInput(event) { props.draft.title = event.target.value; resizeTitle(); emit('dirty') }
 function contentInput(value) { props.draft.content = value; emit('dirty') }
 function scrollToHeading(index) { readerElement.value?.querySelectorAll('.tiptap h1, .tiptap h2, .tiptap h3')[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
-function toggleInfo() { if (window.innerWidth <= 1100) narrowExpanded.value = !narrowExpanded.value; else infoOpen.value = !infoOpen.value }
+function toggleInfo() { infoOpen.value = !infoOpen.value }
 function requestNativeFullscreen() { try { document.documentElement.requestFullscreen?.()?.catch(() => {}) } catch { /* 请求被拒绝或环境不支持时，仅保留隐藏界面的专注态 */ } }
 function toggleFocusMode() { focusMode.value = true; requestNativeFullscreen() }
 function exitFocusMode() { focusMode.value = false; leaveNativeFullscreen() }
@@ -1004,6 +1032,16 @@ onBeforeUnmount(() => {
 .toc .nested { padding-left:10px; }
 .save-alert { color:#a65c66; padding:14px; border:1px solid #e4bdc5; border-radius:4px; font-size:11px; margin:14px 0; }
 .save-alert .btn { margin:8px 8px 0 0; }
+.title-validation { margin:-4px 0 14px; color:var(--el-color-warning-dark-2,#9b6a22); font-size:12px; line-height:1.7; }
+.document-title[aria-invalid='true'] { box-shadow:0 1px 0 var(--el-color-warning,#c68a32); }
+.save-error-card { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px; padding:16px; font-size:13px; background:var(--soft); }
+.save-error-copy { flex:1 1 220px; min-width:0; overflow-wrap:anywhere; }
+.save-error-copy strong { display:block; font-size:14px; font-weight:600; }
+.save-error-copy p { margin:5px 0; line-height:1.7; }
+.save-error-copy small { display:block; color:var(--muted); font-size:12px; line-height:1.7; }
+.save-error-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.save-error-actions .btn { margin:0; min-height:34px; }
+.seven[data-color='dark'] .title-validation { color:#e3bd7f; }
 .markdown :deep(*) { box-sizing:border-box; }
 .markdown :deep(.tiptap) { min-height:220px; outline:none; font:13px/1.95 var(--font); color:#4c5a6f; overflow-wrap:anywhere; }
 .markdown :deep(.tiptap p) { margin:12px 0 17px; }

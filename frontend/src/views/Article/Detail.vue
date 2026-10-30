@@ -83,7 +83,7 @@
         >
           <img
             :src="article.coverImage"
-            alt="封面图"
+            :alt="`${article.title} - 封面图`"
             loading="lazy"
             decoding="async"
           >
@@ -245,7 +245,8 @@ onUnmounted(() => requests.invalidate())
 
 <style lang="scss" scoped>
 .article-detail-page {
-  max-width: 900px;
+  /* 正文行长控制在舒适阅读范围内，与 --content-max 呼应 */
+  max-width: 820px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -392,6 +393,11 @@ onUnmounted(() => requests.invalidate())
     &:hover {
       background: var(--bg-hover);
       transform: translateX(4px);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
     }
 
     .related-item-title {

@@ -1,9 +1,9 @@
 <template>
   <div class="login-container">
     <div class="login-card glass animate-fade-in-up">
-      <h2 class="login-title">
-        YOUNOTE
-      </h2>
+      <h1 class="login-title">
+        QBlog
+      </h1>
       <p class="login-subtitle">
         登录你的私人知识库
       </p>
@@ -18,6 +18,7 @@
           <el-input
             v-model="loginForm.username"
             placeholder="用户名"
+            aria-label="用户名"
             clearable
             size="large"
           >
@@ -32,6 +33,7 @@
             v-model="loginForm.password"
             type="password"
             placeholder="密码"
+            aria-label="密码"
             show-password
             size="large"
             @keyup.enter="handleLogin"
@@ -206,7 +208,7 @@ const handleLogin = async () => {
   animation: slideInUp 0.4s ease-out;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .login-card {
     padding: 32px 24px;
   }

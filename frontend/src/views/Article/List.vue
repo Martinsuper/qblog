@@ -49,7 +49,7 @@
 
       <aside
         v-if="showSidebar"
-        class="w-full lg:w-70 flex-shrink-0"
+        class="w-full lg:w-[280px] flex-shrink-0"
       >
         <Sidebar />
       </aside>
@@ -157,15 +157,5 @@ onUnmounted(() => {
 <style scoped>
 .skeleton-item {
   padding: var(--spacing-lg);
-}
-
-.w-70 {
-  width: 280px;
-}
-
-@media (max-width: 1024px) {
-  .lg\:w-70 {
-    width: 100%;
-  }
 }
 </style>

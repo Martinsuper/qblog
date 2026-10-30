@@ -10,7 +10,7 @@
     >
       <img
         :src="article.coverImage"
-        alt="文章封面"
+        :alt="`${article.title} - 封面图`"
         loading="lazy"
         decoding="async"
         class="w-full h-40 md:h-full object-cover"
@@ -115,6 +115,15 @@ const titleClass = computed(() => {
   transform: translateY(-4px);
   box-shadow: var(--shadow-hover);
   border-color: var(--border-color);
+}
+
+/* 鍵盘焦点必须有可见指示，不能和 hover 一样只靠阴影 */
+.article-card:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.article-card:focus {
   outline: none;
 }
 

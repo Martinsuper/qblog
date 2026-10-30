@@ -3,13 +3,16 @@
     <div class="card p-6 md:p-8">
       <div class="flex items-center gap-3 mb-8">
         <span class="text-2xl">🏷️</span>
-        <h2
+        <h1
           class="text-2xl font-bold"
           style="color: var(--text-primary)"
         >
           标签云
-        </h2>
-        <span class="text-sm px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-500">
+        </h1>
+        <span
+          class="text-sm px-2 py-0.5 rounded"
+          style="background: var(--bg-tertiary); color: var(--text-secondary)"
+        >
           共 {{ tags.length }} 个标签
         </span>
       </div>

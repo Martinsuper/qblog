@@ -1,6 +1,9 @@
 import { defineConfig, presetUno, presetAttributify, presetIcons } from 'unocss'
 
 export default defineConfig({
+  // 跟随 html.dark 类切换（与 useTheme / Element Plus 暗色变量保持一致），
+  // 避免"手动切暗色但系统是亮色"时 dark: 工具类不生效
+  dark: 'class',
   presets: [
     presetUno(),
     presetAttributify(),
@@ -10,10 +13,8 @@ export default defineConfig({
     }),
   ],
   shortcuts: {
-    'btn': 'px-4 py-2 rounded inline-flex items-center justify-center bg-blue-500 text-white cursor-pointer hover:bg-blue-600 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50',
-    'btn-outline': 'px-4 py-2 rounded inline-flex items-center justify-center border border-gray-300 text-gray-700 cursor-pointer hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors duration-200',
-    'card': 'bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4',
-    'link': 'text-blue-500 hover:text-blue-600 transition-colors duration-200',
+    // 注意：card 的视觉样式统一由 src/styles/index.css 的 .card（基于 CSS 变量）提供，
+    // 这里不再定义 btn / btn-outline / link / card，避免双源冲突导致品牌色与暗色模式漂移。
     'flex-center': 'flex items-center justify-center',
     'text-balance': {
       'text-wrap': 'balance',

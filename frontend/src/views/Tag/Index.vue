@@ -15,12 +15,12 @@
     <div class="card p-6 mb-6">
       <div class="flex items-center gap-3">
         <span class="text-xl">🏷️</span>
-        <h3
+        <h1
           class="text-xl font-semibold"
           style="color: var(--text-primary)"
         >
           标签：{{ tagName }}
-        </h3>
+        </h1>
       </div>
     </div>
 

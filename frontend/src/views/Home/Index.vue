@@ -1,5 +1,10 @@
 <template>
   <div class="py-6 md:py-8">
+    <!-- 页面主标题（对屏幕阅读器/搜索引擎可见，视觉上以品牌与栏目标题承担层级） -->
+    <h1 class="sr-only">
+      QBlog · 首页
+    </h1>
+
     <div class="flex flex-col lg:flex-row gap-6">
       <div class="flex-1 min-w-0">
         <!-- 加载骨架屏 -->
@@ -23,17 +28,17 @@
         </template>
 
         <template v-else>
-          <!-- 置顶/最新一篇 -->
+          <!-- 置顶/最新一篇：仅在文章确实是置顶时显示"置顶"徽章 -->
           <ArticleCard
             v-if="topArticle"
             :article="topArticle"
-            :is-top="true"
+            :is-top="topArticle.top === 1"
             class="mb-6"
           />
 
-          <h3 class="section-title text-base font-medium mb-4 pl-3">
+          <h2 class="section-title text-base font-medium mb-4 pl-3">
             最新文章
-          </h3>
+          </h2>
 
           <!-- 文章列表 -->
           <div class="space-y-4">
@@ -49,7 +54,9 @@
             v-if="articleList.length > 0"
             class="mt-8 text-center"
           >
-            <el-button @click="$router.push('/archives')">
+            <el-button
+              @click="$router.push('/articles')"
+            >
               查看更多文章
             </el-button>
           </div>
@@ -71,7 +78,7 @@
         </template>
       </div>
 
-      <aside class="w-full lg:w-70 flex-shrink-0">
+      <aside class="w-full lg:w-[280px] flex-shrink-0">
         <Sidebar />
       </aside>
     </div>
@@ -121,15 +128,5 @@ onMounted(() => {
 .skeleton-hero,
 .skeleton-item {
   padding: var(--spacing-lg);
-}
-
-.w-70 {
-  width: 280px;
-}
-
-@media (max-width: 1024px) {
-  .lg\:w-70 {
-    width: 100%;
-  }
 }
 </style>

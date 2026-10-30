@@ -23,6 +23,7 @@ class PrivateWorkspaceSecurityTest {
     @Autowired MockMvc mvc;
     @MockBean KnowledgeTokenService tokens;
     @MockBean KnowledgeService notes;
+    @MockBean KnowledgeFolderService folders;
     @MockBean McpCallLog callLog;
     @MockBean JwtUtil jwt;
     @MockBean UserService users;

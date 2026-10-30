@@ -118,7 +118,7 @@
             class="icon-btn menu-toggle"
             :class="{ open: menuVisible }"
             :aria-expanded="menuVisible"
-            aria-label="打开导航菜单"
+            :aria-label="menuVisible ? '关闭导航菜单' : '打开导航菜单'"
             @click="menuVisible = true"
           >
             <el-icon :size="20">
@@ -206,11 +206,13 @@
             >
               管理后台
             </router-link>
-            <a
-              href="javascript:void(0)"
+            <button
               class="mobile-link logout"
+              type="button"
               @click="handleLogout"
-            >退出登录</a>
+            >
+              退出登录
+            </button>
           </div>
         </template>
       </nav>
@@ -306,7 +308,8 @@ const handleLogout = () => {
   color: var(--text-secondary);
   font-size: 0.9375rem;
   transition: color var(--transition-fast);
-  padding: var(--spacing-xs) var(--spacing-sm);
+  /* 保证足够的触控/点击面积（≥ 40px 高） */
+  padding: 10px 12px;
   border-radius: var(--border-radius-sm);
   position: relative;
 }
@@ -426,6 +429,13 @@ const handleLogout = () => {
 }
 
 .mobile-link.logout {
+  /*假链接改为真 <button>，重置浏览器默认样式保持原有观感*/
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
   color: var(--text-secondary);
 }
 

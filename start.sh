@@ -117,6 +117,9 @@ echo "   按 Ctrl+C 停止后端服务"
 echo ""
 
 # 启动后端（前台运行）
+# CORS 白名单：加入 frp 公网域名 ali.younote.top（经服务器 Caddy /blog 反代访问）
+# 必须在启动前 export，mvn 子进程才会继承
+export CORS_ALLOWED_ORIGINS="https://ali.younote.top,http://localhost:3001,http://localhost:3000"
 mvn spring-boot:run &
 BACKEND_PID=$!
 
@@ -151,7 +154,7 @@ if [ ! -d "node_modules" ]; then
 fi
 
 echo "🚀 启动前端服务..."
-echo "   访问地址：http://localhost:3001"
+echo "   访问地址：http://localhost:3001/blog/"
 echo ""
 
 # 启动前端（后台运行）
@@ -164,7 +167,7 @@ echo "  ✅ 所有服务启动完成！"
 echo "========================================"
 echo ""
 echo "📝 服务信息:"
-echo "   前端：http://localhost:3001"
+echo "   前端：http://localhost:3001/blog/"
 echo "   后端：http://localhost:8080"
 echo "   Swagger: http://localhost:8080/api/doc.html"
 echo ""

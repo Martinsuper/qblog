@@ -140,6 +140,16 @@
             <code>{{ tool.name }}</code><span>{{ tool.description }}</span><small>需要知识库{{ tool.scope }}</small>
           </div>
         </section><div class="group-label">
+          知识目录 · 4 个工具
+        </div><section class="tool-list">
+          <div
+            v-for="tool in folderTools"
+            :key="tool.name"
+            class="tool-row"
+          >
+            <code>{{ tool.name }}</code><span>{{ tool.description }}</span><small>{{ tool.scope }}</small>
+          </div>
+        </section><div class="group-label">
           博客文章 · 6 个工具
         </div><section class="tool-list">
           <div
@@ -205,7 +215,7 @@
             复制配置示例
           </el-button><p>服务地址必须能从客户端访问；远程使用时请配置 HTTPS。不要把令牌提交到代码仓库。</p>
         </section>
-        <section><h3>3. 测试与使用</h3><p>重启或重新连接客户端，确认它列出了 notes_search、notes_get、notes_create 和 notes_update。文章工具包括 articles_search、articles_get、articles_create、articles_update、articles_publish 和 articles_delete；调用时需要相应的文章权限。可以尝试搜索授权目录中的笔记或创建文章草稿。</p><p>写入需要写权限和目标目录权限；目录授权不包含子目录，收件箱需要单独授权。更新笔记或文章前应读取最新版本；文章版本冲突时，请重新读取并合并更改。</p></section>
+        <section><h3>3. 测试与使用</h3><p>重启或重新连接客户端，确认它列出了 notes_search、notes_get、notes_create 和 notes_update，以及目录工具 folders_list、folders_create、folders_update、folders_delete。文章工具包括 articles_search、articles_get、articles_create、articles_update、articles_publish 和 articles_delete；调用时需要相应的文章权限。可以尝试搜索授权目录中的笔记或创建文章草稿。</p><p>写入需要写权限和目标目录权限；目录授权不包含子目录，收件箱需要单独授权。目录的新建、重命名、移动和删除仅向「全部目录」授权的令牌开放，且只能删除空目录。更新笔记或文章前应读取最新版本；文章版本冲突时，请重新读取并合并更改。</p></section>
         <section><h3>连接失败怎么办</h3><p>检查地址及网络、令牌是否过期或撤销、权限和目录范围，以及客户端是否支持自定义 Authorization 请求头。浏览器客户端还需要在服务器配置允许的来源。</p></section>
       </template>
       <el-dialog
@@ -337,7 +347,7 @@ import { formatDateTime } from '@/composables/useTime'
 const tab = ref('overview'), configOpen = ref(false)
 const tabs = [{ id: 'overview', label: '接入概览' }, { id: 'tokens', label: '访问令牌' }, { id: 'tools', label: '可用工具' }, { id: 'history', label: '调用记录' }, { id: 'guide', label: '安装与使用' }]
 const tools = [{ name: 'notes_search', description: '按条件搜索笔记', scope: '读取' }, { name: 'notes_get', description: '获取笔记内容', scope: '读取' }, { name: 'notes_create', description: '创建笔记', scope: '写入' }, { name: 'notes_update', description: '更新已有笔记', scope: '写入' }]
-
+const folderTools = [{ name: 'folders_list', description: '列出授权范围内可见的目录树', scope: '需要知识库读取' }, { name: 'folders_create', description: '新建目录（可指定上级，null 为根目录）', scope: '需要知识库写入 + 全部目录授权' }, { name: 'folders_update', description: '重命名、排序或移动目录（不允许形成循环）', scope: '需要知识库写入 + 全部目录授权' }, { name: 'folders_delete', description: '删除空目录（不含笔记与子目录）', scope: '需要知识库写入 + 全部目录授权' }]
 const articleTools = [{ name: 'articles_search', description: '搜索文章', scope: '文章读取' }, { name: 'articles_get', description: '读取文章与版本', scope: '文章读取' }, { name: 'articles_create', description: '创建草稿', scope: '文章写入' }, { name: 'articles_update', description: '更新文章', scope: '文章写入；已发布文章还需发布权限' }, { name: 'articles_publish', description: '发布文章', scope: '文章发布' }, { name: 'articles_delete', description: '删除文章', scope: '文章删除' }]
 const base = new URL(import.meta.env.VITE_API_BASE_URL || '/api', location.origin)
 const endpoint = `${base.href.replace(/\/$/, '')}/mcp`

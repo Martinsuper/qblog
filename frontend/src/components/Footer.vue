@@ -7,12 +7,8 @@
           <span class="divider">|</span>
           <span class="copyright">© {{ currentYear }} All Rights Reserved</span>
         </div>
-        <div class="footer-links">
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
-          >GitHub</a>
+        <div class="footer-tagline">
+          私人知识库 · 让知识有序可寻
         </div>
       </div>
     </div>
@@ -62,21 +58,9 @@ const currentYear = computed(() => new Date().getFullYear())
   color: var(--text-tertiary);
 }
 
-.footer-links {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-lg);
-}
-
-.footer-links a {
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-size: 0.875rem;
-  transition: color var(--transition-fast);
-}
-
-.footer-links a:hover {
-  color: var(--color-primary);
+.footer-tagline {
+  color: var(--text-tertiary);
+  font-size: 0.8125rem;
 }
 
 @media (max-width: 640px) {

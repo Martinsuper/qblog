@@ -71,6 +71,7 @@ body {
 
 .prose {
   max-width: var(--content-max);
+  margin-inline: auto;
   font-size: 1.0625rem;
   line-height: 1.75;
   color: var(--text-primary);

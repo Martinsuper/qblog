@@ -1,14 +1,11 @@
 <template>
   <aside class="sidebar space-y-5">
     <!-- 分类 -->
-    <div class="card">
-      <h4
-        class="font-medium mb-3 flex items-center gap-2"
-        style="color: var(--text-primary)"
-      >
-        <span>📁</span>
+    <div class="panel-card">
+      <h2 class="sidebar-title flex items-center gap-2">
+        <span aria-hidden="true">📁</span>
         <span>分类</span>
-      </h4>
+      </h2>
       <ul class="space-y-2">
         <li
           v-for="cat in categories"
@@ -34,28 +31,23 @@
     </div>
 
     <!-- 热门文章 -->
-    <div class="card">
-      <h4
-        class="font-medium mb-3 flex items-center gap-2"
-        style="color: var(--text-primary)"
-      >
-        <span>🔥</span>
+    <div class="panel-card">
+      <h2 class="sidebar-title flex items-center gap-2">
+        <span aria-hidden="true">🔥</span>
         <span>热门文章</span>
-      </h4>
-      <ul class="space-y-3">
+      </h2>
+      <ul
+        v-if="hotArticles.length > 0"
+        class="space-y-3"
+      >
         <li
           v-for="(article, index) in hotArticles"
           :key="article.id"
           class="hot-article-item flex items-start gap-2"
         >
           <span
-            class="flex-shrink-0 w-5 h-5 rounded text-xs flex items-center justify-center font-medium"
-            :class="[
-              index === 0 ? 'bg-red-500 text-white' : '',
-              index === 1 ? 'bg-orange-400 text-white' : '',
-              index === 2 ? 'bg-yellow-400 text-white' : '',
-              index > 2 ? 'bg-gray-200 text-gray-500 dark:bg-gray-600 dark:text-gray-300' : ''
-            ]"
+            class="rank-badge flex-shrink-0 w-5 h-5 rounded text-xs flex items-center justify-center font-medium"
+            :class="`rank-${Math.min(index + 1, 3)}`"
           >
             {{ index + 1 }}
           </span>
@@ -74,17 +66,21 @@
           </span>
         </li>
       </ul>
+      <p
+        v-else
+        class="hot-empty text-sm"
+        style="color: var(--text-tertiary)"
+      >
+        暂无热门文章
+      </p>
     </div>
 
     <!-- 标签 -->
-    <div class="card">
-      <h4
-        class="font-medium mb-3 flex items-center gap-2"
-        style="color: var(--text-primary)"
-      >
-        <span>🏷️</span>
+    <div class="panel-card">
+      <h2 class="sidebar-title flex items-center gap-2">
+        <span aria-hidden="true">🏷️</span>
         <span>标签</span>
-      </h4>
+      </h2>
       <div class="flex flex-wrap gap-2">
         <el-tag
           v-for="tag in tags"
@@ -155,7 +151,8 @@ onMounted(fetchData)
 </script>
 
 <style scoped>
-.card {
+/* 侧边栏卡片独立命名，避免与全局 .card / uno shortcut 两层来源混淆 */
+.panel-card {
   background: var(--bg-secondary);
   border-radius: var(--border-radius-xl);
   padding: var(--spacing-lg);
@@ -163,12 +160,24 @@ onMounted(fetchData)
   border: 1px solid var(--border-color-light);
   transition: all var(--transition-normal);
 }
-.card:hover {
+.panel-card:hover {
   box-shadow: var(--shadow-md);
   border-color: var(--border-color);
 }
 
-.sidebar a:hover {
+/* 区块标题：语义用 h2，视觉保持原来的小标题尺寸 */
+.sidebar-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  margin: 0 0 var(--spacing-sm);
+  color: var(--text-primary);
+}
+
+.hot-empty {
+  margin: 0;
+}
+
+.sidebar :deep(a):hover {
   color: var(--color-primary) !important;
 }
 .category-list-item {
@@ -180,17 +189,30 @@ onMounted(fetchData)
   background: var(--bg-tertiary);
 }
 
+/* padding 常驻，hover 只变色，避免内容跳动 */
 .hot-article-item {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  margin: calc(var(--spacing-xs) * -1) calc(var(--spacing-sm) * -1);
+  border-radius: var(--border-radius-sm);
   transition: all var(--transition-fast);
 }
 .hot-article-item:hover {
   background: var(--bg-tertiary);
-  border-radius: var(--border-radius-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+/* 热门排名徽章：用层叠强调， 不再依赖 tailwind 调色板 */
+.rank-badge {
+  border-radius: 999px;
+}
+.rank-1 { background: var(--color-primary-gradient); color: #fff; }
+.rank-2 { background: var(--color-primary-light); color: #fff; }
+.rank-3 { background: var(--bg-tertiary); color: var(--text-secondary); }
+.rank-badge:not(.rank-1):not(.rank-2):not(.rank-3) {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
 }
 
 .sidebar {
   gap: var(--spacing-lg);
 }
 </style>
-

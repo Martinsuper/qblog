@@ -2,12 +2,12 @@
   <div>
     <div class="card p-6">
       <div class="flex items-center justify-between mb-5">
-        <h3
+        <h1
           class="text-lg font-semibold"
           style="color: var(--text-primary)"
         >
           文章管理
-        </h3>
+        </h1>
         <el-button
           type="primary"
           @click="$router.push('/admin/create')"

@@ -108,6 +108,13 @@
             <version>5.8.23</version>
         </dependency>
         
+        <!-- Parse Markdown structure for MCP note format validation. -->
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>0.24.0</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

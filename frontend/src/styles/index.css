@@ -225,6 +225,25 @@ html {
 }
 
 /* ========================================
+   Reduced Motion
+   对开启"减弱动态效果"的用户取消装饰性动画与平滑滚动
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ========================================
    Dark Mode 声明
    Element Plus 暗色由官方 css-vars（html.dark）+ variables.css 中的
    --el-* 变量覆盖驱动，不再逐组件 !important 硬覆盖

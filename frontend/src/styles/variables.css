@@ -22,10 +22,11 @@
   --bg-hover: #f1f1f3;
   --bg-glass: rgba(255, 255, 255, 0.72);
 
-  /* Text Hierarchy */
+  /* Text Hierarchy
+     tertiary 用于小号辅助文字，对比度需满足 WCAG AA（4.5:1） */
   --text-primary: #18181b;
   --text-secondary: #52525b;
-  --text-tertiary: #a1a1aa;
+  --text-tertiary: #6b6b74;
 
   /* Borders */
   --border-color: #e4e4e7;
@@ -69,8 +70,13 @@
   --sidebar-width: 300px;
 }
 
+/*
+ * 暗色变量只维护一份：
+ * - 媒体查询命中（系统偏好为暗）且未显式选择亮色 → 自动暗色
+ * - 显式选择暗色（data-theme="dark"）→ 手动暗色
+ */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :is(:root:not([data-theme="light"]), :root[data-theme="dark"]) {
     /* Premium Dark Mode Colors (Sleek dark, not pure black) */
     --color-primary: #7b92f0;
     --color-primary-light: #a5b4f5;
@@ -92,7 +98,7 @@
 
     --text-primary: #f4f4f5;
     --text-secondary: #a1a1aa;
-    --text-tertiary: #71717a;
+    --text-tertiary: #8f8f99;
 
     --border-color: #26262a;
     --border-color-light: #1f1f23;
@@ -118,7 +124,7 @@
 }
 
 [data-theme="dark"] {
-  /* Manual Dark Mode Override */
+  /* Manual Dark Mode Override（变量值与上方媒体查询保持同步） */
   --color-primary: #7b92f0;
   --color-primary-light: #a5b4f5;
   --color-primary-dark: #6981e8;
@@ -139,7 +145,7 @@
 
   --text-primary: #f4f4f5;
   --text-secondary: #a1a1aa;
-  --text-tertiary: #71717a;
+  --text-tertiary: #8f8f99;
 
   --border-color: #26262a;
   --border-color-light: #1f1f23;

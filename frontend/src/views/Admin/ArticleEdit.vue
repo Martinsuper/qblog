@@ -283,6 +283,7 @@
             <img
               v-if="articleForm.coverImage"
               :src="articleForm.coverImage"
+              :alt="`${articleForm.title || '文章'} - 封面预览`"
               class="cover-img"
             >
             <div
@@ -1004,7 +1005,7 @@ const handlePublish = async () => {
 </script>
 
 <style lang="scss" scoped>
-.conflict-notice { padding: 12px 24px; background: #fff5e6; color: #805c25; }
+.conflict-notice { padding: 12px 24px; background: var(--el-color-warning-light-9, #fff5e6); color: var(--el-color-warning-dark-2, #805c25); }
 .article-editor {
   display: flex;
   flex-direction: column;
@@ -1228,6 +1229,7 @@ const handlePublish = async () => {
         color: #6b6b8d;
       }
     }
+    // 源码模式本身就是暗色终端风格，保持不变
 
     // 快捷命令菜单
     .command-menu {
@@ -1538,8 +1540,8 @@ const handlePublish = async () => {
 
   .toolbar-right {
     .el-button:last-child {
-      color: #409EFF !important;
-      background: rgba(64, 158, 255, 0.1) !important;
+      color: var(--color-primary) !important;
+      background: var(--el-color-primary-light-9) !important;
     }
   }
 

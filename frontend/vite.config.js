@@ -44,6 +44,8 @@ export default defineConfig({
   },
   server: {
     port: 3001,
+    // 允许通过 frp + Caddy 的公网域名访问 dev server（https://ali.younote.top/blog）
+    allowedHosts: ['ali.younote.top'],
     proxy: {
       '/api': {
         target: 'http://localhost:8081',
