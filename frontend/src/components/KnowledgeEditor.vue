@@ -3,73 +3,80 @@
     class="knowledge-editor"
     :class="{ 'is-readonly': readonly }"
   >
-    <div
-      v-if="!readonly"
-      class="format-bar"
-      aria-label="文档格式"
+    <Teleport
+      :to="toolbarTarget || 'body'"
+      :disabled="!toolbarTarget"
     >
-      <button
-        type="button"
-        class="format-btn"
-        :class="{ active: editor?.isActive('bold') }"
-        title="加粗"
-        @click="editor.chain().focus().toggleBold().run()"
+      <div
+        v-if="!readonly"
+        class="format-bar"
+        :class="{ 'reader-format-bar': toolbarTarget }"
+        aria-label="文档格式"
+        @mousedown.prevent
       >
-        <KnowledgeIcon name="bold" />
-      </button>
-      <button
-        type="button"
-        class="format-btn"
-        title="二级标题"
-        @click="editor.chain().focus().toggleHeading({ level: 2 }).run()"
-      >
-        <KnowledgeIcon name="heading" />
-      </button>
-      <span class="format-divider" />
-      <button
-        type="button"
-        class="format-btn"
-        title="无序列表"
-        @click="editor.chain().focus().toggleBulletList().run()"
-      >
-        <KnowledgeIcon name="list" />
-      </button>
-      <button
-        type="button"
-        class="format-btn"
-        title="代码块"
-        @click="editor.chain().focus().toggleCodeBlock().run()"
-      >
-        <KnowledgeIcon name="code" />
-      </button>
-      <button
-        type="button"
-        class="format-btn"
-        title="插入表格"
-        @click="editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()"
-      >
-        <KnowledgeIcon name="table" />
-      </button>
-      <span class="format-divider" />
-      <button
-        type="button"
-        class="format-btn"
-        title="撤销"
-        :disabled="!editor?.can().undo()"
-        @click="editor.chain().focus().undo().run()"
-      >
-        <KnowledgeIcon name="undo" />
-      </button>
-      <button
-        type="button"
-        class="format-btn"
-        title="重做"
-        :disabled="!editor?.can().redo()"
-        @click="editor.chain().focus().redo().run()"
-      >
-        <KnowledgeIcon name="redo" />
-      </button>
-    </div>
+        <button
+          type="button"
+          class="format-btn"
+          :class="{ active: editor?.isActive('bold') }"
+          title="加粗"
+          @click="editor.chain().focus().toggleBold().run()"
+        >
+          <KnowledgeIcon name="bold" />
+        </button>
+        <button
+          type="button"
+          class="format-btn"
+          title="二级标题"
+          @click="editor.chain().focus().toggleHeading({ level: 2 }).run()"
+        >
+          <KnowledgeIcon name="heading" />
+        </button>
+        <span class="format-divider" />
+        <button
+          type="button"
+          class="format-btn"
+          title="无序列表"
+          @click="editor.chain().focus().toggleBulletList().run()"
+        >
+          <KnowledgeIcon name="list" />
+        </button>
+        <button
+          type="button"
+          class="format-btn"
+          title="代码块"
+          @click="editor.chain().focus().toggleCodeBlock().run()"
+        >
+          <KnowledgeIcon name="code" />
+        </button>
+        <button
+          type="button"
+          class="format-btn"
+          title="插入表格"
+          @click="editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()"
+        >
+          <KnowledgeIcon name="table" />
+        </button>
+        <span class="format-divider" />
+        <button
+          type="button"
+          class="format-btn"
+          title="撤销"
+          :disabled="!editor?.can().undo()"
+          @click="editor.chain().focus().undo().run()"
+        >
+          <KnowledgeIcon name="undo" />
+        </button>
+        <button
+          type="button"
+          class="format-btn"
+          title="重做"
+          :disabled="!editor?.can().redo()"
+          @click="editor.chain().focus().redo().run()"
+        >
+          <KnowledgeIcon name="redo" />
+        </button>
+      </div>
+    </Teleport>
     <editor-content :editor="editor" />
   </div>
 </template>
@@ -83,7 +90,7 @@ import { TaskItem, TaskList } from '@tiptap/extension-list'
 import KnowledgeIcon from './KnowledgeIcon.vue'
 import { SlashCommand } from '../utils/slashCommands'
 import { EditorEmptyHint } from '../utils/editorEmptyHint'
-const props = defineProps({ modelValue: { type: String, default: '' }, readonly: Boolean, quietToolbar: Boolean })
+const props = defineProps({ modelValue: { type: String, default: '' }, readonly: Boolean, quietToolbar: Boolean, toolbarTarget: { type: Object, default: null } })
 const emit = defineEmits(['update:modelValue', 'headings'])
 let lastEmitted = props.modelValue
 function reportHeadings(instance) {
@@ -134,8 +141,8 @@ onBeforeUnmount(() => editor.value?.destroy())
 .format-bar .format-divider { display: block; width: 1px; height: 14px; margin: 0 3px; background: var(--line, #e2e8f0); }
 .format-bar .format-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--muted, #7d8b9e); cursor: pointer; }
 .format-bar .format-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
-.format-bar .format-btn:hover { background: var(--blue-bg, #eef3fa); color: #2f4157; }
-.format-bar .format-btn.active { background: var(--blue-bg, #eaf0f9); color: #3564a9; }
+.format-bar .format-btn:hover { background: var(--blue-bg, #eef3fa); color: var(--ink, #2f4157); }
+.format-bar .format-btn.active { background: var(--blue-bg, #eaf0f9); color: var(--blue, #3564a9); }
 .format-bar .format-btn:disabled { opacity: .35; cursor: default; }
 .format-bar .format-btn:disabled:hover { background: transparent; }
 html.dark .format-bar { background: #1c2633; border-color: #334257; box-shadow: 0 10px 24px rgba(0, 0, 0, .4); }
