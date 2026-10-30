@@ -29,6 +29,8 @@
       :loading-list="loadingList"
       :list-error="listError"
       :loading-note="loadingNote"
+      :note-error="noteError"
+      :deleting-note="deletingNote"
       :save-status="saveStatus"
       :save-failed="saveFailed"
       :conflicted="conflicted"
@@ -45,9 +47,13 @@
       @collapse="toggleFolder"
       @collapse-all="toggleAllFolders"
       @manage-folder="openFolderDialog"
+      @folder-action="onFolderAction"
+      @note-action="onNoteAction"
       @new-note="newNote"
       @open-note="openNote"
       @retry-list="loadNotes"
+      @retry-note="openNote(failedNoteId)"
+      @dismiss-note-error="noteError = false"
       @page="changePage"
       @favorite="toggleFavorite"
       @move="moveOpen = true"
@@ -62,10 +68,12 @@
     />
     <template v-else>
       <header class="kb-top">
-        <a
+        <router-link
           class="kb-brand"
-          href="/"
-        ><span class="kb-logo">y</span><strong>YOUNOTE</strong><small>知识库</small></a><span
+          to="/"
+        >
+          <span class="kb-logo">Q</span><strong>QBlog</strong><small>知识库</small>
+        </router-link><span
           v-if="appearance.layout === 'knowledge'"
           class="kb-breadcrumb"
         >个人工作区 <i>/</i> 知识库</span><input
@@ -76,15 +84,14 @@
           @input="scheduleSearch"
         ><button @click="settingsOpen = true">
           ◧ 外观与布局
-        </button><router-link to="/settings/tokens">
+        </button><router-link to="/admin/backup">
+          备份与导出
+        </router-link><router-link to="/settings/tokens">
           MCP 接入
         </router-link><button @click="logout">
           退出
         </button>
       </header>
-      <div class="kb-notice">
-        <span>{{ layoutNames[appearance.layout] }} · {{ total }} 篇匹配笔记</span><span>私人空间 · 登录后访问 · AI 索引未配置</span>
-      </div>
       <nav class="kb-mobile">
         <button @click="mobileView = 'tree'">
           目录
@@ -305,6 +312,13 @@
             >
               移动
             </button><button
+              v-if="active"
+              :disabled="loadingNote || deletingNote"
+              title="删除当前笔记"
+              @click="deleteCurrent"
+            >
+              {{ deletingNote ? '删除中…' : '删除' }}
+            </button><button
               v-if="active && appearance.layout !== 'knowledge'"
               @click="editing = !editing"
             >
@@ -364,7 +378,7 @@
                 v-model="draft.content"
                 :readonly="!canEdit"
                 @update:model-value="markDirty"
-              /><footer>YOUNOTE · {{ canEdit ? '直接编辑，停顿后自动保存' : '阅读模式' }} · Ctrl / ⌘ S 保存</footer>
+              /><footer>QBlog · {{ canEdit ? '直接编辑，停顿后自动保存' : '阅读模式' }} · Ctrl / ⌘ S 保存</footer>
             </article><aside
               v-if="appearance.layout === 'knowledge' && !propertiesOpen"
               class="kb-document-aside"
@@ -437,11 +451,20 @@
       :title="folderEditing ? '管理目录' : '新建目录'"
       width="430px"
     >
-      <el-form label-position="top">
-        <el-form-item label="目录名称">
+      <el-form
+        label-position="top"
+        @submit.prevent="submitFolder"
+      >
+        <el-form-item
+          label="目录名称"
+          :error="folderNameError"
+        >
           <el-input
             v-model="folderForm.name"
             maxlength="80"
+            placeholder="请输入目录名称"
+            aria-label="目录名称"
+            @input="folderNameError = ''"
           />
         </el-form-item><el-form-item label="上级目录">
           <el-select
@@ -450,7 +473,7 @@
             placeholder="根目录"
           >
             <el-option
-              v-for="folder in allFlatFolders.filter(f => f.id !== folderEditing?.id)"
+              v-for="folder in folderParentOptions"
               :key="folder.id"
               :label="folder.path"
               :value="folder.id"
@@ -466,10 +489,16 @@
         >
           删除空目录
         </el-button><el-button
+          :disabled="folderSubmitting"
+          @click="folderDialog = false"
+        >
+          取消
+        </el-button><el-button
           type="primary"
+          :loading="folderSubmitting"
           @click="submitFolder"
         >
-          保存
+          {{ folderEditing ? '保存' : '创建目录' }}
         </el-button>
       </template>
     </el-dialog>
@@ -540,15 +569,24 @@ import '@/styles/knowledge.css'
 const router = useRouter(), route = useRoute(), user = useUserStore()
 const appearance = reactive(readAppearance()), systemDark = ref(matchMedia('(prefers-color-scheme: dark)').matches)
 const resolvedColor = computed(() => appearance.color === 'system' ? (systemDark.value ? 'dark' : 'light') : appearance.color)
-const layoutNames = { calm: '01 · 留白三栏', paper: '03 · 纸间卡片', library: '06 · 笔记书架', knowledge: '07 · 目录知识库' }
+const layoutNames = { calm: '留白三栏', paper: '纸间卡片', library: '笔记书架', knowledge: '目录知识库' }
 const layoutIcons = { calm: '▥ ▤ ☰', paper: '▦ ▦ ▦', library: '▥ ▥ ▥', knowledge: '☷ ▤ ≡' }
 const layoutDescriptions = { calm: '留白阅读，三栏并排', paper: '暖色卡片，展开正文', library: '目录成书，笔记成章', knowledge: '紧凑目录，直接编辑' }, colorNames = { system: '跟随系统', light: '浅色', dark: '深色' }, bookColors = ['#365b68', '#7b8465', '#ad855b', '#85718a', '#6d8794']
 const folderSearch = ref(''), localSearch = ref(''), sortOrder = ref('updated')
 const workspaceCounts = reactive({ all: 0, inbox: 0, favorites: 0 })
 const settingsOpen = ref(false), mobileView = ref('list'), readerOpen = ref(false), editing = ref(false), propertiesOpen = ref(false)
 const folders = ref([]), notes = ref([]), total = ref(0), page = ref(1), pageSize = 50, scope = ref('all'), search = ref(''), tagFilter = ref(''), sourceFilter = ref(''), collapsed = reactive(new Set())
+const noteError = ref(false), failedNoteId = ref(null)
 const loadingList = ref(false), listError = ref(false), loadingNote = ref(false), active = ref(null), draft = reactive({ title: '', content: '', tags: [], favorite: false, folderId: null }), saveStatus = ref(''), saveFailed = ref(false), conflicted = ref(false), readerScroll = ref(null)
 const folderDialog = ref(false), folderEditing = ref(null), folderForm = reactive({ name: '', parentId: null }), moveOpen = ref(false), moveTarget = ref(null), tagsOpen = ref(false)
+const folderSubmitting = ref(false), folderNameError = ref(''), deletingNote = ref(false)
+const folderParentOptions = computed(() => {
+  const excluded = new Set(folderEditing.value ? [String(folderEditing.value.id)] : [])
+  return allFlatFolders.value.filter(folder => {
+    if (excluded.has(String(folder.parentId))) excluded.add(String(folder.id))
+    return !excluded.has(String(folder.id))
+  })
+})
 let loadGeneration = 0, noteGeneration = 0, autosave = null, saveTimer, searchTimer, composing = false
 const scrollPositions = new Map(), colorMedia = matchMedia('(prefers-color-scheme: dark)')
 const documentHeadings = computed(() => {
@@ -569,7 +607,8 @@ const allFlatFolders = computed(() => flatten(false)), flatFolders = computed(()
 function folderName(id) { return id ? (allFlatFolders.value.find(f => String(f.id) === String(id))?.path || '未分类') : '收件箱' }
 function toggleFolder(id) { collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id) }
 function formatDate(value) { return value ? String(value).replace('T', ' ').slice(0, 16) : '' }
-async function loadFolders() { const res = await api.listFolders(); folders.value = res.data || []; await loadCounts() }
+async function loadFolders() { const res = await api.listFolders(); folders.value = res.data || []; // 计数异步加载，避免首屏阻塞
+  loadCounts().catch(() => {}) }
 async function loadCounts() {
   const values = await Promise.all([api.listNotes({ size: 1 }), api.listNotes({ size: 1, inbox: true }), api.listNotes({ size: 1, favorite: true })])
   ;['all', 'inbox', 'favorites'].forEach((key, index) => { workspaceCounts[key] = values[index].data.total })
@@ -598,24 +637,81 @@ function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNo
 async function saveNow() { clearTimeout(saveTimer); if (!autosave || !autosave.isDirty()) return true; if (conflicted.value) return false; saveStatus.value = '正在保存…'; return autosave.flush() }
 async function safeLeave() { while (autosave?.isDirty()) { if (!await saveNow()) return false } return true }
 async function openNote(id) {
-  if (loadingNote.value) return
-  if (active.value?.id === id) { readerOpen.value = true; mobileView.value = 'reader'; return }
+  if (loadingNote.value || deletingNote.value) return
+  if (active.value?.id === id) { noteError.value = false; readerOpen.value = true; mobileView.value = 'reader'; return }
   if (!await safeLeave()) { ElMessage.warning('当前笔记未保存，请先重试或下载草稿'); return }
   if (active.value && readerScroll.value) scrollPositions.set(active.value.id, readerScroll.value.scrollTop)
-  const generation = ++noteGeneration; loadingNote.value = true
-  try { const res = await api.getNote(id); if (generation !== noteGeneration) return; active.value = res.data; Object.assign(draft, { title: res.data.title, content: res.data.content || '', tags: [...(res.data.tags || [])], favorite: res.data.favorite, folderId: res.data.folderId ?? null }); conflicted.value = false; saveFailed.value = false; saveStatus.value = '已载入服务器版本'; editing.value = false; readerOpen.value = true; mobileView.value = 'reader'; moveTarget.value = draft.folderId; setupAutosave(); await router.replace({ query: { ...route.query, note: id } }); await nextTick(); if (readerScroll.value) readerScroll.value.scrollTop = scrollPositions.get(id) || 0 } finally { if (generation === noteGeneration) loadingNote.value = false }
+  const generation = ++noteGeneration; loadingNote.value = true; noteError.value = false
+  try { const res = await api.getNote(id); if (generation !== noteGeneration) return; active.value = res.data; Object.assign(draft, { title: res.data.title, content: res.data.content || '', tags: [...(res.data.tags || [])], favorite: res.data.favorite, folderId: res.data.folderId ?? null }); conflicted.value = false; saveFailed.value = false; saveStatus.value = '已载入服务器版本'; editing.value = false; readerOpen.value = true; mobileView.value = 'reader'; moveTarget.value = draft.folderId; setupAutosave(); await router.replace({ query: { ...route.query, note: id } }); await nextTick(); if (readerScroll.value) readerScroll.value.scrollTop = scrollPositions.get(id) || 0 } catch { if (generation === noteGeneration) { noteError.value = true; failedNoteId.value = id; mobileView.value = 'reader' } } finally { if (generation === noteGeneration) loadingNote.value = false }
 }
-async function newNote() { if (!await safeLeave()) return; const res = await api.createNote({ title: '未命名笔记', content: '', tags: [], favorite: false, folderId: typeof scope.value === 'number' || /^\d+$/.test(scope.value) ? Number(scope.value) : null }); await loadNotes(); await loadFolders(); await openNote(res.data.id); editing.value = true }
+async function newNote() { if (deletingNote.value || !await safeLeave()) return; const res = await api.createNote({ title: '未命名笔记', content: '', tags: [], favorite: false, folderId: typeof scope.value === 'number' || /^\d+$/.test(scope.value) ? Number(scope.value) : null }); await loadNotes(); await loadFolders(); await openNote(res.data.id); editing.value = true }
 async function toggleFavorite() { draft.favorite = !draft.favorite; markDirty(); if (await saveNow()) await loadCounts() }
 async function closeReader() { if (!await safeLeave()) return; readerOpen.value = false; mobileView.value = 'list' }
 async function setLayout(layout) { if (!await safeLeave()) return; const scroll = readerScroll.value?.scrollTop || 0; appearance.layout = layout; persistAppearance(); await nextTick(); if (readerScroll.value) readerScroll.value.scrollTop = scroll }
 function setColor(color) { appearance.color = color; persistAppearance() }
 function persistAppearance() { if (!saveAppearance(appearance)) ElMessage.warning('浏览器存储不可用，外观偏好无法记住') }
-function openFolderDialog(folder = null) { folderEditing.value = folder; folderForm.name = folder?.name || ''; folderForm.parentId = folder?.parentId ?? null; folderDialog.value = true }
-async function submitFolder() { if (!folderForm.name.trim()) return; const data = { name: folderForm.name.trim(), parentId: folderForm.parentId || null }; if (folderEditing.value) await api.updateFolder(folderEditing.value.id, data); else await api.createFolder(data); folderDialog.value = false; await loadFolders() }
-async function deleteFolder() { await ElMessageBox.confirm('只允许删除没有子目录和笔记的目录。确认删除？', '删除目录'); await api.removeFolder(folderEditing.value.id); folderDialog.value = false; if (scope.value === folderEditing.value.id) await selectScope('all'); await loadFolders() }
+function openFolderDialog(folder = null, parentId = null) { folderEditing.value = folder; folderForm.name = folder?.name || ''; folderForm.parentId = folder?.parentId ?? parentId ?? null; folderNameError.value = ''; folderDialog.value = true }
+function onFolderAction({ action, folder }) {
+  if (action === 'create-child') return openFolderDialog(null, folder.id)
+  if (action === 'edit') return openFolderDialog(folder)
+  if (action === 'delete') return deleteFolder(folder)
+}
+async function onNoteAction({ action, note }) {
+  if (action === 'open') return openNote(note.id)
+  // 收藏 / 移动 / 删除都需要笔记已打开；打开失败（未保存拦截等）时停止，避免操作到错误的笔记
+  if (active.value?.id !== note.id) { await openNote(note.id); if (active.value?.id !== note.id) return }
+  if (action === 'favorite') return toggleFavorite()
+  if (action === 'move') { moveTarget.value = draft.folderId; moveOpen.value = true }
+  if (action === 'delete') return deleteCurrent()
+}
+async function submitFolder() {
+  if (folderSubmitting.value) return
+  if (!folderForm.name.trim()) { folderNameError.value = '请输入目录名称'; return }
+  folderSubmitting.value = true
+  try {
+    const data = { name: folderForm.name.trim(), parentId: folderForm.parentId || null }
+    if (folderEditing.value) await api.updateFolder(folderEditing.value.id, data)
+    else await api.createFolder(data)
+    folderDialog.value = false
+    ElMessage.success(folderEditing.value ? '目录已更新' : '目录已创建')
+    await loadFolders()
+    if (data.parentId) collapsed.delete(data.parentId)
+  } catch { /* 请求层显示服务端错误，保留表单供重试 */ }
+  finally { folderSubmitting.value = false }
+}
+async function deleteFolder(folder = folderEditing.value) {
+  if (!folder) return
+  try {
+    await ElMessageBox.confirm('只允许删除没有子目录和笔记的目录。确认删除？', '删除目录')
+    await api.removeFolder(folder.id)
+    folderDialog.value = false
+    ElMessage.success('目录已删除')
+    if (String(scope.value) === String(folder.id)) await selectScope('all')
+    await loadFolders()
+  } catch { /* 取消不提示错误；请求错误由请求层展示 */ }
+}
 async function moveCurrent() { draft.folderId = moveTarget.value ?? null; markDirty(); if (await saveNow()) { moveOpen.value = false; await loadFolders(); await loadNotes() } }
-async function deleteCurrent() { if (!await safeLeave()) return; await ElMessageBox.confirm(`删除「${active.value.title}」？`, '删除笔记'); await api.removeNote(active.value.id, active.value.version); autosave?.dispose(); autosave = null; active.value = null; readerOpen.value = false; mobileView.value = 'list'; await router.replace({ query: {} }); await loadNotes(); await loadFolders() }
+async function deleteCurrent() {
+  if (!active.value || loadingNote.value || deletingNote.value) return
+  deletingNote.value = true
+  try {
+    await ElMessageBox.confirm(`确定删除「${active.value.title}」？删除后将无法在知识库中访问，请确认已备份需要保留的内容。`, '删除笔记', { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' })
+    if (!await safeLeave()) { ElMessage.warning('当前笔记未保存，请先处理保存错误'); return }
+    clearTimeout(saveTimer)
+    const id = active.value.id
+    await api.removeNote(id, active.value.version)
+    autosave?.dispose(); autosave = null; active.value = null; noteError.value = false
+    scrollPositions.delete(id)
+    Object.assign(draft, { title: '', content: '', tags: [], favorite: false, folderId: null })
+    saveStatus.value = ''; saveFailed.value = false; conflicted.value = false
+    readerOpen.value = false; propertiesOpen.value = false; mobileView.value = 'list'
+    const query = { ...route.query }; delete query.note
+    await router.replace({ query })
+    ElMessage.success('笔记已删除')
+    await Promise.all([loadNotes(), loadFolders()])
+  } catch { /* 取消不提示错误；请求错误由请求层展示，保留当前笔记 */ }
+  finally { deletingNote.value = false }
+}
 function downloadDraft() { const blob = new Blob([`# ${draft.title}\n\n${draft.content}`], { type: 'text/markdown;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${draft.title.replace(/[\\/:*?"<>|]/g, '_') || '笔记'}.md`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000) }
 async function reloadConflict() { await ElMessageBox.confirm('将放弃当前未保存修改。建议先下载草稿。', '载入最新版本'); const id = active.value.id; autosave?.dispose(); autosave = null; active.value = null; await openNote(id) }
 async function logout() { if (!await safeLeave()) return; user.userLogout(); await router.replace('/login') }
@@ -628,6 +724,6 @@ watch(resolvedColor, value => { document.documentElement.dataset.theme = value; 
 watch(() => route.query.note, async id => { if (id && String(active.value?.id) !== String(id) && !loadingNote.value) await openNote(id) })
 onBeforeRouteUpdate(async to => { if (String(to.query.note || '') !== String(active.value?.id || '')) return safeLeave(); return true })
 onBeforeRouteLeave(async to => { if (to.path === route.path) return true; return safeLeave() })
-onMounted(async () => { window.addEventListener('beforeunload', beforeUnload); window.addEventListener('keydown', keydown); document.addEventListener('compositionstart', compositionStart); document.addEventListener('compositionend', compositionEnd); colorMedia.addEventListener('change', systemChanged); await Promise.all([loadFolders(), loadNotes()]); if (route.query.note) await openNote(route.query.note); else if (appearance.layout === 'knowledge' && notes.value.length) await openNote(notes.value[0].id) })
+onMounted(async () => { window.addEventListener('beforeunload', beforeUnload); window.addEventListener('keydown', keydown); document.addEventListener('compositionstart', compositionStart); document.addEventListener('compositionend', compositionEnd); colorMedia.addEventListener('change', systemChanged); await Promise.all([loadFolders(), loadNotes()]); if (route.query.note) await openNote(route.query.note) })
 onBeforeUnmount(() => { clearTimeout(saveTimer); clearTimeout(searchTimer); autosave?.dispose(); window.removeEventListener('beforeunload', beforeUnload); window.removeEventListener('keydown', keydown); document.removeEventListener('compositionstart', compositionStart); document.removeEventListener('compositionend', compositionEnd); colorMedia.removeEventListener('change', systemChanged) })
 </script>

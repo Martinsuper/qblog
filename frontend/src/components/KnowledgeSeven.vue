@@ -2,9 +2,11 @@
   <div
     class="seven"
     :class="{ 'focus-mode': focusMode }"
+    :data-density="density"
     :data-color="color"
     @keydown="focusSearchShortcut"
-    @click="menuOpen = false"
+    @click="menuOpen = false; closeMenu()"
+    @contextmenu.self.prevent="closeMenu()"
   >
     <header>
       <router-link
@@ -12,11 +14,8 @@
         to="/"
         aria-label="知识库首页"
       >
-        <span class="brand-mark">y</span>YOUNOTE <small>知识库</small>
+        <span class="brand-mark">Q</span>QBlog
       </router-link>
-      <div class="workspace">
-        个人工作区 <span class="slash">/</span><span class="workspace-name">知识库</span>
-      </div>
       <label class="global-search"><span><KnowledgeIcon name="search" /></span><input
         ref="globalInput"
         type="search"
@@ -30,19 +29,13 @@
         @click.stop
       >
         <button
-          class="btn"
-          @click="assistantOpen = true"
-        >
-          <KnowledgeIcon name="spark" />知识助手
-        </button>
-        <button
           class="avatar"
           title="工作区菜单"
           aria-label="工作区菜单"
           :aria-expanded="menuOpen"
           @click="menuOpen = !menuOpen"
         >
-          YN
+          <KnowledgeIcon name="layers" />
         </button>
         <div
           v-if="menuOpen"
@@ -55,6 +48,9 @@
           <button @click="menuOpen = false; $emit('manage-folder')">
             新建目录
           </button>
+          <router-link to="/admin/backup">
+            备份与导出
+          </router-link>
           <router-link to="/settings/tokens">
             MCP 接入
           </router-link>
@@ -67,12 +63,6 @@
         </div>
       </div>
     </header>
-    <div class="demo-bar">
-      <span><b>方案 G · 目录型知识库</b><span class="extra">&#12288;/&#12288;以阅读、检索与整理为中心</span></span><span>私人知识工作区 · 已连接服务器&#12288; <button
-        class="appearance-link"
-        @click="$emit('appearance')"
-      >外观与布局 ↗</button></span>
-    </div>
     <nav
       class="mobile-nav"
       aria-label="切换工作区域"
@@ -87,15 +77,19 @@
       </button>
     </nav>
     <main
+      ref="appElement"
       class="app"
+      :class="{ 'tree-collapsed': !paneOpen[0], 'list-collapsed': !paneOpen[1] }"
+      :style="paneStyle"
       :data-view="mobileView"
     >
       <aside
+        id="knowledge-tree-pane"
         class="sidebar"
         aria-label="知识库导航"
       >
         <div class="section-label">
-          工作区 <span>PRIVATE</span>
+          笔记
         </div>
         <button
           v-for="item in scopes"
@@ -108,17 +102,30 @@
         </button>
         <hr>
         <div class="section-label">
-          知识目录 <button
-            class="icon-btn"
-            title="折叠或展开全部目录"
-            aria-label="折叠或展开全部目录"
-            style="width:22px;height:22px"
-            @click="$emit('collapse-all')"
-          >
-            <KnowledgeIcon name="fold" />
-          </button>
+          目录 <div class="directory-actions">
+            <button
+              class="icon-btn"
+              title="筛选目录"
+              aria-label="筛选目录"
+              :aria-expanded="treeSearchOpen"
+              @click="treeSearchOpen = !treeSearchOpen; treeSearch = ''"
+            >
+              <KnowledgeIcon name="search" />
+            </button><button
+              class="icon-btn"
+              title="折叠或展开全部目录"
+              aria-label="折叠或展开全部目录"
+              style="width:22px;height:22px"
+              @click="$emit('collapse-all')"
+            >
+              <KnowledgeIcon name="fold" />
+            </button>
+          </div>
         </div>
-        <div class="tree-filter">
+        <div
+          v-if="treeSearchOpen"
+          class="tree-filter"
+        >
           <input
             v-model="treeSearch"
             type="search"
@@ -136,7 +143,7 @@
             class="tree-row"
             :class="{ active: String(scope) === String(folder.id), child: folder.depth > 0 }"
             :style="{ '--depth': folder.depth }"
-            @contextmenu.prevent="$emit('manage-folder', folder)"
+            @contextmenu.prevent="openFolderMenu($event, folder)"
           >
             <button
               v-if="folder.hasChildren"
@@ -167,18 +174,44 @@
             </button>
           </div>
         </nav>
-        <div class="sidebar-bottom">
-          <div class="local-info">
-            <strong><span class="storage-dot" />私人知识工作区</strong><br>笔记安全保存到服务器<br>{{ counts.all ?? 0 }} 篇笔记 · {{ folders.length }} 个目录<br><button
-              class="about-link"
-              @click="$emit('appearance')"
-            >
-              外观与布局 ↗
-            </button>
-          </div>
-        </div>
+        <button
+          class="new-folder"
+          aria-label="新建目录"
+          @click="$emit('manage-folder')"
+        >
+          <KnowledgeIcon name="plus" />新建目录
+        </button>
       </aside>
+      <div
+        v-if="paneOpen[0]"
+        class="pane-splitter splitter-tree"
+        role="separator"
+        tabindex="0"
+        aria-label="调整目录宽度"
+        aria-orientation="vertical"
+        aria-controls="knowledge-tree-pane"
+        :aria-valuemin="Math.min(150, paneMax(0))"
+        :aria-valuemax="paneMax(0)"
+        :aria-valuenow="Math.round(layout.widths[0])"
+        @pointerdown="startResize($event, 0)"
+        @pointermove="moveResize"
+        @pointerup="endResize"
+        @pointercancel="endResize"
+        @lostpointercapture="endResize"
+        @keydown="resizeKey($event, 0)"
+      />
+      <button
+        class="pane-toggle toggle-tree"
+        :aria-expanded="paneOpen[0]"
+        aria-controls="knowledge-tree-pane"
+        :aria-label="`${paneOpen[0] ? '收起' : '恢复'}目录栏`"
+        :title="`${paneOpen[0] ? '收起' : '恢复'}目录栏`"
+        @click="togglePane(0)"
+      >
+        <KnowledgeIcon name="chevron" />
+      </button>
       <section
+        id="knowledge-list-pane"
         class="list-pane"
         aria-label="笔记列表"
       >
@@ -196,11 +229,31 @@
           <label class="list-search"><KnowledgeIcon name="search" /><input
             type="search"
             :value="listSearch"
-            placeholder="在当前目录中搜索正文…"
+            placeholder="搜索当前目录…"
             aria-label="搜索当前笔记列表"
             @input="$emit('list-search', $event.target.value)"
           ></label>
-          <div class="filters">
+          <div class="list-controls">
+            <button
+              class="filter-toggle"
+              :class="{ on: tag || source }"
+              :aria-expanded="filtersOpen"
+              @click="filtersOpen = !filtersOpen"
+            >
+              筛选与排序{{ tag || source ? ' · 已启用' : '' }}
+            </button>
+            <button
+              class="density-toggle"
+              :aria-pressed="density === 'compact'"
+              @click="toggleDensity"
+            >
+              {{ density === 'compact' ? '紧凑' : '标准' }}
+            </button>
+          </div>
+          <div
+            v-if="filtersOpen"
+            class="filters"
+          >
             <select
               :value="tag"
               aria-label="按标签筛选"
@@ -228,23 +281,58 @@
                 MCP 导入
               </option>
             </select>
+            <button
+              class="sort-button"
+              title="切换排序"
+              @click="$emit('sort')"
+            >
+              {{ sort === 'title' ? '标题 A–Z' : '最近更新 ↓' }}
+            </button>
+          </div>
+          <div
+            v-if="search || listSearch || tag || source"
+            class="active-filters"
+            aria-label="当前搜索与筛选"
+          >
+            <button
+              v-if="search"
+              @click="$emit('search', '')"
+            >
+              全局：{{ search }} ×
+            </button>
+            <button
+              v-if="listSearch"
+              @click="$emit('list-search', '')"
+            >
+              目录内：{{ listSearch }} ×
+            </button>
+            <button
+              v-if="tag"
+              @click="$emit('tag', '')"
+            >
+              标签：{{ tag }} ×
+            </button>
+            <button
+              v-if="source"
+              @click="$emit('source', '')"
+            >
+              来源：{{ source === 'mcp' ? 'MCP' : '手动' }} ×
+            </button>
           </div>
         </div>
-        <div class="list-caption">
-          <span>{{ total }} 篇笔记</span><button
-            class="sort-button"
-            title="切换排序"
-            @click="$emit('sort')"
-          >
-            {{ sort === 'title' ? '标题排序 A–Z' : '最近更新 ↓' }}
-          </button>
-        </div>
-        <div class="note-list">
+        <div
+          class="note-list"
+          :aria-busy="loadingList"
+          @keydown="navigateNotes"
+        >
           <div
             v-if="listError"
             class="empty"
+            role="alert"
           >
-            加载失败，请重试。<p>
+            无法加载笔记列表<p class="feedback-description">
+              请检查网络连接后重试，已打开的笔记不会被清除。
+            </p><p>
               <button
                 class="btn"
                 @click="$emit('retry-list')"
@@ -256,6 +344,8 @@
           <div
             v-else-if="loadingList"
             class="empty"
+            role="status"
+            aria-live="polite"
           >
             正在加载笔记…
           </div>
@@ -267,36 +357,60 @@
               :class="{ selected: active?.id === note.id }"
               :aria-pressed="active?.id === note.id"
               @click="$emit('open-note', note.id)"
+              @contextmenu.prevent="openNoteMenu($event, note)"
+              @keydown.shift.f10.prevent="openKeyboardNoteMenu($event, note)"
             >
               <h3>
-                {{ note.title }} <span
+                <span class="note-title">{{ note.title || '未命名笔记' }}</span><span
                   v-if="note.favorite"
                   class="note-star"
-                >☆</span>
-              </h3><div class="excerpt">
-                {{ note.summary || '暂无摘要' }}
-              </div><div class="note-meta">
-                <span
-                  class="pill"
-                  :class="{ 'source-mcp': note.source === 'mcp' }"
-                >{{ note.source === 'mcp' ? 'MCP 导入' : '手动' }}</span><span>{{ (note.tags || []).slice(0, 2).join(' · ') }}</span><span class="date">{{ shortDate(note.updateTime) }}</span>
+                >★</span><time
+                  class="note-date"
+                  :datetime="note.updateTime || undefined"
+                >{{ shortDate(note.updateTime) }}</time>
+              </h3><div
+                v-if="note.summary"
+                class="excerpt"
+              >
+                {{ note.summary }}
               </div>
             </button><div
               v-if="!notes.length"
               class="empty"
+              role="status"
             >
-              没有匹配的笔记<p>
-                <button
-                  class="btn"
-                  @click="$emit('new-note')"
-                >
-                  写下第一篇笔记
-                </button>
+              <strong>{{ emptyFeedback.title }}</strong>
+              <p class="feedback-description">
+                {{ emptyFeedback.description }}
               </p>
+              <button
+                v-if="emptyFeedback.action === 'clear'"
+                class="btn"
+                @click="clearFilters"
+              >
+                清除搜索与筛选
+              </button>
+              <button
+                v-else-if="emptyFeedback.action === 'all'"
+                class="btn"
+                @click="$emit('scope', 'all')"
+              >
+                查看全部笔记
+              </button>
+              <button
+                v-else
+                class="btn"
+                @click="$emit('new-note')"
+              >
+                新建笔记
+              </button>
             </div>
           </template>
         </div>
-        <div class="list-foot">
+        <div
+          v-if="total > pageSize"
+          class="list-foot"
+        >
           <template v-if="total > pageSize">
             <button
               :disabled="page <= 1 || loadingList"
@@ -311,13 +425,39 @@
             >
               →
             </button>
-          </template><template v-else>
-            正文参与搜索 · 标签 / 来源可组合筛选
           </template>
         </div>
       </section>
+      <div
+        v-if="paneOpen[1]"
+        class="pane-splitter splitter-list"
+        role="separator"
+        tabindex="0"
+        aria-label="调整笔记列表宽度"
+        aria-orientation="vertical"
+        aria-controls="knowledge-list-pane"
+        :aria-valuemin="Math.min(200, paneMax(1))"
+        :aria-valuemax="paneMax(1)"
+        :aria-valuenow="Math.round(layout.widths[1])"
+        @pointerdown="startResize($event, 1)"
+        @pointermove="moveResize"
+        @pointerup="endResize"
+        @pointercancel="endResize"
+        @lostpointercapture="endResize"
+        @keydown="resizeKey($event, 1)"
+      />
+      <button
+        class="pane-toggle toggle-list"
+        :aria-expanded="paneOpen[1]"
+        aria-controls="knowledge-list-pane"
+        :aria-label="`${paneOpen[1] ? '收起' : '恢复'}笔记列表栏`"
+        :title="`${paneOpen[1] ? '收起' : '恢复'}笔记列表栏`"
+        @click="togglePane(1)"
+      >
+        <KnowledgeIcon name="chevron" />
+      </button>
       <section
-        ref="readerElement"
+        ref="readerPanel"
         class="reader"
         aria-label="笔记正文"
       >
@@ -335,16 +475,12 @@
             >
               <KnowledgeIcon name="star" />
             </button><button
-              class="btn"
-              @click="$emit('move')"
-            >
-              <KnowledgeIcon name="folder" />移动
-            </button><button
+              v-if="headings.length"
               class="icon-btn"
               :class="{ on: infoOpen }"
-              title="切换正文目录与来源信息"
-              aria-label="切换正文目录与来源信息"
-              :aria-expanded="infoOpen"
+              title="本文目录"
+              aria-label="本文目录"
+              :aria-expanded="infoOpen || narrowExpanded"
               @click="toggleInfo"
             >
               <KnowledgeIcon name="panel" />
@@ -356,146 +492,205 @@
             >
               <KnowledgeIcon name="focus" />
             </button>
+            <el-popover
+              ref="noteMenu"
+              placement="bottom-end"
+              trigger="click"
+              :width="180"
+            >
+              <template #reference>
+                <button
+                  class="icon-btn"
+                  title="笔记操作"
+                  aria-label="笔记操作"
+                >
+                  ⋯
+                </button>
+              </template>
+              <div
+                class="note-actions"
+                @click="noteMenu?.hide()"
+              >
+                <button @click="$emit('move')">
+                  移动到目录
+                </button>
+                <button @click="$emit('tags')">
+                  编辑标签
+                </button>
+                <button @click="recordOpen = true">
+                  笔记信息
+                </button>
+                <button @click="$emit('download-draft')">
+                  下载 Markdown
+                </button>
+                <button
+                  class="danger"
+                  :disabled="loadingNote || deletingNote"
+                  aria-label="删除当前笔记"
+                  @click="$emit('delete')"
+                >
+                  {{ deletingNote ? '删除中…' : '删除笔记' }}
+                </button>
+              </div>
+            </el-popover>
           </template>
         </div>
         <div
-          v-if="loadingNote"
-          class="empty"
+          ref="readerElement"
+          class="reader-scroll"
         >
-          正在打开文档…
-        </div><div
-          v-else-if="!active"
-          class="empty"
-        >
-          从左侧打开一篇笔记，开始阅读和整理。
-        </div>
-        <div
-          v-else
-          class="reading-area"
-        >
-          <article class="document">
-            <div class="eyebrow">
-              KNOWLEDGE / {{ leafFolder(active.folderId) }}
-            </div>
-            <textarea
-              ref="titleElement"
-              class="document-title"
-              rows="1"
-              :value="draft.title"
-              maxlength="120"
-              aria-label="笔记标题"
-              @input="titleInput"
-              @keydown.enter.prevent
-            />
-            <div class="doc-properties">
-              <span>{{ active.source === 'mcp' ? 'MCP 导入' : '手动创建' }}</span><span class="divider">/</span><span>更新于 {{ fullDate(active.updateTime) }}</span><span class="divider">/</span><span>{{ draft.content.replace(/\s/g, '').length.toLocaleString() }} 字符</span><span class="divider">/</span><span class="status pending">索引未配置</span>
-            </div>
-            <div class="tags">
-              <button
-                v-for="value in draft.tags"
-                :key="value"
-                class="tag-btn"
-                @click="$emit('filter-tag', value)"
-              >
-                # {{ value }}
-              </button><button
-                class="tag-btn tag-edit"
-                title="编辑标签"
-                aria-label="编辑标签"
-                @click="$emit('tags')"
-              >
-                <KnowledgeIcon name="plus" />
-              </button>
-            </div>
-            <div
-              v-if="conflicted"
-              class="save-alert"
-              role="alert"
+          <div
+            v-if="loadingNote"
+            class="empty"
+            role="status"
+          >
+            正在打开文档…
+          </div><div
+            v-else-if="noteError"
+            class="empty"
+            role="alert"
+          >
+            <strong>无法打开笔记</strong>
+            <p class="feedback-description">
+              笔记可能已被删除，或网络暂时不可用。当前草稿仍保留。
+            </p>
+            <button
+              class="btn"
+              @click="$emit('retry-note')"
             >
-              此笔记已被其他窗口或 MCP 更新，自动保存已暂停。当前草稿仍保留。<div>
+              重试打开
+            </button>
+            <button
+              v-if="active"
+              class="btn"
+              @click="$emit('dismiss-note-error')"
+            >
+              返回当前笔记
+            </button>
+          </div><div
+            v-else-if="!active"
+            class="empty"
+          >
+            <strong>选择一篇笔记</strong>
+            <p class="feedback-description">
+              从列表打开笔记，或新建一篇开始记录。
+            </p>
+            <button
+              class="btn"
+              @click="$emit('new-note')"
+            >
+              新建笔记
+            </button>
+          </div>
+          <div
+            v-else
+            class="reading-area"
+          >
+            <article class="document">
+              <textarea
+                ref="titleElement"
+                class="document-title"
+                rows="1"
+                :value="draft.title"
+                maxlength="120"
+                aria-label="笔记标题"
+                @input="titleInput"
+                @keydown.enter.prevent
+              />
+              <div class="tags">
                 <button
-                  class="btn"
-                  @click="$emit('download-draft')"
+                  v-for="value in draft.tags"
+                  :key="value"
+                  class="tag-btn"
+                  @click="$emit('filter-tag', value)"
                 >
-                  下载当前草稿
+                  # {{ value }}
                 </button><button
-                  class="btn"
-                  @click="$emit('reload-conflict')"
+                  class="tag-btn tag-edit"
+                  title="编辑标签"
+                  aria-label="编辑标签"
+                  @click="$emit('tags')"
                 >
-                  载入最新版本
+                  <KnowledgeIcon name="plus" />
                 </button>
               </div>
-            </div>
-            <div
-              v-else-if="saveFailed"
-              class="save-alert"
-              role="alert"
-            >
-              {{ saveStatus }}<button
-                class="btn"
-                @click="$emit('save')"
+              <div
+                v-if="conflicted"
+                class="save-alert"
+                role="alert"
               >
-                重试保存
-              </button>
-            </div>
-            <div class="markdown">
-              <KnowledgeEditor
-                :key="active.id"
-                :model-value="draft.content"
-                quiet-toolbar
-                @update:model-value="contentInput"
-                @headings="headings = $event"
-              />
-            </div>
-            <div class="doc-end">
-              <span>YOUNOTE · 让知识有序可寻</span><span
-                role="status"
-                aria-live="polite"
-              >{{ saveStatus || '直接编辑 · 停顿后自动保存' }}</span>
-            </div>
-          </article>
-          <aside
-            v-show="infoOpen || narrowExpanded"
-            class="info-rail"
-            :class="{ expanded: narrowExpanded }"
-            aria-label="正文目录与来源"
-          >
-            <div class="rail-title">
-              本文目录
-            </div><nav
-              class="toc"
-              aria-label="本文目录"
-            >
-              <button
-                v-for="(heading, index) in headings"
-                :key="index"
-                :class="{ nested: heading.level > 2 }"
-                @click="scrollToHeading(index)"
+                此笔记已被其他窗口或 MCP 更新，自动保存已暂停。当前草稿仍保留。<div>
+                  <button
+                    class="btn"
+                    @click="$emit('download-draft')"
+                  >
+                    下载当前草稿
+                  </button><button
+                    class="btn"
+                    @click="$emit('reload-conflict')"
+                  >
+                    载入最新版本
+                  </button>
+                </div>
+              </div>
+              <div
+                v-else-if="saveFailed"
+                class="save-alert"
+                role="alert"
               >
-                {{ heading.text }}
-              </button><span
-                v-if="!headings.length"
-                class="tiny muted"
-              >暂无小标题</span>
-            </nav>
-            <div class="source-block">
+                {{ saveStatus }}<button
+                  class="btn"
+                  @click="$emit('save')"
+                >
+                  重试保存
+                </button>
+              </div>
+              <div class="markdown">
+                <KnowledgeEditor
+                  :key="active.id"
+                  :model-value="draft.content"
+                  quiet-toolbar
+                  :toolbar-target="readerPanel"
+                  @update:model-value="contentInput"
+                  @headings="headings = $event"
+                />
+              </div>
+            </article>
+            <aside
+              v-if="headings.length && (infoOpen || narrowExpanded)"
+              class="info-rail"
+              :class="{ expanded: narrowExpanded }"
+              aria-label="正文目录与来源"
+            >
               <div class="rail-title">
-                来源与记录
-              </div><strong>{{ active.source === 'mcp' ? 'MCP 导入' : '手动创建' }}</strong><p>目录：{{ folderName(active.folderId) }}<br>内容类型：私人笔记</p><p><span class="status pending">索引未配置</span></p><br><div class="rail-title">
-                最近更新记录
-              </div><p>{{ fullDate(active.updateTime) }}<br>版本 {{ active.version }}</p><p
-                v-if="active.sourceTool"
-                class="mono"
+                本文目录
+              </div><nav
+                class="toc"
+                aria-label="本文目录"
               >
-                工具：{{ active.sourceTool }}
-              </p><button
-                class="record-actions"
-                @click="recordOpen = true"
-              >
-                笔记管理 ↗
-              </button>
-            </div>
-          </aside>
+                <button
+                  v-for="(heading, index) in headings"
+                  :key="index"
+                  :class="{ nested: heading.level > 2 }"
+                  @click="scrollToHeading(index)"
+                >
+                  {{ heading.text }}
+                </button><span
+                  v-if="!headings.length"
+                  class="tiny muted"
+                >暂无小标题</span>
+              </nav>
+            </aside>
+          </div>
+        </div>
+        <div
+          v-if="active"
+          class="doc-end"
+        >
+          <span
+            role="status"
+            aria-live="polite"
+          >{{ saveStatus || '自动保存已开启' }}</span>
         </div>
       </section>
     </main>
@@ -526,32 +721,24 @@
       {{ saveStatus || '编辑中 · 停顿后自动保存' }}
     </div>
     <el-dialog
-      v-model="assistantOpen"
-      title="知识助手"
-      width="560px"
-      class="kb-dialog"
-    >
-      <p>AI 服务尚未配置。你可以先浏览和整理已有笔记。</p><div class="assistant-summary">
-        {{ counts.all ?? 0 }} 篇笔记 · {{ counts.inbox ?? 0 }} 篇待归档 · {{ counts.favorites ?? 0 }} 篇收藏
-      </div><div class="assistant-buttons">
-        <el-button @click="assistantOpen = false; $emit('scope', 'inbox')">
-          查看待归档笔记
-        </el-button><el-button @click="assistantOpen = false; $emit('source', 'mcp')">
-          检查 MCP 来源
-        </el-button>
-      </div><template #footer>
-        <el-button @click="assistantOpen = false">
-          返回阅读
-        </el-button>
-      </template>
-    </el-dialog>
-    <el-dialog
       v-model="recordOpen"
-      title="笔记管理"
+      title="笔记信息"
       width="430px"
       class="kb-dialog"
     >
-      <p>笔记保存在服务器。自动保存会检测与其他窗口或 MCP 的版本冲突。</p><template #footer>
+      <dl
+        v-if="active"
+        class="note-details"
+      >
+        <dt>目录</dt><dd>{{ folderName(active.folderId) }}</dd>
+        <dt>来源</dt><dd>{{ active.source === 'mcp' ? 'MCP 导入' : '手动创建' }}</dd>
+        <dt>更新时间</dt><dd>{{ fullDate(active.updateTime) }}</dd>
+        <dt>版本</dt><dd>{{ active.version ?? '—' }}</dd>
+        <dt>字符数</dt><dd>{{ draft.content.replace(/\s/g, '').length.toLocaleString() }}</dd>
+        <template v-if="active.sourceTool">
+          <dt>写入工具</dt><dd>{{ active.sourceTool }}</dd>
+        </template>
+      </dl><template #footer>
         <el-button @click="recordOpen = false; $emit('download-draft')">
           下载 Markdown
         </el-button><el-button
@@ -563,11 +750,80 @@
         </el-button>
       </template>
     </el-dialog>
+    <div
+      v-if="contextMenu"
+      ref="contextMenuElement"
+      class="context-menu"
+      role="menu"
+      :aria-label="contextMenu.type === 'folder' ? `目录操作：${contextMenu.folder.name}` : `笔记操作：${contextMenu.note.title}`"
+      :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
+      @keydown="contextMenuKeydown"
+      @click.stop
+      @contextmenu.prevent
+    >
+      <template v-if="contextMenu.type === 'folder'">
+        <div class="menu-title">
+          {{ contextMenu.folder.name }}
+        </div>
+        <button
+          role="menuitem"
+          @click="folderAction('create-child')"
+        >
+          <KnowledgeIcon name="plus" />新建子目录
+        </button>
+        <button
+          role="menuitem"
+          @click="folderAction('edit')"
+        >
+          <KnowledgeIcon name="edit" />重命名 / 移动
+        </button>
+        <button
+          role="menuitem"
+          class="danger"
+          @click="folderAction('delete')"
+        >
+          <KnowledgeIcon name="x" />删除空目录
+        </button>
+      </template>
+      <template v-else>
+        <div class="menu-title">
+          {{ contextMenu.note.title || '未命名笔记' }}
+        </div>
+        <button
+          role="menuitem"
+          @click="noteAction('open')"
+        >
+          <KnowledgeIcon name="chevron" />打开笔记
+        </button>
+        <button
+          role="menuitem"
+          @click="noteAction('favorite')"
+        >
+          <KnowledgeIcon name="star" />{{ contextMenu.note.favorite ? '取消收藏' : '收藏笔记' }}
+        </button>
+        <button
+          role="menuitem"
+          @click="noteAction('move')"
+        >
+          <KnowledgeIcon name="folder" />移动目录
+        </button>
+        <button
+          role="menuitem"
+          class="danger"
+          @click="noteAction('delete')"
+        >
+          <KnowledgeIcon name="x" />删除笔记
+        </button>
+      </template>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
+import { paneLayout, paneResizeLimit, clampPaneWidth, PANE_LIMITS } from '../utils/knowledgePaneLayout'
+import { readKnowledgeDensity, saveKnowledgeDensity } from '../utils/knowledgeDensity'
+import { noteListFeedback } from '../utils/knowledgeFeedback'
 import KnowledgeIcon from './KnowledgeIcon.vue'
 import KnowledgeEditor from './KnowledgeEditor.vue'
 const props = defineProps({
@@ -577,13 +833,72 @@ const props = defineProps({
   scope: [String, Number], scopeTitle: String, search: String, listSearch: String, tag: String, source: String, sort: String,
   active: Object, draft: { type: Object, required: true }, mobileView: String,
   total: Number, page: Number, pageSize: Number, loadingList: Boolean, listError: Boolean,
-  loadingNote: Boolean, saveStatus: String, saveFailed: Boolean, conflicted: Boolean, folderName: Function
+  loadingNote: Boolean, noteError: Boolean, deletingNote: Boolean, saveStatus: String, saveFailed: Boolean, conflicted: Boolean, folderName: Function
 })
-const emit = defineEmits(['appearance', 'logout', 'scope', 'search', 'list-search', 'tag', 'source', 'sort', 'view', 'collapse', 'collapse-all', 'manage-folder', 'new-note', 'open-note', 'retry-list', 'page', 'favorite', 'move', 'tags', 'dirty', 'save', 'download-draft', 'reload-conflict', 'filter-tag', 'delete', 'reader-element'])
-const treeSearch = ref(''), menuOpen = ref(false), assistantOpen = ref(false), recordOpen = ref(false)
+const emit = defineEmits(['appearance', 'logout', 'scope', 'search', 'list-search', 'tag', 'source', 'sort', 'view', 'collapse', 'collapse-all', 'manage-folder', 'folder-action', 'note-action', 'new-note', 'open-note', 'retry-list', 'retry-note', 'dismiss-note-error', 'page', 'favorite', 'move', 'tags', 'dirty', 'save', 'download-draft', 'reload-conflict', 'filter-tag', 'delete', 'reader-element'])
+const treeSearch = ref(''), treeSearchOpen = ref(false), menuOpen = ref(false), recordOpen = ref(false), filtersOpen = ref(false)
+const density = ref('standard')
+onMounted(() => { try { density.value = readKnowledgeDensity(window.localStorage) } catch { /* Storage access can be blocked. */ } })
+function toggleDensity() {
+  density.value = density.value === 'compact' ? 'standard' : 'compact'
+  try { saveKnowledgeDensity(window.localStorage, density.value) } catch { /* Keep the in-memory preference. */ }
+}
+const contextMenu = ref(null), noteMenu = ref(null), contextMenuElement = ref(null)
+const emptyFeedback = computed(() => noteListFeedback(props))
+function clearFilters() { for (const event of ['search', 'list-search', 'tag', 'source']) emit(event, '') }
+function navigateNotes(event) {
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+  const items = [...event.currentTarget.querySelectorAll('.note-item')]
+  const index = items.indexOf(event.target)
+  if (index < 0) return
+  event.preventDefault()
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : Math.max(0, Math.min(items.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)))
+  items[next]?.focus()
+}
+function openKeyboardNoteMenu(event, note) {
+  const rect = event.currentTarget.getBoundingClientRect()
+  showMenu({ clientX: rect.left + 20, clientY: rect.top + 20 }, { type: 'note', note })
+  nextTick(() => contextMenuElement.value?.querySelector('button')?.focus())
+}
+function contextMenuKeydown(event) {
+  if (event.key === 'Escape') { event.preventDefault(); const trigger = menuTrigger; closeMenu(); trigger?.focus(); return }
+  const items = [...event.currentTarget.querySelectorAll('button')]
+  const index = items.indexOf(document.activeElement)
+  if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+    event.preventDefault()
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
+    items[next]?.focus()
+  }
+}
+let menuTrigger = null
+// 右键菜单锚定鼠标位置，并向视口内收拢避免被裁剪；点击空白处 / Esc / 滚轮 / 窗口失焦都会关闭。
+function openFolderMenu(event, folder) { showMenu(event, { type: 'folder', folder }) }
+function openNoteMenu(event, note) { showMenu(event, { type: 'note', note }) }
+function showMenu(event, base) {
+  menuTrigger = document.activeElement
+  const width = 172, height = base.type === 'folder' ? 130 : 160
+  const x = Math.max(8, Math.min(event.clientX, window.innerWidth - width - 8))
+  const y = Math.max(8, Math.min(event.clientY, window.innerHeight - height - 8))
+  contextMenu.value = { ...base, x, y }
+}
+function folderAction(action) { const menu = contextMenu.value; closeMenu(); if (menu?.folder) emit('folder-action', { action, folder: menu.folder }) }
+function noteAction(action) { const menu = contextMenu.value; closeMenu(); if (menu?.note) emit('note-action', { action, note: menu.note }) }
+function closeMenu() { contextMenu.value = null }
 const focusMode = ref(false), nativeFullscreen = ref(false)
+const appElement = ref(null), readerPanel = ref(null), paneOpen = ref([true, true]), paneWidths = ref([190, 330]), appWidth = ref(1000)
+const layout = computed(() => paneLayout(appWidth.value, paneWidths.value, paneOpen.value))
+const paneStyle = computed(() => ({ '--tree-width': `${layout.value.widths[0]}px`, '--list-width': `${layout.value.widths[1]}px` }))
+const paneMax = index => Math.round(paneResizeLimit(index, appWidth.value, paneOpen.value, layout.value.widths))
+function resizePane(index, value) { const next = [...paneWidths.value]; next[index] = clampPaneWidth(index, value, appWidth.value, paneOpen.value, layout.value.widths); paneWidths.value = next }
+function togglePane(index) { const next = [...paneOpen.value]; next[index] = !next[index]; paneOpen.value = next }
+let drag = null, appObserver
+function startResize(event, index) { if (event.button !== 0) return; drag = { index, id: event.pointerId, x: event.clientX, width: layout.value.widths[index] }; event.currentTarget.setPointerCapture(event.pointerId); event.preventDefault() }
+function moveResize(event) { if (drag && drag.id === event.pointerId) resizePane(drag.index, drag.width + event.clientX - drag.x) }
+function endResize(event) { if (drag?.id === event.pointerId) drag = null }
+function resizeKey(event, index) { const step = event.shiftKey ? 40 : 10; const current = layout.value.widths[index]; let value; if (event.key === 'ArrowLeft') value = current - step; else if (event.key === 'ArrowRight') value = current + step; else if (event.key === 'Home') value = PANE_LIMITS[index].min; else if (event.key === 'End') value = Infinity; else return; event.preventDefault(); resizePane(index, value) }
+onMounted(() => { appObserver = new ResizeObserver(entries => { appWidth.value = entries[0].contentRect.width }); appObserver.observe(appElement.value) })
 let ownFullscreenExit = false
-const infoOpen = ref(true), narrowExpanded = ref(false), readerElement = ref(null), titleElement = ref(null), globalInput = ref(null), headings = ref([])
+const infoOpen = ref(false), narrowExpanded = ref(false), readerElement = ref(null), titleElement = ref(null), globalInput = ref(null), headings = ref([])
 const scopes = [{ value: 'all', label: '全部笔记', icon: 'layers' }, { value: 'inbox', label: '收件箱', icon: 'inbox' }, { value: 'favorites', label: '我的收藏', icon: 'star' }]
 const viewLabels = { tree: '目录', list: '笔记列表', reader: '正文阅读' }
 const displayedFolders = computed(() => {
@@ -597,7 +912,6 @@ const displayedFolders = computed(() => {
 const tagOptions = computed(() => [...new Set([props.tag, ...props.notes.flatMap(n => n.tags || []), ...(props.draft.tags || [])].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-CN')))
 function fullDate(value) { return value ? String(value).slice(0, 10) : '—' }
 function shortDate(value) { return value ? String(value).slice(5, 10).replace('-', '/') : '' }
-function leafFolder(id) { return props.folderName(id).split(' / ').at(-1) }
 function resizeTitle() { if (titleElement.value) { titleElement.value.style.height = 'auto'; titleElement.value.style.height = titleElement.value.scrollHeight + 'px' } }
 function titleInput(event) { props.draft.title = event.target.value; resizeTitle(); emit('dirty') }
 function contentInput(value) { props.draft.content = value; emit('dirty') }
@@ -622,10 +936,12 @@ function handleFullscreenChange() {
 }
 window.addEventListener('keydown', handleFocusShortcut)
 window.addEventListener('fullscreenchange', handleFullscreenChange)
-function focusSearchShortcut(event) { if (event.key === '/' && !event.target.closest('input,textarea,[contenteditable=true]')) { event.preventDefault(); globalInput.value?.focus() } if (event.key === 'Escape') menuOpen.value = false }
+function focusSearchShortcut(event) { if (event.key === '/' && !event.target.closest('input,textarea,select,button,[role=dialog],[contenteditable=true]')) { event.preventDefault(); globalInput.value?.focus() } if (event.key === 'Escape') { menuOpen.value = false; closeMenu() } }
+window.addEventListener('scroll', closeMenu, true)
+window.addEventListener('blur', closeMenu)
 watch(readerElement, element => emit('reader-element', element), { immediate: true })
 watch(() => [props.active?.id, props.draft.title, props.loadingNote], () => nextTick(resizeTitle), { immediate: true })
-watch(() => props.active?.id, () => { headings.value = [] })
+watch(() => props.active?.id, () => { headings.value = []; recordOpen.value = false })
 let titleObserver
 watch(titleElement, element => {
   titleObserver?.disconnect()
@@ -638,7 +954,10 @@ watch(titleElement, element => {
   titleObserver.observe(element)
 })
 onBeforeUnmount(() => {
+  appObserver?.disconnect()
   titleObserver?.disconnect()
+  window.removeEventListener('scroll', closeMenu, true)
+  window.removeEventListener('blur', closeMenu)
   window.removeEventListener('keydown', handleFocusShortcut)
   window.removeEventListener('fullscreenchange', handleFullscreenChange)
   if (focusMode.value && document.fullscreenElement) document.exitFullscreen().catch(() => {})
@@ -651,7 +970,18 @@ onBeforeUnmount(() => {
 .seven .brand { color:var(--blue); }
 .workspace-name { color:#7a899e; }
 .header-right { position:relative; }
-.appearance-link { color:#6e7e93; padding:0; font-size:10px; }
+.reader-toolbar .delete-note { color:#b34b55; }
+.new-folder { border:1px dashed var(--line); border-radius:5px; }
+@media(hover:none) { .tree-manage { opacity:1; } }
+.context-menu { position:fixed; z-index:60; width:172px; padding:5px; background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:0 10px 28px #20334b26; }
+.context-menu .menu-title { padding:6px 10px 5px; border-bottom:1px solid var(--line); margin-bottom:4px; color:var(--muted); font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.context-menu :is(button,a) { display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:8px 10px; color:var(--ink); font-size:12px; border-radius:5px; }
+.context-menu button:hover { background:var(--soft); }
+.context-menu button.danger { color:#b34b55; }
+.context-menu svg { width:13px; height:13px; flex:none; }
+.seven[data-color='dark'] .context-menu { background:var(--panel); box-shadow:0 10px 28px #00000055; }
+.seven[data-color='dark'] .context-menu .menu-title { border-color:var(--line); }
+.seven[data-color='dark'] .context-menu button.danger { color:#d98a92; }
 .workspace-menu { position:absolute; top:39px; right:0; z-index:12; width:160px; padding:6px; background:var(--panel); border:1px solid var(--line); border-radius:6px; box-shadow:0 8px 24px #20334b22; }
 .workspace-menu :is(button,a) { display:block; width:100%; text-align:left; padding:8px 10px; color:var(--ink); font-size:12px; }
 .folder-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -664,7 +994,8 @@ onBeforeUnmount(() => {
 .note-star { color:#b29970; font-size:11px; }
 .sort-button { font-size:10px; padding:2px; border-radius:3px; }
 .document-title { display:block; width:100%; min-height:39px; resize:none; overflow:hidden; padding:0; border:0; outline:none; background:transparent; color:#25344a; font:630 26px/1.5 var(--font); letter-spacing:-.7px; margin:0 0 14px; border-radius:0; }
-.document-title:focus-visible { outline:none; }
+/* 内容可编辑，但键盘用户需要可见的焦点位置（用内发光代替 outline，避免突兀） */
+.document-title:focus-visible { outline:none; box-shadow:0 1px 0 0 var(--blue,#3564a9); }
 .tag-edit { opacity:0; padding:3px 5px; }
 .tag-edit svg { width:12px; height:12px; }
 .tags:hover .tag-edit,.tags:focus-within .tag-edit { opacity:1; }
@@ -673,8 +1004,6 @@ onBeforeUnmount(() => {
 .toc .nested { padding-left:10px; }
 .save-alert { color:#a65c66; padding:14px; border:1px solid #e4bdc5; border-radius:4px; font-size:11px; margin:14px 0; }
 .save-alert .btn { margin:8px 8px 0 0; }
-.assistant-summary { padding:14px; background:#f0f4fa; color:#647b99; }
-.assistant-buttons { display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }
 .markdown :deep(*) { box-sizing:border-box; }
 .markdown :deep(.tiptap) { min-height:220px; outline:none; font:13px/1.95 var(--font); color:#4c5a6f; overflow-wrap:anywhere; }
 .markdown :deep(.tiptap p) { margin:12px 0 17px; }
@@ -711,7 +1040,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .seven[data-color='dark'] { color-scheme:dark; --bg:#151d28; --panel:#1c2633; --ink:#dce5f1; --muted:#98a8bd; --line:#334257; --blue:#9abded; --blue-bg:#2b405d; --soft:#222f40; --green:#8ab6a1; }
 .seven[data-color='dark'] :is(header,.reader,.reader-toolbar,.btn,.global-search kbd,.list-search input) { background:var(--panel); color:var(--ink); border-color:var(--line); }
-.seven[data-color='dark'] :is(.demo-bar,.sidebar,.global-search input) { background:var(--bg); border-color:var(--line); }
+.seven[data-color='dark'] :is(.sidebar,.global-search input) { background:var(--bg); border-color:var(--line); }
 .seven[data-color='dark'] .list-pane { background:var(--panel); }
 .seven[data-color='dark'] :is(.nav-row.active,.tree-row.active,.note-item.selected,.note-item:hover) { background:var(--blue-bg); color:var(--blue); }
 .seven[data-color='dark'] :is(.note-item h3,.document-title,.workspace-name,.nav-row,.tree-name,.toc button,.source-block strong) { color:var(--ink); }
@@ -724,7 +1053,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /* 专注模式：隐藏整个工作台界面，仅保留标题与正文 */
-.seven.focus-mode header,.seven.focus-mode .demo-bar,.seven.focus-mode .mobile-nav,.seven.focus-mode .sidebar,.seven.focus-mode .list-pane,.seven.focus-mode .reader-toolbar,.seven.focus-mode .info-rail,.seven.focus-mode .eyebrow,.seven.focus-mode .doc-properties,.seven.focus-mode .tags,.seven.focus-mode .doc-end { display:none }
+.seven.focus-mode header,.seven.focus-mode .mobile-nav,.seven.focus-mode .sidebar,.seven.focus-mode .list-pane,.seven.focus-mode .reader-toolbar,.seven.focus-mode .info-rail,.seven.focus-mode .eyebrow,.seven.focus-mode .doc-properties,.seven.focus-mode .tags,.seven.focus-mode .doc-end { display:none }
 .seven.focus-mode .app { height:100dvh; grid-template-columns:minmax(0,1fr); }
 .seven.focus-mode .reader { display:block; background:var(--bg); }
 .seven.focus-mode .reading-area { max-width:none; justify-content:center; padding-top:9vh; }
@@ -743,4 +1072,11 @@ onBeforeUnmount(() => {
 .focus-exit:hover,.focus-exit:focus-within { opacity:1; }
 .focus-exit .btn { box-shadow:0 4px 16px #20334b1a; }
 .focus-status { position:fixed; right:16px; bottom:12px; z-index:40; padding:4px 10px; border-radius:20px; background:var(--panel); border:1px solid var(--line); color:var(--muted); font-size:10px; opacity:.75; }
+.seven.focus-mode .pane-toggle,.seven.focus-mode .pane-splitter { display:none; }
+.seven.focus-mode .reader { display:flex; grid-column:1; grid-row:1; margin:0; border:0; border-radius:0; }
+.seven :deep(.reader-format-bar) { display:flex; position:absolute; z-index:4; left:50%; bottom:52px; transform:translateX(-50%); max-width:calc(100% - 20px); overflow-x:auto; }
+.seven.focus-mode :deep(.reader-format-bar) { bottom:14px; }
+@media(max-width:620px) { .seven :deep(.reader-format-bar) { bottom:calc(52px + env(safe-area-inset-bottom)); } .seven.focus-mode :deep(.reader-format-bar) { bottom:14px; } }
+.seven[data-color='dark'] .note-item { background:var(--panel); border-color:var(--line); }
+.seven[data-color='dark'] .note-item.selected { background:var(--blue-bg); }
 </style>
