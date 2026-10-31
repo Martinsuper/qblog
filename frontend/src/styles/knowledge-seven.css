@@ -398,12 +398,12 @@ header{height:48px;padding:0 18px;gap:16px;background:var(--panel)}
 /* Knowledge navigation: retain the two-pane reader, reveal results on demand. */
 .seven .sidebar { padding:16px 12px 0; }
 .sidebar-entry { display:grid; gap:8px; padding:0 4px 16px; border-bottom:1px solid var(--line); margin-bottom:12px; }
-.create-note,.browse-notes { display:flex; align-items:center; gap:9px; min-height:38px; padding:8px 12px; border-radius:6px; font-size:13px; text-align:left; }
-.seven .create-note { background:var(--blue); color:var(--panel); font-weight:600; }
-.seven .create-note:hover { filter:brightness(.94); }
-.browse-notes { color:var(--muted); }
+.browse-notes { display:flex; align-items:center; gap:9px; min-height:38px; padding:8px 12px; border-radius:6px; font-size:13px; text-align:left; color:var(--muted); }
 .browse-notes span { margin-left:auto; font-size:11px; font-variant-numeric:tabular-nums; }
 .seven .browse-notes:hover,.seven .browse-notes.active { background:var(--blue-bg); color:var(--blue); }
+.seven .nav-favorites { display:flex; align-items:center; gap:9px; min-height:38px; padding:8px 12px; border-radius:6px; font-size:13px; text-align:left; color:var(--muted); }
+.seven .nav-favorites span { margin-left:auto; font-size:11px; font-variant-numeric:tabular-nums; }
+.seven .nav-favorites:hover,.seven .nav-favorites.active { background:#b2997024; color:#8a744a; }
 .seven .section-label { margin:0 4px 6px; padding:0 4px; }
 .seven .folder-tree { min-height:0; flex:1; overflow:auto; padding:2px 0 16px; }
 .seven .tree-row { min-height:36px; }
@@ -433,7 +433,8 @@ header{height:48px;padding:0 18px;gap:16px;background:var(--panel)}
 .welcome-empty .feedback-description { margin:10px auto 22px; font-size:13px; }
 .welcome-empty .btn { min-height:36px; }
 .welcome-tip { margin:24px auto 0; font-size:12px; color:var(--muted); }
-.seven[data-color='dark'] .create-note { color:var(--bg); }
+.seven[data-color='dark'] .nav-favorites { color:var(--muted); }
+.seven[data-color='dark'] .nav-favorites:hover,.seven[data-color='dark'] .nav-favorites.active { background:#b2997030; color:#cbb083; }
 @media(min-width:901px) {
   .seven .app { grid-template-columns:var(--tree-width) 4px minmax(0,1fr); }
   .seven .app.show-list { grid-template-columns:var(--tree-width) 4px var(--list-width) 4px minmax(0,1fr); }

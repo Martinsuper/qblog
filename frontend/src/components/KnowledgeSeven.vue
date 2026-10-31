@@ -95,22 +95,6 @@
         aria-label="知识库导航"
         @contextmenu.self.prevent="openRootMenu"
       >
-        <div class="sidebar-entry">
-          <button
-            class="create-note"
-            @click="$emit('new-note')"
-          >
-            <KnowledgeIcon name="plus" />新建笔记
-          </button>
-          <button
-            class="browse-notes"
-            :class="{ active: showList }"
-            :aria-pressed="showList"
-            @click="browseOpen = !browseOpen; $emit('view', 'list')"
-          >
-            <KnowledgeIcon name="layers" />全部笔记<span>{{ counts.all ?? total }}</span>
-          </button>
-        </div>
         <button
           class="nav-overview"
           :class="{ active: overviewVisible }"
@@ -119,6 +103,24 @@
         >
           <KnowledgeIcon name="dashboard" /><span>总览</span><span class="count">{{ counts.all ?? total }}</span>
         </button>
+        <div class="sidebar-entry">
+          <button
+            class="browse-notes"
+            :class="{ active: showList && String(scope) !== 'favorites' }"
+            :aria-pressed="showList"
+            @click="browseAllNotes"
+          >
+            <KnowledgeIcon name="layers" />全部笔记<span>{{ counts.all ?? total }}</span>
+          </button>
+          <button
+            class="nav-favorites"
+            :class="{ active: showList && String(scope) === 'favorites' }"
+            :aria-pressed="showList && String(scope) === 'favorites'"
+            @click="openFavorites"
+          >
+            <KnowledgeIcon name="star" />收藏的笔记<span>{{ counts.favorites ?? 0 }}</span>
+          </button>
+        </div>
         <div
           class="section-label"
           @contextmenu.prevent="openRootMenu"
@@ -1016,6 +1018,9 @@ const showList = computed(() => browseOpen.value || Boolean(props.search || prop
 const overviewVisible = computed(() => props.mobileView === 'overview')
 // 总览里点标签：切到列表视图展示筛选结果（列表栏在设置筛选后会自动出现）。
 function onOverviewTag(tag) { emit('filter-tag', tag); emit('view', 'list') }
+// 全部笔记：从收藏视图切回时重置范围，避免列表仍停留在收藏筛选
+function browseAllNotes() { browseOpen.value = !browseOpen.value; if (String(props.scope) !== 'all') emit('scope', 'all'); emit('view', 'list') }
+function openFavorites() { browseOpen.value = true; emit('scope', 'favorites'); emit('view', 'list') }
 const visibleNotes = computed(() => props.allNotesLoaded ? props.notes.slice((props.page - 1) * props.pageSize, props.page * props.pageSize) : props.notes)
 watch(() => props.search, value => { if (value) emit('view', 'list') })
 onMounted(() => { try { density.value = readKnowledgeDensity(window.localStorage) } catch { /* Storage access can be blocked. */ } })
