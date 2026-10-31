@@ -11,6 +11,18 @@ export const COMMANDS = [
   { id: 'taskList', glyph: '☑', label: '待办列表', hint: '可勾选的任务清单', keywords: ['task', 'todo', 'checklist', 'daiban', 'db', 'qingdan'], run: (editor, range) => editor.chain().focus().deleteRange(range).toggleTaskList().run() },
   { id: 'blockquote', glyph: '❝', label: '引用', hint: '强调的一段引文', keywords: ['quote', 'blockquote', 'yinyong', 'yy'], run: (editor, range) => editor.chain().focus().deleteRange(range).toggleBlockquote().run() },
   { id: 'codeBlock', glyph: '<>', label: '代码块', hint: '等宽字体的代码段', keywords: ['code', 'codeblock', 'daima', 'dm'], run: (editor, range) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run() },
+  {
+    id: 'plantuml',
+    glyph: 'UML',
+    label: 'PlantUML',
+    hint: '插入 PlantUML 图表源码',
+    keywords: ['plantuml', 'plant', 'puml', 'uml', 'tuji', 'tupu'],
+    run: (editor, range) => editor.chain().focus().deleteRange(range).insertContent({
+      type: 'codeBlock',
+      attrs: { language: 'plantuml' },
+      content: [{ type: 'text', text: '@startuml\n\n@enduml' }]
+    }).run()
+  },
   { id: 'table', glyph: '▦', label: '表格', hint: '3×3 带表头的表格', keywords: ['table', 'biaoge', 'bg'], run: (editor, range) => editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
   { id: 'horizontalRule', glyph: '—', label: '分隔线', hint: '划分内容的水平线', keywords: ['hr', 'divider', 'rule', 'fengexian', 'fgx', 'gefengxian'], run: (editor, range) => editor.chain().focus().deleteRange(range).setHorizontalRule().run() }
 ]

@@ -92,12 +92,14 @@ import { watch, onBeforeUnmount } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
+import { CodeBlockLangTag } from '../utils/codeBlockView'
 import { TableKit } from '@tiptap/extension-table'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import KnowledgeIcon from './KnowledgeIcon.vue'
 import { SlashCommand } from '../utils/slashCommands'
 import { EditorEmptyHint } from '../utils/editorEmptyHint'
 import { PlantUmlPreview } from '../utils/plantumlPreview'
+import lowlight from '../utils/codeLanguages'
 const props = defineProps({ modelValue: { type: String, default: '' }, readonly: Boolean, quietToolbar: Boolean, toolbarTarget: { type: Object, default: null } })
 const emit = defineEmits(['update:modelValue', 'headings'])
 let lastEmitted = props.modelValue
@@ -125,7 +127,7 @@ function cancelAndEmit() {
   emitNow()
 }
 const editor = useEditor({
-  extensions: [StarterKit.configure({ link: { openOnClick: false }, heading: { levels: [1, 2, 3] } }), TaskList, TaskItem.configure({ nested: true }), TableKit, Markdown, SlashCommand, EditorEmptyHint, PlantUmlPreview()],
+  extensions: [StarterKit.configure({ codeBlock: false, link: { openOnClick: false }, heading: { levels: [1, 2, 3] } }), CodeBlockLangTag.configure({ lowlight }), TaskList, TaskItem.configure({ nested: true }), TableKit, Markdown, SlashCommand, EditorEmptyHint, PlantUmlPreview()],
   content: props.modelValue,
   contentType: 'markdown',
   editable: !props.readonly,
@@ -196,8 +198,9 @@ html.dark .format-bar .format-divider { background: #334257; }
 html.dark .format-bar .format-btn { color: #98a8bd; }
 html.dark .format-bar .format-btn:hover { background: #2b405d; color: #9abded; }
 html.dark .format-bar .format-btn.active { background: #2b405d; color: #9abded; }
-/* PlantUML 预览（widget 装饰，非可编辑内容）：默认收起源码，点卡片切换展开 */
-.tiptap pre.plantuml-src-hidden { display: none; }
+/* PlantUML 预览（widget 装饰，非可编辑内容）：默认收起源码，点卡片切换展开。
+   node 装饰的 class 由 PM 打在代码块节点视图最外层（.code-block-view wrapper）上 */
+.tiptap .plantuml-src-hidden { display: none; }
 .tiptap .plantuml-preview { position: relative; display: flex; justify-content: center; margin: 2px 0 10px; padding: 12px 10px; border: 1px solid var(--line, #e5e9ef); border-radius: 8px; background: var(--soft, #f7f9fc); user-select: none; cursor: pointer; }
 .tiptap .plantuml-preview img { max-width: 100%; height: auto; display: block; }
 .tiptap .plantuml-tools { position: absolute; top: 8px; right: 10px; display: flex; align-items: center; gap: 6px; }
@@ -210,6 +213,47 @@ html.dark .tiptap .plantuml-preview { border-color: #334257; background: #eef2f7
 html.dark .tiptap .plantuml-hint { background: #f2f5f9; border-color: #d5dde6; color: #6d7c92; }
 html.dark .tiptap .plantuml-copy { background: #f5f7fa; border-color: #d5dde6; color: #5d6c7e; }
 html.dark .tiptap .plantuml-copy.copied { color: #1c8a4e; }
+/* 代码块右下角语言标签（节点视图）+ 弹出菜单；.lang-menu/.lang-item 亦为该菜单复用。
+   wrapper 不设 margin：pre 的外边距经 wrapper 折叠，视觉与原 pre 直挂完全一致，
+   标签以 wrapper（即 pre 盒）右下为锚点。 */
+.tiptap .code-block-view { position: relative; }
+.tiptap .code-lang-tag { position: absolute; right: 10px; bottom: 8px; z-index: 2; padding: 3px 8px; border: 1px solid var(--line, #e5e9ef); border-radius: 6px; background: #fffffff2; color: #6b7a8d; font-size: 10px; line-height: 1; cursor: pointer; box-shadow: 0 1px 4px #20334b14; }
+.tiptap .code-lang-tag:hover { color: var(--blue, #3564a9); border-color: #9dbede; background: var(--blue-bg, #eef3fa); }
+.tiptap[contenteditable='false'] .code-lang-tag { display: none; }
+html.dark .tiptap .code-lang-tag { background: #222f40; border-color: #334257; color: #9abded; }
+html.dark .tiptap .code-lang-tag:hover { background: #2b405d; border-color: #3d5570; }
+/* 菜单自右下角标签下方继续向下生长（top=标签底边再下 4px），不遮挡代码内容；
+   会覆盖代码块下方紧邻内容，属浮层正常行为 */
+.tiptap .lang-menu { top: calc(100% - 4px); bottom: auto; right: 10px; left: auto; }
+.lang-menu { position: absolute; z-index: 1001; display: flex; flex-direction: column; min-width: 148px; padding: 5px; background: var(--panel, #fff); border: 1px solid var(--line, #e5e9ef); border-radius: 8px; box-shadow: 0 10px 32px #20334b1f; color: #243044; }
+.lang-menu[hidden] { display: none; }
+/* 注意：不依赖任何全局 button 重置（uniapp/kb scope 不一定覆盖），显式自带外观重置 */
+/* 输入过滤框：可过滤现有语言，输入原文 Enter 可应用为自定义语言 */
+.lang-input { appearance: none; width: 100%; box-sizing: border-box; margin: 0 0 4px; padding: 5px 8px; border: 1px solid var(--line, #e5e9ef); border-radius: 5px; background: #fff; font-size: 12px; line-height: 1.5; color: #243044; }
+.lang-input::placeholder { color: #98a5b5; }
+.lang-input:focus { outline: none; border-color: #9dbede; }
+.lang-item[hidden] { display: none; }
+.lang-item { appearance: none; -webkit-appearance: none; display: flex; align-items: center; width: 100%; padding: 6px 9px; border: 0; border-radius: 5px; background: transparent; text-align: left; font-size: 12px; line-height: 1.5; color: #243044; cursor: pointer; flex-shrink: 0 }
+.lang-item + .lang-item { margin-top: 2px; }
+.lang-item:hover { background: var(--blue-bg, #eef3fa); }
+.lang-item.active { background: var(--blue-bg, #eaf0f9); color: var(--blue, #3564a9); font-weight: 600; }
+html.dark .lang-menu { background: #1c2633; border-color: #334257; box-shadow: 0 10px 32px #00000059; color: #dce5f1; }
+html.dark .lang-input { background: #1c2633; border-color: #334257; color: #dce5f1; }
+html.dark .lang-input::placeholder { color: #7f8fa4; }
+html.dark .lang-input:focus { border-color: #3d5570; }
+html.dark .lang-item { color: #dce5f1; }
+html.dark .lang-item:hover { background: #2b405d; }
+html.dark .lang-item.active { background: #2b405d; color: #9abded; }
+/* CodeBlockLowlight 装饰高亮：色彩与编辑器浅色调和，暗色面板分别覆盖 token 变量 */
+.tiptap pre { --ck-keyword:#a2466f; --ck-string:#2f7d4b; --ck-function:#6f5bb5; --ck-constant:#2064b4; --ck-comment:#93a0b1; }
+.kb[data-color='dark'] .tiptap pre, html.dark .tiptap pre, .seven[data-color='dark'] .tiptap pre { --ck-keyword:#d78fbd; --ck-string:#8fcf9d; --ck-function:#b9a6f2; --ck-constant:#82b6f6; --ck-comment:#7c8aa0; }
+.tiptap pre .hljs-comment, .tiptap pre .hljs-quote, .tiptap pre .hljs-meta, .tiptap pre .hljs-variable, .tiptap pre .hljs-template-variable { color: var(--ck-comment); font-style: italic; }
+.tiptap pre .hljs-keyword, .tiptap pre .hljs-selector-tag, .tiptap pre .hljs-tag, .tiptap pre .hljs-name, .tiptap pre .hljs-doctag { color: var(--ck-keyword); font-weight: 600; }
+.tiptap pre .hljs-string, .tiptap pre .hljs-regexp, .tiptap pre .hljs-addition, .tiptap pre .hljs-symbol, .tiptap pre .hljs-bullet { color: var(--ck-string); }
+.tiptap pre .hljs-title, .tiptap pre .hljs-section, .tiptap pre .hljs-built_in { color: var(--ck-function); }
+.tiptap pre .hljs-number, .tiptap pre .hljs-literal, .tiptap pre .hljs-constant, .tiptap pre .hljs-type, .tiptap pre .hljs-attr, .tiptap pre .hljs-attribute, .tiptap pre .hljs-selector-id, .tiptap pre .hljs-selector-class, .tiptap pre .hljs-link, .tiptap pre .hljs-deletion { color: var(--ck-constant); }
+.tiptap pre .hljs-strong { font-weight: 600; }
+.tiptap pre .hljs-emphasis { font-style: italic; }
 
 
 </style>
