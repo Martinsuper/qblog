@@ -16,6 +16,9 @@ Thumbs.db
 *.swo
 *~
 
+# Codegraph 索引（本地工具产物）
+.codegraph/
+
 # IDE 配置（本地）
 .idea.local/
 .idea/

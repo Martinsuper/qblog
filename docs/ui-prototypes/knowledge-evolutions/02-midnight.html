@@ -1,0 +1,184 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>演化 02 · 墨夜暗色</title><style>
+/* 当前双栏骨架的完整暗色主题：夜间低刺激、高对比正文、暗色代码块与状态色。 */
+*{box-sizing:border-box}
+:root{--bg:#0f141b;--panel:#151c26;--panel2:#1a2230;--ink:#dbe3ee;--muted:#8493a6;--line:#243044;--accent:#7aa2f7;--accent-soft:#1c2740;--green:#73c2a4;--amber:#d9b06c;--red:#d98a94;--soft:#1b2431}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:13.5px/1.7 Inter,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{cursor:pointer;color:inherit;border:0;background:none;font:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg{width:15px;height:15px;vertical-align:-2px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+header{height:52px;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:650;color:var(--ink);text-decoration:none;letter-spacing:.3px}
+.brand-mark{width:25px;height:25px;border-radius:7px;background:var(--accent);color:#101623;display:grid;place-items:center;font-weight:700;font-size:14px}
+.brand small{color:var(--muted);font-size:11px;font-weight:400;margin-left:2px}
+.search{margin-left:auto;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);padding:0 12px;height:32px;width:min(340px,34vw);color:var(--muted)}
+.search input{border:0;background:none;outline:none;width:100%;font-size:12.5px;color:var(--ink)}
+.search kbd{border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:10.5px;color:var(--muted)}
+.avatar{width:29px;height:29px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);display:grid;place-items:center;color:var(--accent);font-size:11px}
+.app{height:calc(100dvh - 52px);display:grid;grid-template-columns:244px minmax(0,1fr)}
+/* 目录树 */
+.sidebar{background:var(--panel);border-right:1px solid var(--line);padding:16px 10px;display:flex;flex-direction:column;overflow:auto}
+.section-label{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted);margin:0 8px 10px;letter-spacing:.1em}
+.tree-filter input{width:100%;border:1px solid var(--line);background:var(--panel2);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--ink);outline:none;margin:0 4px 10px}
+.tree-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:7px 10px;border-radius:6px;color:var(--ink);font-size:13px;font-weight:550}
+.tree-row:hover{background:var(--soft)}
+.tree-row svg{color:var(--muted)}
+.tree-row .count{margin-left:auto;font-size:10.5px;color:var(--muted);font-weight:400}
+.tree-file{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:5px 10px 5px 24px;border-radius:6px;color:var(--muted);font-size:12.5px}
+.tree-file svg{width:13px;height:13px;opacity:.7}
+.tree-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-file:hover{background:var(--soft);color:var(--ink)}
+.tree-file.selected{background:var(--accent-soft);color:var(--accent)}
+/* 正文 */
+.reader{overflow:auto;background:var(--bg)}
+.reader-toolbar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:10px 34px;background:#0f141bee;backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+.doc-crumb{font-size:12px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1}
+.doc-crumb b{color:var(--ink);font-weight:550}
+.icon-btn{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;color:var(--muted)}
+.icon-btn:hover{background:var(--soft)}
+.icon-btn.on{color:var(--amber);background:var(--accent-soft)}
+.reading{max-width:820px;margin:0 auto;padding:34px 40px 60px}
+.eyebrow{font-size:11px;letter-spacing:.18em;color:var(--accent);margin-bottom:12px}
+h1.doc-title{font-size:26px;font-weight:650;letter-spacing:-.3px;margin:0 0 14px}
+.doc-properties{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:12px;color:var(--muted);padding-bottom:20px;border-bottom:1px solid var(--line)}
+.doc-properties .sep{color:var(--line)}
+.status{display:inline-flex;align-items:center;gap:5px;font-size:11px;border-radius:20px;padding:1px 9px}
+.status:before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+.status.indexed{color:var(--green);background:#12281f}
+.status.pending{color:var(--amber);background:#2a2314}
+.status.failed{color:var(--red);background:#2b1a1e}
+.pill{font-size:10.5px;border:1px solid var(--line);border-radius:5px;padding:1px 7px;color:var(--muted);background:var(--panel)}
+.pill.mcp{color:var(--accent);border-color:#2b3d63;background:var(--accent-soft)}
+.markdown{margin-top:26px;font-size:14px;line-height:2.05;color:#c6d1e0}
+.markdown p{margin:0 0 18px}
+.markdown h2{font-size:18px;color:var(--ink);margin:32px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);scroll-margin-top:70px}
+.markdown h3{font-size:15px;color:var(--ink);margin:24px 0 10px;scroll-margin-top:70px}
+.markdown h2:first-child{margin-top:0}
+.markdown strong{color:var(--ink)}
+.markdown ul{padding-left:20px;margin:0 0 18px}
+.markdown li{margin:6px 0}
+.markdown blockquote{margin:20px 0;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;padding:12px 16px;color:#aebbd2}
+.markdown code{font:12px ui-monospace,Menlo,Consolas,monospace;background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:2px 6px;color:#9ec3f2}
+.markdown pre{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:16px 18px;overflow:auto;margin:18px 0 22px}
+.markdown pre code{background:none;border:0;padding:0;color:#b7cdf0;line-height:1.85}
+.markdown table{border-collapse:collapse;width:100%;font-size:12.5px;margin:18px 0 24px}
+.markdown th{background:var(--panel2);color:var(--ink);font-weight:600;text-align:left}
+.markdown th,.markdown td{border:1px solid var(--line);padding:9px 12px;vertical-align:top}
+.doc-end{max-width:820px;margin:0 auto;padding:16px 40px 50px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)}
+/* 右侧信息轨 */
+.rail{position:fixed;right:24px;top:120px;width:172px;font-size:11.5px;color:var(--muted)}
+.rail .rail-title{letter-spacing:.18em;font-size:10px;margin-bottom:11px}
+.rail .toc{border-left:1px solid var(--line);padding-left:13px;display:flex;flex-direction:column;gap:9px;margin-bottom:26px}
+.rail .toc button{text-align:left;color:inherit;padding:0}
+.rail .toc button:hover{color:var(--accent)}
+.rail .src{border-top:1px solid var(--line);padding-top:12px;line-height:1.9}
+@media(max-width:1200px){.rail{display:none}}
+@media(max-width:840px){.app{display:block}.sidebar{display:none}.reading,.doc-end{padding-left:22px;padding-right:22px}.reader-toolbar{padding:10px 20px}}
+</style></head><body>
+<header>
+  <a class="brand" href="#" onclick="return false"><span class="brand-mark">山</span>书山有路<small>知识库</small></a>
+  <label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="搜索整个知识库…" aria-label="搜索整个知识库"><kbd>/</kbd></label>
+  <span class="avatar" title="工作区菜单">山</span>
+</header>
+<main class="app">
+  <aside class="sidebar" aria-label="知识库导航">
+    <div class="section-label"><span>目录</span><span id="total"></span></div>
+    <div class="tree-filter"><input id="tq" type="search" placeholder="筛选目录…" aria-label="筛选目录"></div>
+    <nav id="tree" aria-label="多级知识目录"></nav>
+  </aside>
+  <section class="reader" aria-label="正文阅读区">
+    <div class="reader-toolbar">
+      <span class="doc-crumb" id="crumb"></span>
+      <button class="icon-btn" id="starBtn" aria-label="收藏">☆</button>
+      <button class="icon-btn" title="朗读（演示）">▶</button>
+      <button class="icon-btn" title="字号（演示）">Aa</button>
+    </div>
+    <div class="reading">
+      <div class="eyebrow" id="eyebrow"></div>
+      <h1 class="doc-title" id="title"></h1>
+      <div class="doc-properties" id="meta"></div>
+      <div class="markdown" id="body"></div>
+    </div>
+    <div class="doc-end"><span id="updated"></span><span>书山有路 · 演示原型</span></div>
+  </section>
+</main>
+<nav class="rail" aria-label="本页信息"><div class="rail-title">本页目录</div><div class="toc" id="toc"></div><div class="src" id="src"></div></nav>
+<script src="data.js"></script>
+<script>
+'use strict';
+const notes = buildSeed();
+let active = notes[0], favorite = new Set(notes.filter(n => n.favorite).map(n => n.id));
+let treeQuery = '', query = '';
+const $ = id => document.getElementById(id);
+$('total').textContent = notes.length + ' 篇';
+
+function filtered() { return query ? notes.filter(n => (n.title + n.summary + n.tags.join()).includes(query)) : notes; }
+function inFolder(fid) { return filtered().filter(n => n.folder === fid); }
+
+function buildTree() {
+  const tree = $('tree'); tree.innerHTML = '';
+  for (const g of FOLDERS) {
+    const gl = document.createElement('div'); gl.className = 'tree-group';
+    const row = document.createElement('button'); row.type = 'button'; row.className = 'tree-row';
+    row.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>'
+      + g.name + '<span class="count">' + g.children.reduce((s, c) => s + inFolder(c.id).length, 0) + '</span>';
+    tree.appendChild(row);
+    for (const c of g.children) {
+      const items = inFolder(c.id); if (!items.length) continue;
+      const sub = document.createElement('div'); sub.style.cssText = 'margin:2px 0 8px 14px;border-left:1px solid var(--line);padding-left:6px';
+      for (const n of items) {
+        const f = document.createElement('button'); f.type = 'button'; f.className = 'tree-file' + (n.id === active.id ? ' selected' : '');
+        f.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6Z"/></svg><span>' + n.title + '</span>';
+        f.onclick = () => { active = n; render(); };
+        sub.appendChild(f);
+      }
+      tree.appendChild(sub);
+    }
+  }
+  const inbox = inFolder('inbox');
+  if (inbox.length) {
+    const row = document.createElement('button'); row.type = 'button'; row.className = 'tree-row';
+    row.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 5h16l2 13H2L4 5Z"/><path d="M2 13h6l2 3h4l2-3h6"/></svg>收件箱<span class="count">' + inbox.length + '</span>';
+    tree.appendChild(row);
+    for (const n of inbox) {
+      const f = document.createElement('button'); f.type = 'button'; f.className = 'tree-file' + (n.id === active.id ? ' selected' : '');
+      f.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6Z"/></svg><span>' + n.title + '</span>';
+      f.onclick = () => { active = n; render(); };
+      tree.appendChild(f);
+    }
+  }
+}
+
+function render() {
+  buildTree();
+  const n = active, fav = favorite.has(n.id);
+  $('crumb').innerHTML = folderPath(n.folder) + ' <span style="color:var(--line)">/</span> <b>' + n.title + '</b>';
+  $('eyebrow').textContent = folderLabel(n.folder) + (n.source === 'mcp' ? ' · MCP 导入' : '');
+  $('title').textContent = n.title;
+  const st = { indexed: '已索引', pending: '待索引', failed: '索引失败' }[n.status];
+  $('meta').innerHTML = '<span>' + shortDate(n.updated) + ' 更新</span><span class="sep">·</span>'
+    + '<span class="status ' + n.status + '">' + st + '</span>'
+    + '<span class="pill' + (n.source === 'mcp' ? ' mcp' : '') + '">' + (n.source === 'mcp' ? 'MCP · ' + n.tool : '手动创建') + '</span>'
+    + n.tags.map(t => '<span class="pill">' + t + '</span>').join('');
+  $('body').innerHTML = renderMarkdown(n.body);
+  $('updated').textContent = '最后更新于 ' + n.updated.slice(0, 16).replace('T', ' ');
+  const sb = $('starBtn'); sb.textContent = fav ? '★' : '☆'; sb.classList.toggle('on', fav);
+  sb.onclick = () => { favorite.has(n.id) ? favorite.delete(n.id) : favorite.add(n.id); render(); };
+  $('src').innerHTML = '<b style="color:var(--ink);font-weight:550">来源信息</b><br>'
+    + (n.source === 'mcp' ? '工具 ' + n.tool + '<br>导入于 ' + n.updated.slice(0, 10) : '手动创建<br>无外部来源');
+  const toc = $('toc'); toc.innerHTML = '';
+  document.querySelectorAll('.markdown h2').forEach((h, i) => {
+    h.id = 'h' + i;
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = h.textContent;
+    b.onclick = () => h.scrollIntoView({ behavior: 'smooth' });
+    toc.appendChild(b);
+  });
+  $('reader').querySelector('.reading').scrollIntoView;
+  document.querySelector('.reader').scrollTop = 0;
+}
+
+$('tq').addEventListener('input', e => { treeQuery = e.target.value.trim(); render(); });
+$('q').addEventListener('input', e => { query = e.target.value.trim(); render(); });
+render();
+</script>
+</body></html>

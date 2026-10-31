@@ -1,0 +1,166 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>演化 03 · 清爽彩签</title><style>
+/* 当前双栏骨架的现代 SaaS 演化：柔和渐变底、彩色目录标签、圆角卡片与玻璃头部。 */
+*{box-sizing:border-box}
+:root{--ink:#2c3144;--muted:#8b91a7;--line:#e8eaf2;--accent:#5b6cff;--card:#ffffff}
+html,body{margin:0;min-height:100%}
+body{color:var(--ink);font:13.5px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(160deg,#eef1ff 0%,#f7f5ff 42%,#fdf4f0 100%) fixed;-webkit-font-smoothing:antialiased}
+button{cursor:pointer;color:inherit;border:0;background:none;font:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg{width:15px;height:15px;vertical-align:-2px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+header{height:58px;display:flex;align-items:center;gap:20px;padding:0 24px;background:#ffffffb8;backdrop-filter:blur(14px);border-bottom:1px solid #ffffff}
+.brand{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:750;color:var(--ink);text-decoration:none}
+.brand-mark{width:27px;height:27px;border-radius:9px;background:linear-gradient(135deg,#6d7dff,#9b6dff);color:#fff;display:grid;place-items:center;font-size:14px}
+.brand small{color:var(--muted);font-size:11px;font-weight:500}
+.search{margin-left:auto;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:99px;background:#fff;padding:0 8px 0 14px;height:36px;width:min(320px,32vw);color:var(--muted);box-shadow:0 2px 10px #5b6cff10}
+.search input{border:0;background:none;outline:none;width:100%;font-size:12.5px;color:var(--ink)}
+.avatar{width:31px;height:31px;border-radius:50%;background:linear-gradient(135deg,#ffd08a,#ff9d6c);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700}
+.app{height:calc(100dvh - 58px);display:grid;grid-template-columns:262px minmax(0,1fr);max-width:1560px;margin:0 auto;padding:14px 16px 0;gap:16px}
+/* 侧栏卡片 */
+.sidebar{background:var(--card);border-radius:18px;border:1px solid #ffffff;box-shadow:0 12px 34px #4b508714;padding:16px 10px;display:flex;flex-direction:column;overflow:auto}
+.section-label{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;color:var(--ink);margin:2px 8px 12px}
+.section-label .hint{font-size:11px;color:var(--muted);font-weight:500}
+.tree-filter input{width:100%;border:1px solid var(--line);background:#f6f7fc;border-radius:9px;padding:7px 12px;font-size:12.5px;color:var(--ink);outline:none;margin-bottom:12px}
+.tree-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:10px;font-size:13px;font-weight:600;color:var(--ink)}
+.tree-row:hover{background:#f4f5fb}
+.chip{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;color:#fff;font-size:12px;flex-shrink:0}
+.tree-row .count{margin-left:auto;font-size:11px;color:var(--muted);font-weight:500}
+.tree-file{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:7px 10px 7px 18px;border-radius:10px;color:#5c6275;font-size:12.5px}
+.tree-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-file:hover{background:#f4f5fb;color:var(--ink)}
+.tree-file.selected{background:#ecefff;color:var(--accent);font-weight:600}
+/* 正文卡片 */
+.readerwrap{min-width:0;display:flex;flex-direction:column;gap:14px;padding-bottom:16px}
+.reader{flex:1;min-height:0;overflow:auto;background:var(--card);border-radius:18px;border:1px solid #ffffff;box-shadow:0 12px 34px #4b508714}
+.reader-toolbar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:14px 30px;background:#ffffffd9;backdrop-filter:blur(10px);border-bottom:1px solid var(--line);border-radius:18px 18px 0 0}
+.doc-crumb{font-size:12px;color:var(--muted);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.doc-crumb b{color:var(--ink)}
+.icon-btn{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--muted);background:#f4f5fb}
+.icon-btn:hover{background:#ecefff;color:var(--accent)}
+.icon-btn.on{background:#fff0e6;color:#f08c3c}
+.reading{max-width:800px;margin:0 auto;padding:32px 42px 56px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--accent);background:#ecefff;border-radius:99px;padding:3px 12px;margin-bottom:14px}
+h1.doc-title{font-size:27px;font-weight:800;letter-spacing:-.4px;margin:0 0 16px}
+.doc-properties{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:8px}
+.tag{font-size:11.5px;font-weight:600;border-radius:99px;padding:2px 11px}
+.t0{color:#5b6cff;background:#ecefff}.t1{color:#0e9f6e;background:#def7ec}.t2{color:#d97706;background:#fdf0dd}.t3{color:#db2777;background:#fbe5f1}.t4{color:#0891b2;background:#dcf5fa}
+.markdown{margin-top:22px;font-size:14px;line-height:2;color:#3d4258}
+.markdown p{margin:0 0 17px}
+.markdown h2{font-size:18px;font-weight:750;margin:30px 0 13px;scroll-margin-top:80px}
+.markdown h3{font-size:15px;font-weight:700;margin:22px 0 10px;scroll-margin-top:80px}
+.markdown h2:first-child{margin-top:0}
+.markdown strong{color:var(--accent)}
+.markdown ul{padding-left:20px;margin:0 0 17px}
+.markdown li{margin:6px 0}
+.markdown blockquote{margin:20px 0;border-left:3px solid var(--accent);background:#f5f6ff;border-radius:0 12px 12px 0;padding:13px 17px;color:#5a6285}
+.markdown code{font:12px ui-monospace,Menlo,Consolas,monospace;background:#f1f2f8;border-radius:5px;padding:2px 6px;color:#c2410c}
+.markdown pre{background:#23263a;color:#dbe4ff;border-radius:14px;padding:18px 20px;overflow:auto;margin:18px 0 22px}
+.markdown pre code{background:none;padding:0;color:inherit;line-height:1.85}
+.markdown table{border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px;margin:18px 0 24px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.markdown th{background:#f6f7fc;font-weight:700;text-align:left}
+.markdown th,.markdown td{padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+.markdown tr:last-child td{border-bottom:0}
+.doc-end{max-width:800px;margin:0 auto;padding:14px 42px 40px;display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)}
+.fab{position:fixed;right:30px;bottom:30px;z-index:5;height:46px;padding:0 20px;border-radius:99px;border:0;background:linear-gradient(135deg,#6d7dff,#9b6dff);color:#fff;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px;box-shadow:0 10px 26px #6d7dff59}
+@media(max-width:860px){.app{display:block}.sidebar{display:none}.reading,.doc-end{padding-left:22px;padding-right:22px}.reader-toolbar{padding:12px 20px}}
+</style></head><body>
+<header>
+  <a class="brand" href="#" onclick="return false"><span class="brand-mark">山</span>书山有路<small>知识库</small></a>
+  <label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="搜索整个知识库…" aria-label="搜索整个知识库"></label>
+  <span class="avatar">山</span>
+</header>
+<main class="app">
+  <aside class="sidebar" aria-label="知识库导航">
+    <div class="section-label"><span>我的目录</span><span class="hint" id="total"></span></div>
+    <div class="tree-filter"><input id="tq" type="search" placeholder="筛选目录…" aria-label="筛选目录"></div>
+    <nav id="tree" aria-label="多级知识目录"></nav>
+  </aside>
+  <div class="readerwrap">
+    <section class="reader" aria-label="正文阅读区">
+      <div class="reader-toolbar">
+        <span class="doc-crumb" id="crumb"></span>
+        <button class="icon-btn" id="starBtn" aria-label="收藏">☆</button>
+        <button class="icon-btn" title="分享（演示）">↗</button>
+      </div>
+      <div class="reading">
+        <span class="eyebrow" id="eyebrow"></span>
+        <h1 class="doc-title" id="title"></h1>
+        <div class="doc-properties" id="meta"></div>
+        <div class="markdown" id="body"></div>
+      </div>
+      <div class="doc-end"><span id="updated"></span><span>书山有路 · 演示原型</span></div>
+    </section>
+  </div>
+</main>
+<button class="fab" onclick="alert('原型演示：新建笔记')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>新建笔记</button>
+<script src="data.js"></script>
+<script>
+'use strict';
+const notes = buildSeed();
+let active = notes[0], favorite = new Set(notes.filter(n => n.favorite).map(n => n.id));
+let treeQuery = '', query = '';
+const $ = id => document.getElementById(id);
+$('total').textContent = notes.length + ' 篇';
+/* 每个顶级目录一枚彩色标签 */
+const HUES = { guide: '#f08c3c', engineering: '#5b6cff', ai: '#9b6dff', product: '#0e9f6e' };
+const GLYPH = { guide: '指', engineering: '工', ai: 'AI', product: '产' };
+
+function filtered() { return query ? notes.filter(n => (n.title + n.summary + n.tags.join()).includes(query)) : notes; }
+function inFolder(fid) { return filtered().filter(n => n.folder === fid); }
+
+function buildTree() {
+  const tree = $('tree'); tree.innerHTML = '';
+  for (const g of FOLDERS) {
+    const count = g.children.reduce((s, c) => s + inFolder(c.id).length, 0);
+    if (treeQuery && !count) continue;
+    const row = document.createElement('button'); row.type = 'button'; row.className = 'tree-row';
+    row.innerHTML = '<span class="chip" style="background:' + HUES[g.id] + '">' + GLYPH[g.id] + '</span>' + g.name + '<span class="count">' + count + '</span>';
+    tree.appendChild(row);
+    for (const c of g.children) {
+      const items = inFolder(c.id); if (!items.length) continue;
+      const label = document.createElement('div');
+      label.style.cssText = 'margin:10px 10px 4px;font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.05em';
+      label.textContent = c.name;
+      tree.appendChild(label);
+      for (const n of items) {
+        const f = document.createElement('button'); f.type = 'button'; f.className = 'tree-file' + (n.id === active.id ? ' selected' : '');
+        f.innerHTML = '<svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M6 3h8l4 4v14H6Z"/></svg><span>' + n.title + '</span>';
+        f.onclick = () => { active = n; render(); };
+        tree.appendChild(f);
+      }
+    }
+  }
+  const inbox = inFolder('inbox');
+  if (inbox.length) {
+    const row = document.createElement('button'); row.type = 'button'; row.className = 'tree-row';
+    row.innerHTML = '<span class="chip" style="background:#8b91a7">收</span>收件箱<span class="count">' + inbox.length + '</span>';
+    tree.appendChild(row);
+    for (const n of inbox) {
+      const f = document.createElement('button'); f.type = 'button'; f.className = 'tree-file' + (n.id === active.id ? ' selected' : '');
+      f.innerHTML = '<svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M6 3h8l4 4v14H6Z"/></svg><span>' + n.title + '</span>';
+      f.onclick = () => { active = n; render(); };
+      tree.appendChild(f);
+    }
+  }
+}
+
+function render() {
+  buildTree();
+  const n = active, fav = favorite.has(n.id);
+  $('crumb').innerHTML = folderPath(n.folder) + ' · <b>' + n.title + '</b>';
+  $('eyebrow').textContent = folderLabel(n.folder) + (n.source === 'mcp' ? ' · MCP 导入' : '');
+  $('title').textContent = n.title;
+  $('meta').innerHTML = '<span>' + shortDate(n.updated) + ' 更新</span><span>·</span>'
+    + '<span>' + (n.source === 'mcp' ? '来源 ' + n.tool : '手动创建') + '</span>'
+    + n.tags.map((t, i) => '<span class="tag t' + (i % 5) + '">' + t + '</span>').join('');
+  $('body').innerHTML = renderMarkdown(n.body);
+  $('updated').textContent = '最后更新于 ' + n.updated.slice(0, 10);
+  const sb = $('starBtn'); sb.textContent = fav ? '★' : '☆'; sb.classList.toggle('on', fav);
+  sb.onclick = () => { favorite.has(n.id) ? favorite.delete(n.id) : favorite.add(n.id); render(); };
+  document.querySelector('.reader').scrollTop = 0;
+}
+
+$('tq').addEventListener('input', e => { treeQuery = e.target.value.trim(); render(); });
+$('q').addEventListener('input', e => { query = e.target.value.trim(); render(); });
+render();
+</script>
+</body></html>

@@ -1,0 +1,104 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>目录方案 01 · 无框融入</title><style>
+/* 思路：去掉卡片的一切装饰（边框/底色/投影），目录就是页面边缘的一列安静文字，
+ * 与正文共享同一套字号与灰阶，靠高亮小节建立联系 —— 消除「贴了一张卡片」的割裂感。 */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+html,body{margin:0}
+body{background:#f4f6f8;color:#243044;font:13.5px/1.7 Inter,-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{cursor:pointer;border:0;background:none;font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:10;height:48px;display:flex;align-items:center;gap:18px;padding:0 18px;background:#fff;border-bottom:1px solid #e5e9ef}
+.brand{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:700;color:#243044;text-decoration:none}
+.brand-mark{width:24px;height:24px;border-radius:6px;background:#3564a9;color:#fff;display:grid;place-items:center;font-size:13px}
+.search{margin-left:auto;display:flex;align-items:center;position:relative;width:min(320px,32vw);height:32px;color:#8c97a7}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%)}
+.search input{width:100%;height:100%;border:1px solid #e5e9ef;border-radius:6px;background:#f8f9fb;padding:0 34px;font-size:12px;color:#243044;outline:none}
+.page{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:40px;max-width:1100px;margin:0 auto;padding:36px 32px 90px;align-items:start}
+.doc{min-width:0}
+.crumb{font-size:12px;color:#8a97a8;margin-bottom:16px}
+.crumb b{color:#243044;font-weight:600}
+h1.title{font-size:26px;line-height:1.5;letter-spacing:-.4px;font-weight:700;margin:0 0 14px;color:#25344a}
+.tags{display:flex;gap:6px;margin-bottom:26px}
+.tag{font-size:11px;color:#748ba9;background:#f2f5fa;padding:3px 9px;border-radius:4px}
+.doc h2{font-size:17px;font-weight:650;color:#2c3c52;margin:32px 0 13px;padding-bottom:7px;border-bottom:1px solid #e8edf3;scroll-margin-top:70px}
+.doc h3{font-size:14px;font-weight:650;color:#33455c;margin:22px 0 9px;scroll-margin-top:70px}
+.doc p{margin:0 0 15px;color:#3b4a5e}
+.doc ul{padding-left:19px;margin:0 0 15px;color:#3b4a5e}
+.doc li{margin:5px 0}
+.doc code{font:12px ui-monospace,Menlo,monospace;background:#f0f3f7;border-radius:3px;padding:2px 6px;color:#526b8b}
+/* —— 方案核心：无框目录 —— */
+.toc{position:sticky;top:32px;max-height:calc(100dvh - 96px);overflow:auto;overscroll-behavior:contain;padding:2px 0;scrollbar-width:none}
+.toc:hover{scrollbar-width:thin}
+.toc-title{font-size:11px;letter-spacing:.18em;color:#a0abb9;margin:0 0 12px 12px}
+.toc button{display:block;width:100%;text-align:left;padding:5px 10px 5px 12px;border-left:2px solid transparent;font-size:12px;line-height:1.7;color:#93a0af;border-radius:0 5px 5px 0;transition:color .15s,border-color .15s,background .15s}
+.toc button.l2{padding-left:26px;font-size:11.5px}
+.toc button:hover{color:#2c3a4c;background:#eef2f7}
+.toc button.on{color:#2b5d8f;font-weight:600;border-left-color:#3564a9;background:linear-gradient(90deg,#eaf0f9,#eaf0f900)}
+.toc button.on.l2{border-left-color:#7d9cc4}
+.progress{position:fixed;top:48px;left:0;height:2px;background:#3564a9;width:0;z-index:11;transition:width .1s linear}
+.hint{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);font-size:11px;color:#93a0af;background:#ffffffd9;border:1px solid #e5e9ef;border-radius:99px;padding:5px 14px;backdrop-filter:blur(6px)}
+@media(max-width:1100px){.page{grid-template-columns:1fr}.toc{display:none}}
+</style></head><body>
+<div class="progress" id="pbar"></div>
+<header>
+  <a class="brand" href="#" onclick="return false"><span class="brand-mark">山</span>书山有路</a>
+  <label class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="搜索整个知识库…"></label>
+</header>
+<main class="page">
+  <article class="doc">
+    <div class="crumb">younote / <b>技术</b></div>
+    <h1 class="title">QBlog MCP 入门：服务介绍、安装接入与使用教程</h1>
+    <div class="tags"><span class="tag"># mcp</span><span class="tag"># qblog</span><span class="tag"># 使用教程</span></div>
+    <div id="body"></div>
+  </article>
+  <nav class="toc" id="toc" aria-label="本文目录"><div class="toc-title">本文目录</div><div id="tocItems"></div></nav>
+</main>
+<div class="hint">方案 01 · 无框融入 —— 目录无卡片装饰，滚动时自动跟随高亮；目录过长时悬停可独立滚动</div>
+<script>
+'use strict'
+const SECTIONS = [
+  { t: '一、服务概述', l: 1, ps: ['QBlog private knowledge 是一个通过 MCP（Model Context Protocol，模型上下文协议）向 AI 客户端提供笔记、文件夹和文章操作能力的远程服务。接入后，支持 MCP 的客户端可以根据用户指令搜索资料、读取笔记、创建内容，并在获得授权后更新或发布文章。', '本文介绍的是已运行的远程服务如何接入和使用，不是 QBlog 服务端的源码部署教程。'] },
+  { t: '二、工具概览', l: 1, ps: ['服务当前暴露以下工具，均以只读或受控写入方式工作：'], list: [['notes_search', '文本搜索、分页，以及按文件夹、标签、收件箱筛选'], ['notes_get', '按 ID 读取详情和版本'], ['notes_create / notes_update', '创建与更新笔记（需要 WRITE 权限）'], ['folders_list', '读取目录树与计数']] },
+  { t: '三、客户端接入', l: 1, ps: ['以 Cherry Studio 为例：设置 → MCP 服务器 → 添加服务器，类型选择「HTTP」，将服务地址与 API Key 填入即可。其他支持 MCP 的客户端流程类似。'] },
+  { t: '3.1 接入准备', l: 2, ps: ['在「工作区菜单 → MCP 接入」创建一个 API Token，建议只授予 READ 权限用于检索场景；需要写入时再创建单独的 WRITE Token。'] },
+  { t: '3.2 连接配置', l: 2, ps: ['服务地址为 https 域名 + /api/mcp，鉴权使用 HTTP 请求头 Authorization: Bearer <API_KEY>。传输为无状态 JSON，不维护会话。'] },
+  { t: '3.3 工具发现', l: 2, ps: ['连接成功后，客户端会自动列出可用工具。若列表为空，优先检查 Token 的读写范围与目录授权。'] },
+  { t: '四、接口验证', l: 1, ps: ['完成配置后，先用一次最小请求验证通路，再进入日常使用。'] },
+  { t: '4.1 初始化连接', l: 2, ps: ['在客户端对话框输入「列出可用的 MCP 工具」，能返回工具清单即代表握手成功。'] },
+  { t: '4.2 发送初始化通知', l: 2, ps: ['部分客户端会自动发送 initialize 通知；如果需要手动验证，可使用任意 MCP 调试器按协议发送。'] },
+  { t: '4.3 获取工具列表', l: 2, ps: ['确认 notes_search、notes_get 等工具出现，并且数量与服务端声明一致。'] },
+  { t: '4.4 搜索笔记', l: 2, ps: ['输入「搜索包含 MCP 的笔记」，返回结果应包含本篇教程，并带有命中上下文摘要。'] },
+  { t: '五、使用指南', l: 1, ps: ['日常使用以检索和整理为主：让 AI 帮你找到「记得写过但记不清位置」的内容，或把对话结论沉淀成新笔记。'] },
+  { t: '5.1 创建笔记', l: 2, ps: ['对话中让 AI 把结论写入知识库，会生成一篇手动归入收件箱的笔记，稍后在目录树中移动到合适位置。'] },
+  { t: '5.2 更新与发布', l: 2, ps: ['更新操作带版本校验：并发修改会被拒绝并返回最新版本，避免静默覆盖。'] },
+  { t: '六、验证与排障', l: 1, ps: ['工具列表为空 → 检查 Token 权限；搜索无结果 → 改用更短的关键词；写入失败 → 查看返回的业务码，多数是版本冲突或目录未授权。'] },
+  { t: '七、参考资料', l: 1, ps: ['Model Context Protocol 规范、QBlog 工作区设置页内的 API 文档，以及本知识库中「MCP 写入知识库的字段协议」一篇。'] },
+]
+const body = document.getElementById('body')
+for (const s of SECTIONS) {
+  const h = document.createElement(s.l === 1 ? 'h2' : 'h3')
+  h.textContent = s.t; h.id = 's-' + SECTIONS.indexOf(s)
+  body.appendChild(h)
+  for (const p of s.ps || []) { const el = document.createElement('p'); el.textContent = p; body.appendChild(el) }
+  if (s.list) { const ul = document.createElement('ul'); for (const [c, d] of s.list) { const li = document.createElement('li'); li.innerHTML = '<code>' + c + '</code> — ' + d; ul.appendChild(li) } body.appendChild(ul) }
+}
+const items = document.getElementById('tocItems')
+const btns = SECTIONS.map((s, i) => {
+  const b = document.createElement('button')
+  b.className = s.l === 2 ? 'l2' : ''
+  b.textContent = s.t
+  b.onclick = () => document.getElementById('s-' + i).scrollIntoView({ behavior: 'smooth' })
+  items.appendChild(b)
+  return b
+})
+const headings = SECTIONS.map((s, i) => document.getElementById('s-' + i))
+function spy() {
+  let active = 0
+  for (let i = 0; i < headings.length; i++) if (headings[i].getBoundingClientRect().top < 90) active = i
+  btns.forEach((b, i) => b.classList.toggle('on', i === active))
+  const doc = document.documentElement
+  const p = doc.scrollTop / Math.max(1, doc.scrollHeight - doc.clientHeight)
+  document.getElementById('pbar').style.width = (p * 100) + '%'
+}
+addEventListener('scroll', spy, { passive: true }); spy()
+</script>
+</body></html>

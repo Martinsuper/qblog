@@ -1,0 +1,174 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>演化 04 · 极简等宽</title><style>
+/* 当前双栏骨架的工程风演化：细线框、等宽元信息、命令条过滤、路径面包屑。 */
+*{box-sizing:border-box}
+:root{--bg:#fcfcfb;--panel:#f7f7f5;--ink:#22252a;--muted:#7c828c;--line:#e4e6e2;--accent:#1a7f5a;--accent-soft:#e8f3ed;--warn:#b4690e;--bad:#b3403f}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:13.5px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{cursor:pointer;color:inherit;border:0;background:none;font:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg{width:14px;height:14px;vertical-align:-2px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+header{height:46px;display:flex;align-items:center;gap:16px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:700;letter-spacing:.2px;color:var(--ink)}
+.brand-mark{width:22px;height:22px;border:1.5px solid var(--ink);border-radius:4px;display:grid;place-items:center;font:700 12px/1 ui-monospace,Menlo,monospace}
+.brand small{color:var(--muted);font-weight:500;font-size:11px}
+.cmdbar{margin-left:auto;display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:6px;height:30px;padding:0 10px;width:min(380px,38vw);color:var(--muted)}
+.cmdbar input{border:0;outline:none;width:100%;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:none}
+.cmdbar kbd{border:1px solid var(--line);border-radius:3px;background:var(--panel);padding:0 5px;font-size:10px;color:var(--muted)}
+.avatar{width:26px;height:26px;border:1px solid var(--line);border-radius:4px;display:grid;place-items:center;color:var(--muted);font:600 11px/1 ui-monospace,Menlo,monospace}
+.app{height:calc(100dvh - 46px);display:grid;grid-template-columns:252px minmax(0,1fr)}
+/* 文件树 */
+.sidebar{border-right:1px solid var(--line);background:var(--panel);padding:12px 8px;overflow:auto}
+.tree-head{display:flex;justify-content:space-between;align-items:center;padding:2px 8px 8px;font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.tree-row{display:flex;align-items:center;gap:7px;width:100%;text-align:left;padding:4px 8px;border-radius:3px;font:500 12.5px/1.6 ui-monospace,Menlo,Consolas,monospace;color:var(--ink)}
+.tree-row:hover{background:#efefec}
+.tree-row .tw{width:12px;color:var(--muted)}
+.tree-row .count{margin-left:auto;font-size:10.5px;color:var(--muted)}
+.tree-file{display:flex;align-items:center;gap:7px;width:100%;text-align:left;padding:3.5px 8px 3.5px 27px;border-radius:3px;font:400 12px/1.6 ui-monospace,Menlo,Consolas,monospace;color:#565c66;white-space:nowrap}
+.tree-file:hover{background:#efefec;color:var(--ink)}
+.tree-file.selected{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.tree-file .ext{color:var(--muted);font-size:10px;margin-left:auto}
+/* 命令提示行 */
+.statusline{position:sticky;bottom:0;margin-top:12px;border-top:1px solid var(--line);padding:7px 10px;background:var(--panel);font:11px/1.6 ui-monospace,Menlo,monospace;color:var(--muted);display:flex;gap:12px;z-index:1}
+/* 正文 */
+.reader{overflow:auto;background:var(--bg)}
+.reader-toolbar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:9px 26px;background:#fcfcfbee;backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+.crumb-path{font:12px/1.6 ui-monospace,Menlo,Consolas,monospace;color:var(--muted);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.crumb-path b{color:var(--ink);font-weight:600}
+.icon-btn{width:26px;height:26px;border:1px solid var(--line);border-radius:4px;display:grid;place-items:center;color:var(--muted);background:#fff}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+.icon-btn.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.reading{max-width:780px;margin:0 auto;padding:30px 36px 50px}
+.metaline{display:flex;flex-wrap:wrap;gap:0 14px;font:11.5px/1.8 ui-monospace,Menlo,monospace;color:var(--muted);border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:6px}
+.metaline .k{color:var(--accent)}
+h1.doc-title{font-size:24px;font-weight:750;letter-spacing:-.3px;margin:14px 0 4px;line-height:1.45}
+.subtitle{color:var(--muted);font-size:13px;margin:0 0 10px}
+.markdown{margin-top:18px;font-size:13.5px;line-height:1.95;color:#343941;counter-reset:h2}
+.markdown p{margin:0 0 16px}
+.markdown h2{font-size:16.5px;font-weight:700;margin:30px 0 12px;scroll-margin-top:60px}
+.markdown h2:before{counter-increment:h2;content:counter(h2,decimal-leading-zero) " · ";color:var(--accent);font:600 13px ui-monospace,Menlo,monospace;margin-right:2px}
+.markdown h3{font-size:14px;font-weight:700;margin:20px 0 8px;scroll-margin-top:60px}
+.markdown h2:first-child{margin-top:0}
+.markdown strong{color:var(--ink)}
+.markdown ul{padding-left:6px;margin:0 0 16px;list-style:none}
+.markdown li{margin:5px 0;padding-left:18px;position:relative}
+.markdown li:before{content:"›";position:absolute;left:2px;color:var(--accent);font-weight:700}
+.markdown blockquote{margin:18px 0;border-left:2px solid var(--ink);padding:2px 16px;color:#565c66;background:var(--panel)}
+.markdown code{font:11.5px/1.7 ui-monospace,Menlo,monospace;background:#f0f1ee;border:1px solid var(--line);border-radius:3px;padding:1px 5px;color:#0d5c40}
+.markdown pre{background:#22252a;color:#c8e8d6;border-radius:5px;padding:15px 17px;overflow:auto;margin:16px 0 20px}
+.markdown pre code{background:none;border:0;padding:0;color:inherit;line-height:1.8}
+.markdown table{border-collapse:collapse;width:100%;font-size:12px;margin:16px 0 22px}
+.markdown th{font:600 11px/1.6 ui-monospace,Menlo,monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;border-bottom:2px solid var(--ink);padding:7px 10px}
+.markdown td{border-bottom:1px solid var(--line);padding:8px 10px;vertical-align:top}
+.doc-end{max-width:780px;margin:0 auto;padding:12px 36px 40px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font:11px/1.6 ui-monospace,Menlo,monospace;color:var(--muted)}
+.badge{font:600 10px/1 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:3px;padding:3px 6px;color:var(--muted);background:var(--panel)}
+.badge.mcp{color:var(--accent);border-color:var(--accent)}
+@media(max-width:860px){.app{display:block}.sidebar{display:none}.reading,.doc-end{padding-left:20px;padding-right:20px}.reader-toolbar{padding:8px 16px}}
+</style></head><body>
+<header>
+  <a class="brand" href="#" onclick="return false"><span class="brand-mark">山</span>书山有路<small class="mono">/ knowledge</small></a>
+  <label class="cmdbar"><svg viewBox="0 0 24 24"><path d="m4 6 5 6-5 6M12 18h8"/></svg><input id="q" type="search" placeholder="输入关键词过滤全部笔记…" aria-label="过滤全部笔记"><kbd>⌘K</kbd></label>
+  <span class="avatar" title="工作区菜单">YS</span>
+</header>
+<main class="app">
+  <aside class="sidebar" aria-label="知识库导航">
+    <div class="tree-head"><span>EXPLORER</span><span id="total" class="mono"></span></div>
+    <nav id="tree" aria-label="多级知识目录"></nav>
+    <div class="statusline"><span id="selinfo"></span><span>LF · UTF-8</span></div>
+  </aside>
+  <section class="reader" aria-label="正文阅读区">
+    <div class="reader-toolbar">
+      <span class="crumb-path" id="crumb"></span>
+      <button class="icon-btn" id="starBtn" aria-label="收藏">☆</button>
+      <button class="icon-btn" title="原始 Markdown（演示）">M↓</button>
+    </div>
+    <div class="reading">
+      <div class="metaline" id="meta"></div>
+      <h1 class="doc-title" id="title"></h1>
+      <p class="subtitle" id="summary"></p>
+      <div class="markdown" id="body"></div>
+    </div>
+    <div class="doc-end"><span id="updated"></span><span>younote v0.7 · 原型</span></div>
+  </section>
+</main>
+<script src="data.js"></script>
+<script>
+'use strict';
+const notes = buildSeed();
+let active = notes[0], favorite = new Set(notes.filter(n => n.favorite).map(n => n.id));
+let query = '';
+const $ = id => document.getElementById(id);
+$('total').textContent = notes.length + ' files';
+
+function filtered() { return query ? notes.filter(n => (n.title + n.summary + n.tags.join()).includes(query)) : notes; }
+function inFolder(fid) { return filtered().filter(n => n.folder === fid); }
+function titleCase(s) { return s; }
+
+function buildTree() {
+  const tree = $('tree'); tree.innerHTML = '';
+  for (const g of FOLDERS) {
+    const count = g.children.reduce((s, c) => s + inFolder(c.id).length, 0);
+    if (!count) continue;
+    const row = document.createElement('button'); row.type = 'button'; row.className = 'tree-row';
+    row.innerHTML = '<span class="tw">▾</span>' + g.name + '<span class="count">' + count + '</span>';
+    tree.appendChild(row);
+    for (const c of g.children) {
+      const items = inFolder(c.id); if (!items.length) continue;
+      const sub = document.createElement('button'); sub.type = 'button'; sub.className = 'tree-row';
+      sub.style.paddingLeft = '22px';
+      sub.innerHTML = '<span class="tw">▾</span>' + c.name + '<span class="count">' + items.length + '</span>';
+      tree.appendChild(sub);
+      for (const n of items) {
+        const f = document.createElement('button'); f.type = 'button'; f.className = 'tree-file' + (n.id === active.id ? ' selected' : '');
+        const short = n.title.length > 17 ? n.title.slice(0, 16) + '…' : n.title;
+        f.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6Z"/></svg>' + short + '<span class="ext">.md</span>';
+        f.title = n.title;
+        f.onclick = () => { active = n; render(); };
+        tree.appendChild(f);
+      }
+    }
+  }
+  const inbox = inFolder('inbox');
+  if (inbox.length) {
+    const row = document.createElement('button'); row.type = 'button'; row.className = 'tree-row';
+    row.innerHTML = '<span class="tw">▾</span>收件箱<span class="count">' + inbox.length + '</span>';
+    tree.appendChild(row);
+    for (const n of inbox) {
+      const f = document.createElement('button'); f.type = 'button'; f.className = 'tree-file' + (n.id === active.id ? ' selected' : '');
+      const short = n.title.length > 17 ? n.title.slice(0, 16) + '…' : n.title;
+      f.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6Z"/></svg>' + short + '<span class="ext">.md</span>';
+      f.title = n.title;
+      f.onclick = () => { active = n; render(); };
+      tree.appendChild(f);
+    }
+  }
+}
+
+function render() {
+  buildTree();
+  const n = active, fav = favorite.has(n.id);
+  $('crumb').innerHTML = folderPath(n.folder).split(' / ').map(s => '<span>' + s + '</span>').join(' <span style="color:var(--line)">›</span> ')
+    + ' <span style="color:var(--line)">›</span> <b>' + n.title + '.md</b>';
+  const st = { indexed: 'indexed', pending: 'pending', failed: 'failed' }[n.status];
+  const stc = { indexed: 'var(--accent)', pending: 'var(--warn)', failed: 'var(--bad)' }[n.status];
+  $('meta').innerHTML = '<span><span class="k">dir</span> ' + folderLabel(n.folder) + '</span>'
+    + '<span><span class="k">src</span> ' + (n.source === 'mcp' ? n.tool : 'manual') + '</span>'
+    + '<span><span class="k">index</span> <span style="color:' + stc + '">' + st + '</span></span>'
+    + '<span><span class="k">tags</span> [' + n.tags.join(', ') + ']</span>';
+  $('title').textContent = n.title;
+  $('summary').textContent = n.summary;
+  $('body').innerHTML = renderMarkdown(n.body);
+  $('updated').textContent = 'updated ' + n.updated.slice(0, 10);
+  const sb = $('starBtn'); sb.textContent = fav ? '★' : '☆'; sb.classList.toggle('on', fav);
+  sb.onclick = () => { favorite.has(n.id) ? favorite.delete(n.id) : favorite.add(n.id); render(); };
+  $('selinfo').textContent = 'sel: ' + n.title.slice(0, 10) + (n.title.length > 10 ? '…' : '');
+  document.querySelector('.reader').scrollTop = 0;
+}
+
+$('q').addEventListener('input', e => { query = e.target.value.trim(); render(); });
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('q').focus(); }
+});
+render();
+</script>
+</body></html>

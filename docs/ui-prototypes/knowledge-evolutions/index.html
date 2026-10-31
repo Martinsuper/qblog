@@ -1,0 +1,67 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YOUNOTE · 当前 UI 演化方案</title><style>
+*{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#27323f;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+header{border-bottom:1px solid #e4e8ec;padding:22px max(28px,calc((100vw - 1200px)/2));display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#82909c}
+.brand{font-weight:800;letter-spacing:.12em;color:#2c3a4c}.brand b{display:inline-grid;place-items:center;background:#3564a9;color:#fff;border-radius:8px;width:28px;height:28px;margin-right:8px}
+main{max-width:1200px;margin:auto;padding:64px 28px 90px}
+.label{color:#5b7ca8;letter-spacing:.16em;font-size:11px;font-weight:700}
+h1{font-size:36px;letter-spacing:-.04em;margin:14px 0}
+.intro{color:#7b8794;line-height:1.9;max-width:700px;font-size:14px}
+.intro b{color:#2c3a4c}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:42px}
+.card{background:#fff;border:1px solid #e6eaee;border-radius:14px;padding:20px;text-decoration:none;color:inherit;transition:.2s;display:block}
+.card:hover{transform:translateY(-4px);box-shadow:0 12px 35px #2c3a4c14}
+.num{font-size:10px;letter-spacing:.12em;color:#92a0ac;font-weight:700}
+.swatch{margin:18px 0 21px;height:105px;border-radius:8px;display:flex;overflow:hidden;border:1px solid #00000009;background:var(--c)}
+.swatch i:nth-child(1){width:22%;background:var(--a)}.swatch i:nth-child(2){width:28%;background:var(--b)}.swatch i:nth-child(3){flex:1;background:var(--c)}
+h2{font-size:17px;margin:0}h2 span{float:right;color:#9aacb8}
+p{font-size:12px;line-height:1.8;color:#8a97a3;min-height:58px}
+.open{margin-top:18px;color:#3564a9;font-weight:700;font-size:12px}
+.foot{margin-top:38px;color:#929ea8;font-size:12px;line-height:1.9;border-top:1px solid #e6eaee;padding-top:22px}
+@media(max-width:860px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.grid{grid-template-columns:1fr}h1{font-size:29px}header span{display:none}}
+</style></head><body>
+<header><div class="brand"><b>Y</b> YOUNOTE</div><span>DESIGN EXPLORATIONS / EVOLUTIONS · 基于当前知识库 UI</span></header>
+<main>
+  <div class="label">FIVE EVOLUTIONS · 2026-10</div>
+  <h1>当前 UI 的五种走向。</h1>
+  <div class="intro">五种演化都保留当前知识库界面的骨架：<b>顶部导航 + 多级目录树 + 正文阅读区</b>，使用与当前实现同一组 46 篇示例笔记。区别在视觉气质与少量交互增强，用来判断下一步把当前 UI 往哪个方向打磨。</div>
+  <div class="grid">
+    <a class="card" href="01-paper-serif.html">
+      <div class="num">01 / PAPER SERIF</div>
+      <div class="swatch" style="--a:#9a5b3c;--b:#f1ebdd;--c:#f7f3ea"><i></i><i></i><i></i></div>
+      <h2>纸感衬线阅读 <span>↗</span></h2>
+      <p>暖纸底色配衬线正文，标题、正文与引用全部换成书卷气质；顶部有阅读进度条，右侧保留本页目录。适合长时间沉浸阅读。</p>
+      <div class="open">打开方案 →</div>
+    </a>
+    <a class="card" href="02-midnight.html">
+      <div class="num">02 / MIDNIGHT</div>
+      <div class="swatch" style="--a:#7aa2f7;--b:#151c26;--c:#0f141b"><i></i><i></i><i></i></div>
+      <h2>墨夜暗色 <span>↗</span></h2>
+      <p>当前双栏骨架的完整深色主题：夜间低刺激底色、蓝紫高光、暗色代码块；索引状态与 MCP 来源标签也做了暗色适配。</p>
+      <div class="open">打开方案 →</div>
+    </a>
+    <a class="card" href="03-colorful.html">
+      <div class="num">03 / COLORFUL</div>
+      <div class="swatch" style="--a:#5b6cff;--b:#eef1ff;--c:#ffffff"><i></i><i></i><i></i></div>
+      <h2>清爽彩签 <span>↗</span></h2>
+      <p>现代笔记应用气质：柔和渐变底、彩色目录标签、圆角卡片与玻璃拟态头部；侧栏和正文变成两张悬浮卡片，右下角浮动新建按钮。</p>
+      <div class="open">打开方案 →</div>
+    </a>
+    <a class="card" href="04-mono.html">
+      <div class="num">04 / MONO</div>
+      <div class="swatch" style="--a:#1a7f5a;--b:#f7f7f5;--c:#fcfcfb"><i></i><i></i><i></i></div>
+      <h2>极简等宽 <span>↗</span></h2>
+      <p>工程文件浏览器的质感：细线框、等宽文件名、路径式面包屑、编号小节；顶部命令条（⌘K）可实际过滤全部笔记，底部有状态行。</p>
+      <div class="open">打开方案 →</div>
+    </a>
+    <a class="card" href="05-dashboard.html">
+      <div class="num">05 / DASHBOARD</div>
+      <div class="swatch" style="--a:#3564a9;--b:#f2f4f7;--c:#ffffff"><i></i><i></i><i></i></div>
+      <h2>管理仪表盘 <span>↗</span></h2>
+      <p>最接近当前视觉的一版：目录树顶部新增「总览」，内容区在仪表盘与正文之间切换；统计卡、索引队列、最近更新、目录分布与标签云服务批量整理。</p>
+      <div class="open">打开方案 →</div>
+    </a>
+  </div>
+  <div class="foot">五个方案均为独立静态 HTML + 共享的 data.js 示例数据，无需服务或外部资源。支持目录切换、全局/目录内过滤、收藏切换；修改仅保留在当前页面内，刷新后重置。其余入口为视觉展示，并非真实功能。示例数据不代表真实知识库内容。</div>
+</main>
+</body></html>

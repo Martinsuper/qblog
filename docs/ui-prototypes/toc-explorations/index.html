@@ -1,0 +1,96 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YOUNOTE · 阅读页目录方案</title><style>
+*{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#27323f;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+header{border-bottom:1px solid #e4e8ec;padding:22px max(28px,calc((100vw - 1200px)/2));display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#82909c}
+.brand{font-weight:800;letter-spacing:.12em;color:#2c3a4c}.brand b{display:inline-grid;place-items:center;background:#3564a9;color:#fff;border-radius:8px;width:28px;height:28px;margin-right:8px}
+main{max-width:1200px;margin:auto;padding:64px 28px 90px}
+.label{color:#5b7ca8;letter-spacing:.16em;font-size:11px;font-weight:700}
+h1{font-size:34px;letter-spacing:-.04em;margin:14px 0}
+.intro{color:#7b8794;line-height:1.9;max-width:720px;font-size:14px}
+.intro b{color:#2c3a4c}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:42px}
+.card{background:#fff;border:1px solid #e6eaee;border-radius:14px;padding:20px;text-decoration:none;color:inherit;transition:.2s;display:block}
+.card:hover{transform:translateY(-4px);box-shadow:0 12px 35px #2c3a4c14}
+.num{font-size:10px;letter-spacing:.12em;color:#92a0ac;font-weight:700}
+/* 迷你示意图：正文行 + 右侧目录形态 */
+.mock{margin:18px 0 20px;height:110px;border:1px solid #eceff2;border-radius:8px;background:#f8fafb;display:flex;gap:10px;padding:14px;overflow:hidden;position:relative}
+.mock .lines{flex:1;display:flex;flex-direction:column;gap:7px;justify-content:center}
+.mock .lines i{height:6px;border-radius:3px;background:#dde4ea}
+.mock .lines i:nth-child(1){width:62%;background:#c3ceda}
+.mock .lines i:nth-child(5){width:46%}
+.mock .lines i:nth-child(7){width:55%}
+.mock .side{width:70px;display:flex;flex-direction:column;gap:7px;justify-content:center;align-items:flex-start}
+.mock .side i{height:5px;border-radius:2px;background:#cfd9e2}
+.mock .side i.on{background:#3564a9;width:26px}
+.mock .side i{width:18px}
+.mock .side .on{width:34px}
+/* 02 刻度轨道 */
+.mock.track .side{align-items:flex-end;gap:9px;position:relative;padding-right:6px}
+.mock.track .side:before{content:"";position:absolute;right:2px;top:16px;bottom:16px;width:2px;background:#dde4ea}
+.mock.track .side i{width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid #c3ceda;position:relative}
+.mock.track .side i.on{background:#3564a9;border-color:#3564a9}
+/* 03 内嵌卡 */
+.mock.inline .side{display:none}
+.mock.inline .lines i:first-child{height:26px;border-radius:6px;background:#fff;border:1px solid #d8e0e8}
+/* 04 引导线 */
+.mock.margin .side{align-items:flex-end}
+.mock.margin .side i{width:22px;background:none;border-top:1px solid #cfd9e2;height:0;border-radius:0}
+.mock.margin .side i.on{border-top:2px solid #3564a9;width:30px}
+/* 05 悬停 */
+.mock.hover .side{align-items:flex-end}
+.mock.hover .side i{width:12px;height:2px;border-radius:1px}
+.mock.hover .side i.on{width:20px;background:#3564a9}
+.mock .peek{position:absolute;right:8px;top:22px;width:64px;bottom:22px;background:#fff;border:1px solid #e2e7ec;border-radius:6px;box-shadow:0 6px 16px #2c3a4c1a;display:flex;flex-direction:column;gap:6px;padding:8px}
+.mock .peek i{height:5px;border-radius:2px;background:#dfe6ec}
+.mock .peek i:first-child{background:#9ec3f2}
+h2{font-size:17px;margin:0}h2 span{float:right;color:#9aacb8;font-size:12px;font-weight:400}
+p{font-size:12.5px;line-height:1.85;color:#8a97a3;min-height:63px;margin:10px 0 0}
+p b{color:#3a4a58}
+.open{margin-top:16px;color:#3564a9;font-weight:700;font-size:12px}
+.foot{margin-top:38px;color:#929ea8;font-size:12px;line-height:1.9;border-top:1px solid #e6eaee;padding-top:22px}
+@media(max-width:720px){.grid{grid-template-columns:1fr}h1{font-size:28px}header span{display:none}}
+</style></head><body>
+<header><div class="brand"><b>Y</b> YOUNOTE</div><span>READING TOC EXPLORATIONS · 阅读页目录形态</span></header>
+<main>
+  <div class="label">FIVE TOC PATTERNS · 2026-10</div>
+  <h1>让目录长在文章里。</h1>
+  <div class="intro">五个替代「白色悬浮卡」的目录形态，都保留同一篇文章与相同的交互：<b>滚动自动高亮当前小节、点击跳转、目录过长时独立滚动</b>。区别在视觉融入方式 —— 从「完全隐形」到「排进页边」，看哪一种和正文的联系最自然。</div>
+  <div class="grid">
+    <a class="card" href="01-quiet-rail.html">
+      <div class="num">01 / QUIET RAIL</div>
+      <div class="mock"><div class="lines"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="side"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <h2>无框融入 <span>推荐</span></h2>
+      <p>去掉卡片的边框、底色和投影，目录就是页面边缘的一列安静文字，与正文共用字号与灰阶；当前小节用蓝色加左侧指示条标记。<b>割裂感最低的常规方案</b>。</p>
+      <div class="open">打开方案 →</div>
+    </a>
+    <a class="card" href="02-progress-track.html">
+      <div class="num">02 / PROGRESS TRACK</div>
+      <div class="mock track"><div class="lines"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="side"><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <h2>进度轨道</h2>
+      <p>右缘一条细线加章节圆点，像页面自带的滚动进度仪；只有当前小节浮现文字，悬停任意圆点可预览标题。<b>存在感最低</b>，适合长文沉浸阅读。</p>
+      <div class="open">打开方案 →</div>
+    </a>
+    <a class="card" href="03-inline-card.html">
+      <div class="num">03 / INLINE CARD</div>
+      <div class="mock inline"><div class="lines"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <h2>文首内嵌目录</h2>
+      <p>目录作为文章开头的一张内嵌卡（可折叠、双栏编号），右侧完全不占空间，正文满宽阅读；卡头实时显示「正在阅读：xx」，顶部有阅读进度条。<b>与文章浑然一体</b>，代价是需要回头看目录。</p>
+      <div class="open">打开方案 →</div>
+    </a>
+    <a class="card" href="04-margin-notes.html">
+      <div class="num">04 / MARGIN NOTES</div>
+      <div class="mock margin"><div class="lines"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="side"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <h2>页边批注</h2>
+      <p>编辑排版思路：目录文字右对齐悬在页边空白，一条细引导线指向正文，当前小节引导线加粗变蓝；暖纸底色与衬线标题，像一本打开的书。<b>书卷气最浓</b>。</p>
+      <div class="open">打开方案 →</div>
+    </a>
+    <a class="card" href="05-hover-rail.html">
+      <div class="num">05 / HOVER RAIL</div>
+      <div class="mock hover"><div class="lines"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="side"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div><div class="peek"><i></i><i></i><i></i><i></i><i></i></div></div>
+      <h2>极简刻度 + 悬停展开</h2>
+      <p>平时右缘只有一排小刻度，几乎察觉不到；鼠标靠近右缘时滑出完整目录面板，移开即收起。<b>阅读零干扰、导航按需出现</b>，交互感最强。</p>
+      <div class="open">打开方案 →</div>
+    </a>
+  </div>
+  <div class="foot">五个方案均为独立静态 HTML，无需服务或外部资源；正文为同一篇示例教程，滚动与跳转可真实交互。选定方向后可移植到正式的知识库实现（KnowledgeSeven）。</div>
+</main>
+</body></html>
