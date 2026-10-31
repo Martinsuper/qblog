@@ -6,6 +6,37 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
+// 预声明全部依赖深度入口：让依赖优化在 dev server 启动时一次性完成，
+// 而不是等浏览器首次请求才逐批发现（每批会触发重新优化 + 整页 reload，
+// 远程访问时表现为首开多次卡顿刷新）
+const optimizeList = [
+  'vue', 'vue-router', 'pinia', 'axios', 'pako', 'markdown-it',
+  'element-plus/es', 'element-plus/es/locale/lang/zh-cn',
+  '@element-plus/icons-vue',
+  '@tiptap/vue-3', '@tiptap/starter-kit', '@tiptap/markdown', '@tiptap/extension-table',
+  'highlight.js/lib/core',
+  'highlight.js/lib/languages/bash',
+  'highlight.js/lib/languages/css',
+  'highlight.js/lib/languages/java',
+  'highlight.js/lib/languages/javascript',
+  'highlight.js/lib/languages/json',
+  'highlight.js/lib/languages/python',
+  'highlight.js/lib/languages/sql',
+  'highlight.js/lib/languages/typescript',
+  'highlight.js/lib/languages/xml',
+  'highlight.js/lib/languages/yaml',
+  // Element Plus 按需引入时由 resolver 注入的组件样式深度入口（全部预先列入，
+  // 避免首开时逐个发现导致反复重新优化）
+  ...[
+    'base', 'button', 'alert', 'avatar', 'card', 'checkbox', 'checkbox-group',
+    'collapse', 'collapse-item', 'config-provider', 'dialog', 'drawer', 'dropdown',
+    'dropdown-item', 'dropdown-menu', 'empty', 'form', 'form-item', 'icon', 'input',
+    'input-number', 'loading', 'message', 'message-box', 'notification', 'option',
+    'pagination', 'popover', 'radio-button', 'radio-group', 'select', 'skeleton',
+    'switch', 'table', 'table-column', 'tag', 'time-picker', 'upload'
+  ].map(name => `element-plus/es/components/${name}/style/css`)
+]
+
 export default defineConfig({
   base: '/',
   plugins: [
@@ -23,6 +54,9 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
+  },
+  optimizeDeps: {
+    include: optimizeList
   },
   build: {
     rollupOptions: {

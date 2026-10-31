@@ -358,7 +358,6 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { useMarkdown } from '@/composables/useMarkdown'
 import {
   ArrowLeft,

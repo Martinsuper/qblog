@@ -216,7 +216,6 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Rank, Finished } from '@element-plus/icons-vue'
 import { getCategoryList, createCategory, updateCategory, deleteCategory, updateCategorySort } from '@/api/category'
 import { formatDateTime } from '@/composables/useTime'

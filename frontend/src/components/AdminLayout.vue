@@ -143,7 +143,6 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   ArrowLeft,
   ArrowRight,

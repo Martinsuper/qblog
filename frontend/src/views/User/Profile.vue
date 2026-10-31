@@ -119,7 +119,6 @@
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
 import SettingsLayout from '@/components/SettingsLayout.vue'
-import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { changePassword } from '@/api/auth'
 

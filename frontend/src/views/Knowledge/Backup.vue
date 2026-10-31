@@ -263,7 +263,6 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import SettingsLayout from '@/components/SettingsLayout.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   createBackup, getBackupTask, getBackupList, downloadBackup, restoreBackup,
   deleteBackup, importBackup, getBackupSettings, updateBackupSettings

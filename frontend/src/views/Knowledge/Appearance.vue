@@ -61,7 +61,6 @@
 
 <script setup>
 import { reactive, ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { ElMessage } from 'element-plus'
 import SettingsLayout from '@/components/SettingsLayout.vue'
 import { readAppearance, saveAppearance } from '@/utils/knowledgePreferences'
 import { readKnowledgeDensity, saveKnowledgeDensity } from '@/utils/knowledgeDensity'

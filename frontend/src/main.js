@@ -1,6 +1,5 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { ElLoading } from 'element-plus'
 
 // 函数式调用与指令类组件的样式需手动引入（按需模式下不会自动注入）
 import 'element-plus/es/components/message/style/css'
