@@ -6,6 +6,7 @@
   >
     <KnowledgeSeven
       v-if="appearance.layout === 'knowledge'"
+      ref="sevenLayout"
       :color="resolvedColor"
       :folders="folders"
       :flat-folders="flatFolders"
@@ -26,6 +27,7 @@
       :total="total"
       :page="page"
       :page-size="pageSize"
+      all-notes-loaded
       :loading-list="loadingList"
       :list-error="listError"
       :loading-note="loadingNote"
@@ -35,10 +37,14 @@
       :save-failed="saveFailed"
       :conflicted="conflicted"
       :folder-name="folderName"
+      :overview-loading="overviewData.loading"
+      :overview-error="overviewData.error"
+      :overview-notes="overviewData.notes"
+      :overview-mcp-calls="overviewData.mcpCalls"
       @appearance="settingsOpen = true"
       @logout="logout"
       @scope="selectScope"
-      @view="mobileView = $event"
+      @view="onView"
       @search="search = $event; scheduleSearch()"
       @list-search="localSearch = $event; scheduleSearch()"
       @tag="tagFilter = $event; resetAndLoad()"
@@ -65,6 +71,7 @@
       @filter-tag="tagFilter = $event; resetAndLoad()"
       @delete="deleteCurrent"
       @reader-element="readerScroll = $event"
+      @overview-retry="loadOverview"
     />
     <template v-else>
       <header class="kb-top">
@@ -374,6 +381,7 @@
                   放弃本地修改并载入最新
                 </button>
               </div><KnowledgeEditor
+                ref="mainEditor"
                 :key="active.id"
                 v-model="draft.content"
                 :readonly="!canEdit"
@@ -574,12 +582,16 @@ const layoutIcons = { calm: '▥ ▤ ☰', paper: '▦ ▦ ▦', library: '▥ �
 const layoutDescriptions = { calm: '留白阅读，三栏并排', paper: '暖色卡片，展开正文', library: '目录成书，笔记成章', knowledge: '紧凑目录，直接编辑' }, colorNames = { system: '跟随系统', light: '浅色', dark: '深色' }, bookColors = ['#365b68', '#7b8465', '#ad855b', '#85718a', '#6d8794']
 const folderSearch = ref(''), localSearch = ref(''), sortOrder = ref('updated')
 const workspaceCounts = reactive({ all: 0, inbox: 0, favorites: 0 })
-const settingsOpen = ref(false), mobileView = ref('list'), readerOpen = ref(false), editing = ref(false), propertiesOpen = ref(false)
+const settingsOpen = ref(false), mobileView = ref('tree'), readerOpen = ref(false), editing = ref(false), propertiesOpen = ref(false)
 const folders = ref([]), notes = ref([]), total = ref(0), page = ref(1), pageSize = 50, scope = ref('all'), search = ref(''), tagFilter = ref(''), sourceFilter = ref(''), collapsed = reactive(new Set())
+// 全量拉取（目录树/总览）使用的页大小：后端单页上限 100
+const BULK_PAGE_SIZE = 100
 const noteError = ref(false), failedNoteId = ref(null)
 const loadingList = ref(false), listError = ref(false), loadingNote = ref(false), active = ref(null), draft = reactive({ title: '', content: '', tags: [], favorite: false, folderId: null }), saveStatus = ref(''), saveFailed = ref(false), conflicted = ref(false), readerScroll = ref(null)
 const folderDialog = ref(false), folderEditing = ref(null), folderForm = reactive({ name: '', parentId: null }), moveOpen = ref(false), moveTarget = ref(null), tagsOpen = ref(false)
 const folderSubmitting = ref(false), folderNameError = ref(''), deletingNote = ref(false)
+const overviewData = reactive({ loading: false, error: false, notes: [], mcpCalls: [] })
+let overviewGeneration = 0
 const folderParentOptions = computed(() => {
   const excluded = new Set(folderEditing.value ? [String(folderEditing.value.id)] : [])
   return allFlatFolders.value.filter(folder => {
@@ -589,9 +601,15 @@ const folderParentOptions = computed(() => {
 })
 let loadGeneration = 0, noteGeneration = 0, autosave = null, saveTimer, searchTimer, composing = false
 const scrollPositions = new Map(), colorMedia = matchMedia('(prefers-color-scheme: dark)')
+// 大纲数据源自全文逐行解析：draft.content 每键变化都会触发重算，
+// 镜像成 200ms 防抖的 ref——大纲晚 200ms 刷新无感知，编辑长文时省掉每键一次的全文解析
+const headingSource = ref(draft.content)
+let headingTimer
+watch(() => draft.content, value => { clearTimeout(headingTimer); headingTimer = setTimeout(() => { headingSource.value = value }, 200) })
+onBeforeUnmount(() => clearTimeout(headingTimer))
 const documentHeadings = computed(() => {
   let fenced = false
-  return draft.content.split('\n').flatMap(line => {
+  return headingSource.value.split('\n').flatMap(line => {
     if (/^\s*(```|~~~)/.test(line)) { fenced = !fenced; return [] }
     const match = !fenced && line.match(/^\s{0,3}(#{1,3})\s+(.+?)\s*#*\s*$/)
     return match ? [{ level: match[1].length, text: match[2].replace(/[*_`~]/g, '') }] : []
@@ -614,18 +632,42 @@ async function loadCounts() {
   ;['all', 'inbox', 'favorites'].forEach((key, index) => { workspaceCounts[key] = values[index].data.total })
 }
 function toggleAllFolders() {
-  const parents = allFlatFolders.value.filter(f => f.hasChildren)
+  const parents = allFlatFolders.value
   if (parents.every(f => collapsed.has(f.id))) collapsed.clear()
   else parents.forEach(f => collapsed.add(f.id))
 }
 function toggleSort() { sortOrder.value = sortOrder.value === 'updated' ? 'title' : 'updated'; resetAndLoad() }
 async function loadNotes() {
   const generation = ++loadGeneration; loadingList.value = true; listError.value = false
-  try { const res = await api.listNotes({ current: page.value, size: pageSize, search: search.value || undefined, query: appearance.layout === 'knowledge' ? localSearch.value || undefined : undefined, tag: tagFilter.value || undefined, source: sourceFilter.value || undefined, sort: sortOrder.value, folderId: typeof scope.value === 'number' || /^\d+$/.test(scope.value) ? scope.value : undefined, inbox: scope.value === 'inbox' || undefined, favorite: scope.value === 'favorites' || undefined }); if (generation !== loadGeneration) return; notes.value = res.data.records; total.value = res.data.total; if (page.value > 1 && !notes.value.length) { page.value--; return loadNotes() } } catch { if (generation === loadGeneration) listError.value = true } finally { if (generation === loadGeneration) loadingList.value = false }
+  try { if (appearance.layout === 'knowledge') { const result = await fetchAllNotes({ search: search.value || undefined, query: localSearch.value || undefined, tag: tagFilter.value || undefined, source: sourceFilter.value || undefined, sort: sortOrder.value }, () => generation !== loadGeneration); if (!result || generation !== loadGeneration) return; notes.value = result.records; total.value = result.total; return } const res = await api.listNotes({ current: page.value, size: pageSize, search: search.value || undefined, query: appearance.layout === 'knowledge' ? localSearch.value || undefined : undefined, tag: tagFilter.value || undefined, source: sourceFilter.value || undefined, sort: sortOrder.value, folderId: typeof scope.value === 'number' || /^\d+$/.test(scope.value) ? scope.value : undefined, inbox: scope.value === 'inbox' || undefined, favorite: scope.value === 'favorites' || undefined }); if (generation !== loadGeneration) return; notes.value = res.data.records; total.value = res.data.total; if (page.value > 1 && !notes.value.length) { page.value--; return loadNotes() } } catch { if (generation === loadGeneration) listError.value = true } finally { if (generation === loadGeneration) loadingList.value = false }
 }
+// 取全量笔记：知识库布局的主列表与总览仪表盘共用；isStale 返回真时中止过期请求。
+// 目录树需要按文件夹分组的全部条目，无法按页切片；先取第一页拿到总数，剩余页并发拉取，
+// 避免 N 页逐页串行等待（N 次往返 → 2 次）。
+async function fetchAllNotes(extra = {}, isStale = null) {
+  const first = await api.listNotes({ current: 1, size: BULK_PAGE_SIZE, sort: 'updated', ...extra })
+  if (isStale?.()) return null
+  const records = [...first.data.records]
+  const totalPages = Math.ceil((first.data.total || 0) / BULK_PAGE_SIZE)
+  const rest = totalPages > 1
+    ? await Promise.all(Array.from({ length: totalPages - 1 }, (_, index) =>
+        api.listNotes({ current: index + 2, size: BULK_PAGE_SIZE, sort: 'updated', ...extra })))
+    : []
+  if (isStale?.()) return null
+  rest.forEach(result => records.push(...result.data.records))
+  return { records, total: first.data.total || 0 }
+}
+// 每次进入总览都重新拉取，保证队列与最近更新反映最新状态；MCP 调用记录失败不阻塞总览。
+async function loadOverview() {
+  if (overviewData.loading) return
+  const generation = ++overviewGeneration
+  overviewData.loading = true; overviewData.error = false
+  try { const [all, calls] = await Promise.all([fetchAllNotes(), api.listMcpCalls().catch(() => ({ data: [] }))]); if (generation !== overviewGeneration) return; overviewData.notes = all.records; overviewData.mcpCalls = calls.data || [] } catch { if (generation === overviewGeneration) overviewData.error = true } finally { if (generation === overviewGeneration) overviewData.loading = false }
+}
+function onView(view) { mobileView.value = view; if (view === 'overview') loadOverview() }
 function scheduleSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(resetAndLoad, 250) }
 function resetAndLoad() { page.value = 1; loadNotes() }
-async function selectScope(value) { if (appearance.layout === 'knowledge') { search.value = ''; localSearch.value = '' } scope.value = value; page.value = 1; mobileView.value = 'list'; readerOpen.value = false; await loadNotes() }
+async function selectScope(value) { scope.value = value; page.value = 1; if (appearance.layout === 'knowledge') return; mobileView.value = 'list'; readerOpen.value = false; await loadNotes() }
 function changePage(delta) { page.value += delta; loadNotes() }
 function snapshot() { return { title: draft.title, content: draft.content, tags: [...draft.tags], favorite: draft.favorite, folderId: draft.folderId ?? null } }
 function setupAutosave() {
@@ -635,7 +677,12 @@ function setupAutosave() {
 function markDirty() { if (!active.value) return; saveStatus.value = '未保存修改'; saveFailed.value = false; if (!conflicted.value && !composing) scheduleSave() }
 function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 800) }
 async function saveNow() { clearTimeout(saveTimer); if (!autosave || !autosave.isDirty()) return true; if (conflicted.value) return false; saveStatus.value = '正在保存…'; return autosave.flush() }
-async function safeLeave() { while (autosave?.isDirty()) { if (!await saveNow()) return false } return true }
+// 离开前先冲刷编辑器防抖中的未上报击键，再判断脏状态，避免最后一击被误判为已保存
+const mainEditor = ref(null), sevenLayout = ref(null)
+async function safeLeave() {
+  mainEditor.value?.flushPending?.(); sevenLayout.value?.flushPending?.()
+  while (autosave?.isDirty()) { if (!await saveNow()) return false } return true
+}
 async function openNote(id) {
   if (loadingNote.value || deletingNote.value) return
   if (active.value?.id === id) { noteError.value = false; readerOpen.value = true; mobileView.value = 'reader'; return }
@@ -644,7 +691,7 @@ async function openNote(id) {
   const generation = ++noteGeneration; loadingNote.value = true; noteError.value = false
   try { const res = await api.getNote(id); if (generation !== noteGeneration) return; active.value = res.data; Object.assign(draft, { title: res.data.title, content: res.data.content || '', tags: [...(res.data.tags || [])], favorite: res.data.favorite, folderId: res.data.folderId ?? null }); conflicted.value = false; saveFailed.value = false; saveStatus.value = '已载入服务器版本'; editing.value = false; readerOpen.value = true; mobileView.value = 'reader'; moveTarget.value = draft.folderId; setupAutosave(); await router.replace({ query: { ...route.query, note: id } }); await nextTick(); if (readerScroll.value) readerScroll.value.scrollTop = scrollPositions.get(id) || 0 } catch { if (generation === noteGeneration) { noteError.value = true; failedNoteId.value = id; mobileView.value = 'reader' } } finally { if (generation === noteGeneration) loadingNote.value = false }
 }
-async function newNote() { if (deletingNote.value || !await safeLeave()) return; const res = await api.createNote({ title: '未命名笔记', content: '', tags: [], favorite: false, folderId: typeof scope.value === 'number' || /^\d+$/.test(scope.value) ? Number(scope.value) : null }); await loadNotes(); await loadFolders(); await openNote(res.data.id); editing.value = true }
+async function newNote(targetFolderId) { if (deletingNote.value || !await safeLeave()) return; const folderId = typeof targetFolderId === 'number' || typeof targetFolderId === 'string' && /^\d+$/.test(targetFolderId) ? Number(targetFolderId) : targetFolderId === null ? null : typeof scope.value === 'number' || /^\d+$/.test(scope.value) ? Number(scope.value) : null; const res = await api.createNote({ title: '未命名笔记', content: '', tags: [], favorite: false, folderId }); await loadNotes(); await loadFolders(); await openNote(res.data.id); editing.value = true }
 async function toggleFavorite() { draft.favorite = !draft.favorite; markDirty(); if (await saveNow()) await loadCounts() }
 async function closeReader() { if (!await safeLeave()) return; readerOpen.value = false; mobileView.value = 'list' }
 async function setLayout(layout) { if (!await safeLeave()) return; const scroll = readerScroll.value?.scrollTop || 0; appearance.layout = layout; persistAppearance(); await nextTick(); if (readerScroll.value) readerScroll.value.scrollTop = scroll }

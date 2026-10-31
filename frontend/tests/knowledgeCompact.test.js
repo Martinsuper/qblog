@@ -6,7 +6,7 @@ const workspace = readFileSync(new URL('../src/components/KnowledgeSeven.vue', i
 
 test('workspace removes placeholder features and duplicated explanatory chrome', () => {
   assert.doesNotMatch(workspace, /索引未配置|AI 服务尚未配置|assistantOpen|让知识有序可寻|暂无摘要|个人工作区/)
-  assert.match(workspace, /const infoOpen = ref\(true\)/)
+  assert.match(workspace, /const infoOpen = ref\(globalThis\.matchMedia/)
   assert.match(workspace, /v-if="headings.length && infoOpen"/)
 })
 

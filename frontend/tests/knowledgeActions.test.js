@@ -25,9 +25,12 @@ function deletionContext(confirm = async () => {}) {
   return { state, calls, remove: action('deleteCurrent', 'function downloadDraft', state) }
 }
 
-test('workspace keeps folder creation visible and groups note deletion in the action menu', () => {
+test('workspace offers creation from directory context menus and groups note deletion in the action menu', () => {
   const sidebar = workspace.slice(workspace.indexOf('class="folder-tree"'), workspace.indexOf('id="knowledge-list-pane"'))
-  assert.match(sidebar, /aria-label="新建目录"[\s\S]*?\$emit\('manage-folder'\)/)
+  assert.match(sidebar, /@contextmenu\.self\.prevent="openRootMenu"/)
+  assert.doesNotMatch(sidebar, /class="new-folder"/)
+  assert.match(workspace, /contextMenu\.type === 'root'[\s\S]*?新建笔记[\s\S]*?新建目录/)
+  assert.match(workspace, /contextMenu\.type === 'folder'[\s\S]*?新建笔记[\s\S]*?新建子目录/)
   const toolbar = workspace.slice(workspace.indexOf('class="reader-toolbar"'), workspace.indexOf('ref="readerElement"'))
   assert.match(toolbar, /aria-label="笔记操作"/)
   assert.match(toolbar, /class="note-actions"[\s\S]*?aria-label="删除当前笔记"[\s\S]*?\$emit\('delete'\)/)
