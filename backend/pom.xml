@@ -129,6 +129,13 @@
             <version>0.24.0</version>
         </dependency>
 
+        <!-- 智能体 web_fetch 工具：HTML 解析与正文提取，无传递依赖 -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.21.1</version>
+        </dependency>
+
         <!-- PlantUML 图表本地渲染（文章 ```plantuml 代码块 → SVG），不依赖外部服务 -->
         <dependency>
             <groupId>net.sourceforge.plantuml</groupId>

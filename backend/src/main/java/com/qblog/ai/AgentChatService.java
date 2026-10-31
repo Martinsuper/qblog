@@ -28,14 +28,16 @@ public class AgentChatService {
     private final KnowledgeService notes;
     private final KnowledgeFolderService folders;
     private final McpArticleTools articles;
+    private final WebFetchService web;
     private final com.fasterxml.jackson.databind.ObjectMapper json;
 
     public AgentChatService(LlmModelHolder holder, KnowledgeService notes, KnowledgeFolderService folders,
-                            McpArticleTools articles, com.fasterxml.jackson.databind.ObjectMapper json) {
+                            McpArticleTools articles, WebFetchService web, com.fasterxml.jackson.databind.ObjectMapper json) {
         this.holder = holder;
         this.notes = notes;
         this.folders = folders;
         this.articles = articles;
+        this.web = web;
         this.json = json;
     }
 
@@ -53,7 +55,7 @@ public class AgentChatService {
                 .system(systemPrompt())
                 .messages(history)
                 .user(question)
-                .tools(new AgentTools(notes, folders, articles, json, listener))
+                .tools(new AgentTools(notes, folders, articles, web, json, listener))
                 .stream()
                 .chatResponse();
     }
@@ -105,6 +107,8 @@ public class AgentChatService {
                 7. 你的操作在页面上对用户可见（工具调用提示），重要改动在回复末尾列出"做了什么"清单。
                 8. 禁止重试循环：同一操作失败后先分析原因（版本号过期就 notes_get 取新 version；目录不存在就 folders_list 确认），同一操作最多重试 1 次；两次失败就换方法或直接向用户说明，不要再次调用。
                 9. 单回合工具调用有硬性上限（超限会被强制终止），节约调用次数：能用一条搜索回答就别翻页穷举，批量读取前先确认必要性。
+                10. 用户给出网址或询问外部网页内容时，先用 web_fetch 抓取再回答，只基于抓取到的内容陈述，结果标注被截断时不要编造缺失部分；同一网址一次会话不要重复抓取。
+                11. 把网页整理成知识库笔记时：先抓取，再按编号 Markdown 规范成稿并用 notes_upsert 落库；来源网址作为最后一个编号章节「参考链接」列出。
                 """;
     }
 }

@@ -40,6 +40,7 @@ public class AgentTools {
     private final KnowledgeService notes;
     private final KnowledgeFolderService folders;
     private final McpArticleTools articles;
+    private final WebFetchService web;
     private final ObjectMapper json;
     private final Listener listener;
 
@@ -48,10 +49,11 @@ public class AgentTools {
     private int calls;
 
     public AgentTools(KnowledgeService notes, KnowledgeFolderService folders, McpArticleTools articles,
-                      ObjectMapper json, Listener listener) {
+                      WebFetchService web, ObjectMapper json, Listener listener) {
         this.notes = notes;
         this.folders = folders;
         this.articles = articles;
+        this.web = web;
         this.json = json;
         this.listener = listener;
     }
@@ -143,7 +145,7 @@ public class AgentTools {
         return run("notes_get", "笔记 #" + id, () -> notes.get(id, KnowledgeScope.all()));
     }
 
-    @Tool(name = "notes_upsert", description = "创建或更新知识库笔记：给 externalId 即按该键幂等落库；更新已有笔记需传其 version。标题+编号Markdown正文必填")
+    @Tool(name = "notes_upsert", description = "创建或更新知识库笔记：同一主题传相同 externalId 实现幂等更新（不给则按标题派生稳定 ID）；更新已有笔记需先 notes_get 取其 version。标题+编号Markdown正文必填")
     public Object notesUpsert(
             @ToolParam(description = "标题（≤200字）") String title,
             @ToolParam(description = NOTE_FORMAT) String content,
@@ -159,9 +161,11 @@ public class AgentTools {
         w.setSummary(blankToNull(summary));
         w.setFolderId(folderId);
         if (tags != null && !tags.isEmpty()) w.setTags(tags);
+        // 表结构约束 source 只允许 manual/mcp（V4 迁移 CHECK），智能体写入复用 mcp 通道，用 sourceTool 区分来源
         w.setSourceTool("site-agent");
-        w.setSource("agent");
-        w.setExternalId(blankToNull(externalId));
+        w.setSource("mcp");
+        String key = blankToNull(externalId);
+        w.setExternalId(key != null ? key : deriveExternalId(title));
         if (version != null) w.setVersion(version);
         NoteMarkdownPolicy.validate(w.getContent());
         return run("notes_upsert", shortName(title), () -> notes.upsert(w, KnowledgeScope.all()));
@@ -173,6 +177,26 @@ public class AgentTools {
         listener.onBegin("folders_list", "目录树");
         listener.onEnd("folders_list", "目录树", true);
         return folders.list();
+    }
+
+    // ---------------------------------------------------------------- 外部网页
+
+    @Tool(name = "web_fetch", description = "抓取外部网页（http/https），返回页面标题、摘要与正文纯文本，用于阅读外部资料后再整理或回答。仅支持 HTML/JSON/纯文本；内网地址会被拒绝")
+    public Object webFetch(@ToolParam(description = "完整网页地址，形如 https://example.com/page") String url) {
+        return run("web_fetch", shortName(url), () -> web.fetch(url));
+    }
+
+    /** externalId 未给时按标题派生确定性幂等键：同题视为同一篇，避免重试/重复整理产生多份副本 */
+    static String deriveExternalId(String title) {
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(title.strip().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder("agent-");
+            for (int i = 0; i < 16; i++) hex.append(String.format("%02x", digest[i]));
+            return hex.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private void throwToolLimit() {
