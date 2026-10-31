@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QBlog 知识库快速定位 — 三方案原型</title>
+<style>
+:root{--bg:#f4f6f8;--panel:#fff;--ink:#243044;--muted:#7a8596;--line:#e5e9ef;--blue:#3564a9;--blue-bg:#eaf0f9;--soft:#f7f9fc;--sb:#f2f4f7;--hover:#eaeef4;--green:#47816c;--shadow:0 12px 40px rgba(32,51,75,.18)}
+html.dark{--bg:#141b24;--panel:#1c2633;--ink:#dce5f1;--muted:#8b97a8;--line:#334257;--blue:#7da7e0;--blue-bg:#2b405d;--soft:#222f40;--sb:#18212d;--hover:#222d3c;--green:#6fae94;--shadow:0 12px 40px rgba(0,0,0,.5)}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font:13px/1.6 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;padding:26px 20px 60px}
+a{color:var(--blue);text-decoration:none}
+button{font:inherit;cursor:pointer}
+.page{max-width:1240px;margin:0 auto}
+header.top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+h1{font-size:19px;font-weight:600}
+header.top p{color:var(--muted);font-size:12px}
+.tabs{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px;margin:16px 0 18px}
+.tabs button{border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:600;padding:7px 16px;border-radius:6px}
+.tabs button.active{background:var(--blue-bg);color:var(--blue)}
+.theme-btn{float:right;margin:16px 0 0;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-size:11px;padding:5px 12px;border-radius:6px}
+.intro{font-size:12px;color:var(--muted);margin-bottom:8px}
+/* ---------- 窗体 mock ---------- */
+.win{display:flex;width:min(1080px,100%);height:640px;background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.sidebar{background:var(--sb);border-right:1px solid var(--line);width:236px;flex:none;padding:16px 9px 10px;display:flex;flex-direction:column;overflow:auto}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13.5px;padding:0 10px 12px}
+.brand .logo{width:20px;height:20px;border-radius:5px;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:11px}
+.newnote{margin:0 5px 12px;background:var(--blue);border:0;color:#fff;padding:8px;border-radius:6px;font-size:12px;font-weight:600}
+.section-label{display:flex;align-items:center;justify-content:space-between;font-size:10px;letter-spacing:1px;color:#8a95a5;margin:0 10px 8px}
+html.dark .section-label{color:#7286a0}
+.section-label small{font-size:10px;letter-spacing:0}
+.nav-row{width:100%;height:32px;display:flex;align-items:center;gap:9px;border:0;background:none;border-radius:4px;padding:0 10px;font-size:12px;text-align:left;color:#647184}
+html.dark .nav-row{color:#9aa8bd}
+.nav-row.active{background:var(--blue-bg);color:var(--blue);font-weight:600}
+.nav-row .count{margin-left:auto;font-size:10px;color:#8794a7;font-weight:400}
+.nav-row svg{width:14px;height:14px}
+hr.sep{border:0;border-top:1px solid var(--line);margin:12px 9px}
+.tree-filter{position:relative;margin:0 5px 8px}
+.tree-filter input{background:transparent;border:1px solid var(--line);border-radius:4px;width:100%;padding:5px 8px;font-size:11px;color:var(--ink)}
+html.dark .tree-filter input{border-color:#334257;background:#1e2937;color:#dce5f1}
+/* 目录树行：tree-row 纵向堆叠「行 + 子树」，避免子树横向挤压目录名 */
+.tree-row{display:block}
+.tree-line{display:flex;align-items:center;height:31px;border-radius:4px;color:#637084;position:relative}
+html.dark .tree-line{color:#9dabc0}
+.tree-row.active .tree-line{background:var(--blue-bg);color:var(--blue)}
+.tree-toggle{width:22px;height:25px;flex:none;font-size:14px;color:#8d99a9;border:0;background:none}
+.tree-toggle svg{width:11px;height:11px;transition:transform .15s}
+.tree-toggle.open svg{transform:rotate(90deg)}
+.tree-name{height:100%;padding:0 6px 0 0;display:flex;align-items:center;gap:7px;flex:1;text-align:left;font-size:12px;border-radius:4px;min-width:0;border:0;background:none;color:inherit}
+.tree-name svg{width:13px;height:13px;color:#8fa0b7;flex:none}
+.tree-name .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-name .count{margin-left:auto;font-size:10px;color:#8996a8}
+.star{width:20px;height:20px;flex:none;border:0;background:none;cursor:pointer;color:#b9c2cf;font-size:12px;opacity:0;border-radius:3px;transition:opacity .12s}
+html.dark .star{color:#5a6b84}
+.star.on{opacity:1;color:#e0a53f}
+.tree-line:hover .star{opacity:1}
+.tree-row:hover .star{opacity:1}
+.star.on{opacity:1;color:#e0a53f}
+.pin-badge{margin-left:auto;font-size:9px;color:#e0a53f;display:none}
+.sub-label{font-size:9px;letter-spacing:1px;color:#98a4b3;padding:8px 10px 4px}
+.paused-hint{font-size:10px;color:#98a4b3;padding:2px 10px 8px}
+.muted-hint{font-size:10px;color:#98a4b3;padding:2px 10px 8px}
+.tree-children{margin-left:15px;border-left:1px solid var(--line);padding-left:3px}
+/* 常用/最近 特殊行 */
+.quick-row{display:flex;align-items:center;height:30px;gap:8px;border:0;background:none;border-radius:4px;padding:0 10px;font-size:12px;color:#5c6b80;width:100%;text-align:left}
+html.dark .quick-row{color:#9dabc0}
+.quick-row:hover{background:var(--hover)}
+.quick-row svg{width:13px;height:13px;color:#8fa0b7}
+.quick-row .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.quick-row .meta{margin-left:auto;font-size:10px;color:#98a4b3;flex:none}
+/* 右侧占位 */
+.reader{flex:1;background:var(--bg);display:flex;flex-direction:column;filter:none}
+.reader-head{padding:22px 26px 0;display:flex;align-items:center;gap:10px;color:#98a4b3;font-size:11px}
+.reader-title{padding:6px 26px 0;font-size:22px;font-weight:700;color:var(--ink)}
+.reader-body{padding:16px 26px;display:grid;gap:9px}
+.reader-body .ln{height:9px;border-radius:4px;background:#e6eaf0}
+html.dark .reader-body .ln{background:#26344a}
+.reader-body .ln:nth-child(3n+1){width:78%}.reader-body .ln:nth-child(3n+2){width:92%}.reader-body .ln:nth-child(3n){width:64%}
+/* ---------- ⌘K 面板 ---------- */
+.palette-wrap{position:relative;flex:1}
+.palette-mask{position:absolute;inset:0;background:rgba(36,48,68,.28);display:flex;justify-content:center;align-items:flex-start;padding-top:64px;z-index:20}
+html.dark .palette-mask{background:rgba(8,12,18,.5)}
+.palette{width:min(560px,88%);background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);overflow:hidden;align-self:flex-start}
+.palette .p-head{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.palette .p-head svg{width:15px;height:15px;color:#8fa0b7;flex:none}
+.palette input{flex:1;border:0;outline:0;background:transparent;font-size:14px;color:var(--ink)}
+.palette input::placeholder{color:#9aa7b8}
+.p-kbd{font-size:10px;color:#8a95a5;border:1px solid var(--line);border-radius:4px;padding:2px 6px}
+.p-body{max-height:340px;overflow:auto;padding:6px}
+.p-group{font-size:10px;letter-spacing:1px;color:#8a95a5;padding:8px 10px 4px}
+.p-item{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;border-radius:6px;padding:8px 10px;font-size:12.5px;color:var(--ink);text-align:left}
+.p-item.sel{background:var(--blue-bg);color:var(--blue)}
+.p-item svg{width:14px;height:14px;color:#8fa0b7;flex:none}
+.p-item .crumb{color:#9aa7b8;font-size:11px;margin-left:2px}
+.p-item .match{margin-left:auto;font-size:10px;color:#98a4b3;flex:none}
+mark{background:none;color:var(--blue);font-weight:700;border-bottom:1.5px dotted var(--blue)}
+.p-item.sel mark{color:var(--blue)}
+.p-empty{padding:26px;text-align:center;color:#98a4b3;font-size:12px}
+.p-foot{display:flex;gap:14px;padding:9px 14px;border-top:1px solid var(--line);color:#8a95a5;font-size:10.5px}
+.p-foot b{font-weight:600;color:#67718a;border:1px solid var(--line);border-radius:3px;padding:1px 5px;font-size:9.5px;margin-right:3px}
+/* toast */
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:12px;padding:8px 16px;border-radius:8px;opacity:0;transition:.2s;pointer-events:none;z-index:50}
+.toast.show{opacity:1}
+.note-side{width:210px;flex:none;border-left:1px solid var(--line);background:var(--panel);padding:12px 10px;overflow:auto}
+.exp-note{font-size:12px;color:var(--muted);line-height:1.8;padding:14px}
+.exp-note b{color:var(--ink)}
+@media(max-width:960px){.reader{display:none}.sidebar{width:100%}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <h1>QBlog 知识库快速定位 — 三方案原型</h1>
+    <p>点标签切换方案 / 右上角切深浅色 / 原型内可真实点击交互</p>
+  </header>
+  <button class="theme-btn" onclick="document.documentElement.classList.toggle('dark')">浅色 / 深色</button>
+  <div class="tabs">
+    <button data-tab="d" class="active">方案 D · 三合一</button>
+    <button data-tab="k">方案 A · ⌘K 快速跳转</button>
+    <button data-tab="p">方案 B · 目录置顶收藏</button>
+    <button data-tab="r">方案 C · 最近打开置顶</button>
+  </div>
+  <p class="intro" id="intro"></p>
+  <div class="win" id="win"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------------- 数据（模拟真实知识库） ---------------- */
+const FOLDERS = [
+  { id:1, name:'技术', parent:null },
+  { id:2, name:'生活', parent:null },
+  { id:3, name:'随笔', parent:null },
+  { id:5, name:'AI Agent 学习', parent:null },
+  { id:6, name:'原文收录', parent:5 },
+  { id:7, name:'学习计划', parent:5 },
+  { id:8, name:'归档', parent:null },
+  { id:9, name:'归档 / 备份', parent:8 },
+  { id:10, name:'归档 / 精选收藏', parent:8 },
+  { id:11, name:'前端', parent:1 },
+  { id:12, name:'Java / 后端', parent:1 },
+]
+const NOTES = [
+  { id:'n1', title:'QBlog MCP 入门：服务端接入与写库规范', folder:1 },
+  { id:'n2', title:'测试 PlantUML 折叠预览', folder:2 },
+  { id:'n3', title:'十二因子原则原文', folder:6 },
+  { id:'n4', title:'有效构建 Agent 原文', folder:6 },
+  { id:'n5', title:'Agent 学习第 1 周复盘', folder:7 },
+  { id:'n6', title:'每周六复盘模板', folder:7 },
+  { id:'n7', title:'Vite 代理与 CORS 踩坑记录', folder:11 },
+  { id:'n8', title:'MyBatis-Plus 乐观锁要点', folder:12 },
+  { id:'n9', title:'上下文工程原理节选', folder:6 },
+  { id:'n10', title:'2026 学习路线图', folder:7 },
+]
+const folderName = id => FOLDERS.find(f=>f.id===id)?.name || '未分类'
+const folderPath = id => { let f=FOLDERS.find(x=>x.id===id), out=f?.name||''; while(f?.parent){ f=FOLDERS.find(x=>x.id===f.parent); if(f) out=f.name+' / '+out } return out }
+
+let pinned = new Set([5,8])        // 方案B初始已收藏
+let recents  = [                   // 方案C初始数据
+  { kind:'note', id:'n4', at:'5 分钟前' },
+  { kind:'note', id:'n1', at:'昨天 21:40' },
+  { kind:'folder', id:6, at:'昨天' },
+  { kind:'note', id:'n8', at:'前天' },
+  { kind:'folder', id:1, at:'3 天前' },
+]
+let selectedNote = 'n4'
+
+const ICON_FOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
+const ICON_NOTE   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>'
+const ICON_CLOCK  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>'
+const ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
+
+function star(on){ return `<span class="star ${on?'on':''}" role="button" title="${on?'取消收藏':'收藏目录'}">${on?'★':'☆'}</span>` }
+
+/* 侧栏公共骨架 */
+function sidebar({scopeActive='all', folderSection='', folderSearchShow=true, folderTree=true}={}){
+  const nav = [
+    ['all','总览',14],['inbox','待归档',2],['favorites','收藏笔记',0]
+  ].map(([k,t,c])=>`<button class="nav-row ${scopeActive===k?'active':''}">${ICON_NOTE}${t}<span class="count">${c}</span></button>`).join('')
+  return `
+  <div class="sidebar">
+    <div class="brand"><span class="logo">书</span> 书山有路</div>
+    <button class="newnote">＋ 新建笔记</button>
+    <div class="section-label"><span>工作台</span><small>${nav.length}</small></div>
+    ${nav}
+    <hr class="sep">
+    ${folderSection}
+    ${folderSearchShow?`<div class="tree-filter"><input placeholder="筛选目录..." aria-label="筛选目录"></div>`:''}
+    ${folderTree?treeHTML():''}
+  </div>`
+}
+function treeRows(parent=null, depth=0){
+  return FOLDERS.filter(f=>f.parent===parent).map(f=>{
+    const kids = FOLDERS.filter(c=>c.parent===f.id)
+    const pinnedFirst = pinned.size && pinned.has(f.id)
+    return `<div class="tree-row ${f.id===2?'active':''}">
+      <div class="tree-line">
+      ${kids.length?`<button class="tree-toggle">⌄</button>`:'<button class="tree-toggle" style="visibility:hidden">⌄</button>'}
+      <button class="tree-name" style="padding-left:${depth?0:2}px">${ICON_FOLDER}<span class="nm">${f.name}</span>
+        ${pinnedFirst?'<span class="pin-badge" style="display:inline">★</span>':''}
+        <span class="count">${Math.floor(Math.random()*9)+1}</span>${star(pinnedFirst)}</button>
+      </div>
+      ${kids.length?`<div class="tree-children">${treeRows(f.id, depth+1)}</div>`:''}
+    </div>`
+  }).join('')
+}
+function treeHTML(){ return `<div class="tree">${treeRows()}</div>` }
+function readerHTML(title){
+  const note = NOTES.find(n=>n.id===selectedNote) || NOTES[0]
+  return `<div class="reader">
+    <div class="reader-head">${folderPath(note.folder)} · ${selectedNote!==undefined && title?title:'自动保存'} <span style="margin-left:auto">⌘K 快速定位</span></div>
+    <div class="reader-title">${note.title}</div>
+    <div class="reader-body"><span class="ln"></span><span class="ln"></span><span class="ln"></span><span class="ln"></span><span class="ln"></span><span class="ln"></span><span class="ln"></span></div>
+  </div>`
+}
+
+/* ---------------- 方案 A：⌘K ---------------- */
+function fuzzy(q, list){
+  if(!q) return list.slice(0,6)
+  const qq = q.toLowerCase()
+  return list.filter(x=>x.label.toLowerCase().includes(qq)).slice(0,8)
+}
+function hl(text, q){
+  if(!q) return text
+  const i = text.toLowerCase().indexOf(q.toLowerCase())
+  if(i<0) return text
+  return text.slice(0,i)+'<mark>'+text.slice(i,i+q.length)+'</mark>'+text.slice(i+q.length)
+}
+let paletteSel = 0, paletteQ = ''
+/* 候选集：空态=常用目录+最近打开；有输入=模糊搜索（目录+笔记） */
+function searchItems(){
+  const fd = fuzzy(paletteQ, FOLDERS.map(f=>({kind:'folder', id:f.id, label:f.name, crumb:f.parent?folderPath(f.parent):'根目录', match:'目录'})))
+  const nd = fuzzy(paletteQ, NOTES.map(n=>({kind:'note', id:n.id, label:n.title, crumb:folderPath(n.folder), match:'笔记'})))
+  return [...fd, ...nd]
+}
+function defaultItems(){
+  const pin = FOLDERS.filter(f=>pinned.has(f.id)).map(f=>({kind:'folder', id:f.id, label:f.name, crumb:'星标', match:'常用'}))
+  const rec = recents.slice(0,6).map(r=>{
+    const it = r.kind==='note' ? NOTES.find(n=>n.id===r.id) : FOLDERS.find(f=>f.id===r.id)
+    return { kind:r.kind, id:r.id, label:it?.title||it?.name||'（已删除）', crumb:r.kind==='note'?folderPath(it?.folder):'目录', match:r.at }
+  })
+  return [...pin, ...rec]
+}
+const results = () => paletteQ ? searchItems() : defaultItems()
+function groupsFor(items){
+  if(paletteQ) return [['目录', items.filter(i=>i.kind==='folder')], ['笔记', items.filter(i=>i.kind==='note')]]
+  const pin = items.slice(0, FOLDERS.filter(f=>pinned.has(f.id)).length)
+  return [['常用目录 ★', pin], ['最近', items.slice(pin.length)]]
+}
+function paletteHTML(){
+  const items = results()
+  const body = items.length
+    ? groupsFor(items).map(([name, list]) => list.length ? `<div class="p-group">${name}</div>${list.map(r=>paletteItem(r, items.indexOf(r))).join('')}` : '').join('')
+    : `<div class="p-empty">没有匹配的目录或笔记<br><small style="font-size:11px">试试「学习」或「收录」</small></div>`
+  return `<div class="palette-mask"><div class="palette">
+    <div class="p-head">${ICON_SEARCH}<input id="pkInput" placeholder="输入目录名或笔记标题…" value="${paletteQ}"><span class="p-kbd">esc 关闭</span></div>
+    <div class="p-body" id="pkBody">${body}</div>
+    <div class="p-foot"><span><b>↑</b><b>↓</b>切换</span><span><b>↵</b>打开</span><span><b>⌘K</b>随时唤起</span></div>
+  </div></div>`
+}
+function paletteItem(r, i){
+  return `<button class="p-item ${i===paletteSel?'sel':''}" data-kind="${r.kind}" data-id="${r.id}">
+    ${r.kind==='folder'?ICON_FOLDER:ICON_NOTE}<span>${hl(r.label, paletteQ)}</span>
+    <span class="crumb">${hl(r.crumb, paletteQ)}${r.kind==='folder'?'':' · '}${''}</span>
+    <span class="match">${r.kind==='folder'?'目录':'笔记'}</span>
+  </button>`
+}
+function paletteOpen(autofill=''){
+  paletteQ = autofill; paletteSel = 0
+  stage().querySelector('.win') /* noop */
+  const wrap = document.getElementById('win')
+  wrap.insertAdjacentHTML('beforeend', paletteHTML())
+  const input = document.getElementById('pkInput')
+  input.focus(); if(autofill){ input.setSelectionRange(autofill.length, autofill.length) }
+  bindPalette()
+}
+function bindPalette(){
+  const body = document.getElementById('pkBody')
+  const input = document.getElementById('pkInput')
+  input.addEventListener('input', ()=>{ paletteQ = input.value; paletteSel = 0; body.innerHTML = new DOMParser().parseFromString(paletteHTML(),'text/html').getElementById('pkBody').innerHTML; bindRows() })
+  input.addEventListener('keydown', e=>{
+    const n = results().length
+    if(e.key==='ArrowDown'){ paletteSel=(paletteSel+1)%n; rerender() ; e.preventDefault()}
+    else if(e.key==='ArrowUp'){ paletteSel=(paletteSel-1+n)%n; rerender(); e.preventDefault() }
+    else if(e.key==='Enter'){ commit(results()[paletteSel]) }
+    else if(e.key==='Escape'){ closePalette() }
+    e.stopPropagation()
+  })
+  function rerender(){ body.innerHTML = new DOMParser().parseFromString(paletteHTML(),'text/html').getElementById('pkBody').innerHTML; bindRows() }
+  function bindRows(){
+    body.querySelectorAll('.p-item').forEach((el,i)=>{
+      el.addEventListener('click', ()=>commit(results()[i === 0 ? 0 : i] ?? results()[i]))
+    })
+  }
+  bindRows();
+  input.closest('.palette-mask').addEventListener('click', e=>{ if(e.target.classList.contains('palette-mask')) closePalette() })
+}
+function closePalette(){ document.querySelector('.palette-mask')?.remove() }
+function commit(r){
+  if(!r) return
+  closePalette()
+  toast(r.kind==='folder' ? `已切到目录「${r.label}」（真实实现会选中并展开该目录）` : `已打开笔记「${r.label}」`)
+}
+
+/* ---------------- 方案 D：三合一 ---------------- */
+function combinedSectionHTML(){
+  const rows = FOLDERS.filter(f=>pinned.has(f.id))
+  return `<div class="section-label"><span>常用</span><small>${rows.length}/5</small></div>
+  ${rows.map(f=>`<button class="quick-row" data-pin="${f.id}">${ICON_FOLDER}<span class="t">${f.name}</span>${star(true)}</button>`).join('')}
+  <div class="sub-label">最近</div>
+  ${recents.slice(0,4).map((r,i)=>{
+    const item = r.kind==='note' ? NOTES.find(n=>n.id===r.id) : null
+    const label = item ? item.title : folderName(r.id)
+    return `<button class="quick-row" data-recent="${i}" style="${r.kind==='note'&&r.id===selectedNote?'font-weight:600;color:var(--blue)':''}">
+      ${r.kind==='note'?ICON_NOTE:ICON_FOLDER}<span class="t">${label}</span><span class="meta">${r.at}</span></button>`
+  }).join('')}
+  <hr class="sep">`
+}
+/* ---------------- 方案 B：置顶收藏 ---------------- */
+function pinnedSectionHTML(){
+  const rows = FOLDERS.filter(f=>pinned.has(f.id))
+  return `<div class="section-label"><span>常用</span><small>${rows.length}/5</small></div>
+  ${rows.map(f=>`<button class="quick-row" data-pin="${f.id}">${ICON_FOLDER}<span class="t">${f.name}</span>${star(true)}</button>`).join('')||'<div class="muted-hint">还没有常用目录，把目录行右侧的 ☆ 点亮</div>'}
+  <hr class="sep">`
+}
+function bindPinned(root){
+  root.querySelectorAll('.tree-row .star').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation()
+      const row = btn.closest('.tree-row')
+      const name = row.querySelector('.nm').textContent
+      const f = FOLDERS.find(x=>x.name===name)
+      if(pinned.has(f.id)) pinned.delete(f.id)
+      else { if(pinned.size>=5){ toast('最多 5 个常用目录（原型演示限制）'); return } pinned.add(f.id) }
+      render('p')
+      toast(pinned.has(f.id)?`「${f.name}」已置顶`:`「${f.name}」已取消置顶`)
+    })
+  })
+  root.querySelectorAll('[data-pin] .star').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation()
+      const f = FOLDERS.find(x=>x.id===+btn.closest('[data-pin]').dataset.pin)
+      pinned.delete(f.id); render('p')
+      toast(`「${f.name}」已取消置顶`)
+    })
+  })
+}
+
+/* ---------------- 方案 C：最近打开 ---------------- */
+function recentSectionHTML(){
+  return `<div class="section-label"><span>最近</span><small><button style="border:0;background:none;color:#8a95a5;font-size:10px" onclick="toast('真实实现：点击可清空记录')">清空</button></small></div>
+  ${recents.slice(0,6).map((r,i)=>{
+    const item = r.kind==='note' ? NOTES.find(n=>n.id===r.id) : null
+    const label = item ? item.title : folderName(r.id)
+    return `<button class="quick-row" data-recent="${i}" style="${r.kind==='note'&&r.id===selectedNote?'font-weight:600;color:var(--blue)':''}">
+      ${r.kind==='note'?ICON_NOTE:ICON_FOLDER}<span class="t">${label}</span><span class="meta">${r.at}</span></button>`
+  }).join('')}
+  <hr class="sep">`
+}
+function bindRecent(root){
+  root.querySelectorAll('.tree-name, [data-recent].quick-row, .nav-row').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const isTreeRow = el.classList.contains('tree-name')
+      if(isTreeRow){
+        const f = FOLDERS.find(x=>x.name===el.querySelector('.nm').textContent)
+        recents.unshift({ kind:'folder', id:f.id, at:'刚刚' })
+      } else if(el.dataset.recent!==undefined){
+        const r = recents[+el.dataset.recent]
+        if(r.kind==='folder'){ recents.splice(+el.dataset.recent,1); recents.unshift({...r, at:'刚刚'}); render('r'); return }
+        selectedNote = r.id
+      } else return
+      recents = recents.slice(0,10)
+      render('r')
+    })
+  })
+}
+
+/* ---------------- 渲染 / 切换 ---------------- */
+const INTROS = {
+  d:'三合一：侧栏一个「常用」区（上：星标目录·手动，下：最近打开·自动跟随使用）；按 ⌘K 唤起命令面板——空态直接展示星标目录与最近打开，输入即变模糊搜索（目录+笔记标题）。星标存后端跨设备同步，最近记录存本浏览器。',
+  k:'按 ⌘K / Ctrl+K 弹出命令面板：一个输入框同时模糊搜索目录名与笔记标题，方向键选、回车直达，不打断当前阅读。下面输入框会实时过滤（试试「学习」「收录」「vite」）。',
+  p:'目录行右侧 hover 出现 ☆ / ★ 点亮收藏；星标目录固定在侧栏顶部「常用」区，最多 5 个，一眼即达。真实实现里收藏状态存后端。',
+  r:'侧栏顶部自动列出最近打开的笔记与目录（跟随使用习惯，点击即在列表顶部刷新时间），无需手动管理。',
+}
+tab = 'k'
+const win = document.getElementById('win')
+const INTRO_EL = document.getElementById('intro')
+function stage(){ return win }
+
+function render(which=tab){
+  tab = which
+  INTRO_EL.textContent = INTROS[which]
+  if(which==='d'){
+    win.innerHTML = sidebar({folderSection:combinedSectionHTML(), folderSearchShow:false}) + readerHTML()
+    bindPinned(win); bindRecent(win)
+  } else if(which==='k'){
+    win.innerHTML = sidebar({folderSearchShow:false}) + readerHTML() + `<div class="palette-wrap"></div>`
+  } else if(which==='p'){
+    win.innerHTML = sidebar({folderSection:pinnedSectionHTML(), folderSearchShow:true}) + readerHTML()
+    bindPinned(win)
+  } else {
+    win.innerHTML = sidebar({folderSection:recentSectionHTML(), folderSearchShow:true}) + readerHTML()
+    bindRecent(win)
+    win.querySelector('.sidebar .tree').style.flex = '1'
+  }
+}
+function toast(msg){
+  const t = document.getElementById('toast')
+  t.textContent = msg; t.classList.add('show')
+  clearTimeout(t._tm); t._tm = setTimeout(()=>t.classList.remove('show'), 1800)
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click', ()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active', x===b))
+  closePalette(); render(b.dataset.tab)
+  if(b.dataset.tab==='k'||b.dataset.tab==='d') paletteOpen()
+}))
+window.toast = toast
+window.addEventListener('keydown', e=>{ if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); if(!document.querySelector('.palette-mask')) paletteOpen() } })
+
+render('d')
+paletteOpen()
+toast('三合一面板已打开：空态显示常用+最近，输入即搜索（试试「学习」）')
+</script>
+</body>
+</html>

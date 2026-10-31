@@ -75,3 +75,6 @@ backend/uploads/*
 
 # ZCode 本地会话元数据
 .zcode/
+
+# 冒烟脚本临时截图
+frontend/tests/browser/_*.png
