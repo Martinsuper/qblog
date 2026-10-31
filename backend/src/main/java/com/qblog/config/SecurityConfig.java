@@ -46,6 +46,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                 .requestMatchers(HttpMethod.GET, "/health").permitAll()
                 .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/plantuml/**").permitAll()
                 .requestMatchers("/mcp").hasAuthority("MCP_TOKEN")
                 // A private shared workspace: legacy reads, docs and readiness are admin-only too.
                 .anyRequest().hasRole("ADMIN"))

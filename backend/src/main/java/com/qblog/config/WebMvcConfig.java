@@ -93,6 +93,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
             // 分类和标签列表: 缓存 5 分钟
             if (uri.equals("/api/categories") || uri.equals("/api/tags")) {
                 response.setHeader("Cache-Control", "public, max-age=300");
+                return;
+            }
+
+            // PlantUML 图表: 编码即源码指纹，硬缓存一周
+            if (uri.startsWith("/api/plantuml/")) {
+                response.setHeader("Cache-Control", "public, max-age=604800, immutable");
             }
         }
     }

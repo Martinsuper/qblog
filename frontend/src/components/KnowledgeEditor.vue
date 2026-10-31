@@ -19,6 +19,7 @@
           class="format-btn"
           :class="{ active: editor?.isActive('bold') }"
           title="加粗"
+          aria-label="加粗"
           @click="editor.chain().focus().toggleBold().run()"
         >
           <KnowledgeIcon name="bold" />
@@ -27,6 +28,7 @@
           type="button"
           class="format-btn"
           title="二级标题"
+          aria-label="二级标题"
           @click="editor.chain().focus().toggleHeading({ level: 2 }).run()"
         >
           <KnowledgeIcon name="heading" />
@@ -36,6 +38,7 @@
           type="button"
           class="format-btn"
           title="无序列表"
+          aria-label="无序列表"
           @click="editor.chain().focus().toggleBulletList().run()"
         >
           <KnowledgeIcon name="list" />
@@ -44,6 +47,7 @@
           type="button"
           class="format-btn"
           title="代码块"
+          aria-label="代码块"
           @click="editor.chain().focus().toggleCodeBlock().run()"
         >
           <KnowledgeIcon name="code" />
@@ -52,6 +56,7 @@
           type="button"
           class="format-btn"
           title="插入表格"
+          aria-label="插入表格"
           @click="editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()"
         >
           <KnowledgeIcon name="table" />
@@ -61,6 +66,7 @@
           type="button"
           class="format-btn"
           title="撤销"
+          aria-label="撤销"
           :disabled="!editor?.can().undo()"
           @click="editor.chain().focus().undo().run()"
         >
@@ -70,6 +76,7 @@
           type="button"
           class="format-btn"
           title="重做"
+          aria-label="重做"
           :disabled="!editor?.can().redo()"
           @click="editor.chain().focus().redo().run()"
         >
@@ -90,31 +97,70 @@ import { TaskItem, TaskList } from '@tiptap/extension-list'
 import KnowledgeIcon from './KnowledgeIcon.vue'
 import { SlashCommand } from '../utils/slashCommands'
 import { EditorEmptyHint } from '../utils/editorEmptyHint'
+import { PlantUmlPreview } from '../utils/plantumlPreview'
 const props = defineProps({ modelValue: { type: String, default: '' }, readonly: Boolean, quietToolbar: Boolean, toolbarTarget: { type: Object, default: null } })
 const emit = defineEmits(['update:modelValue', 'headings'])
 let lastEmitted = props.modelValue
+// getMarkdown 全文序列化是键入链路最重的操作：尾随防抖合并连续击键，
+// 250ms 后统一序列化并上报。离开/销毁前必须 flushPending()，避免最后一击丢失。
+const EMIT_DEBOUNCE_MS = 250
+let emitTimer = null
 function reportHeadings(instance) {
   const result = []
   instance.state.doc.descendants(node => { if (node.type.name === 'heading') result.push({ level: node.attrs.level, text: node.textContent }) })
   emit('headings', result)
 }
+function emitNow() {
+  if (!editor.value) return
+  emitTimer = null
+  lastEmitted = editor.value.getMarkdown()
+  emit('update:modelValue', lastEmitted)
+  reportHeadings(editor.value)
+}
+function flushPending() {
+  if (emitTimer) cancelAndEmit()
+}
+function cancelAndEmit() {
+  clearTimeout(emitTimer)
+  emitNow()
+}
 const editor = useEditor({
-  extensions: [StarterKit.configure({ link: { openOnClick: false }, heading: { levels: [1, 2, 3] } }), TaskList, TaskItem.configure({ nested: true }), TableKit, Markdown, SlashCommand, EditorEmptyHint],
+  extensions: [StarterKit.configure({ link: { openOnClick: false }, heading: { levels: [1, 2, 3] } }), TaskList, TaskItem.configure({ nested: true }), TableKit, Markdown, SlashCommand, EditorEmptyHint, PlantUmlPreview()],
   content: props.modelValue,
   contentType: 'markdown',
   editable: !props.readonly,
-  editorProps: { attributes: { 'aria-label': '笔记正文', spellcheck: 'false' } },
+  editorProps: {
+    attributes: { 'aria-label': '笔记正文', spellcheck: 'false' },
+    handleClick: (view, pos, event) => {
+      // 正文链接点击接管：TipTap 的 openOnClick 配置为 false（编辑态点击不跳转、不丢焦点），
+      // 这些会导致阅读时链接完全无响应；此处统一接管，点击直接打开外页。
+      // # 开头的站内锚点不做处理，交回默认行为。
+      const anchor = event.target?.closest?.('a[href]')
+      if (!anchor) return false
+      const href = anchor.getAttribute('href')
+      if (!href || href.startsWith('#')) return false
+      window.open(anchor.href, '_blank', 'noopener,noreferrer')
+      return true
+    }
+  },
   onCreate: ({ editor: instance }) => reportHeadings(instance),
-  onUpdate: ({ editor: instance }) => { reportHeadings(instance); lastEmitted = instance.getMarkdown(); emit('update:modelValue', lastEmitted) }
+  onUpdate: () => { clearTimeout(emitTimer); emitTimer = setTimeout(emitNow, EMIT_DEBOUNCE_MS) }
 })
 watch(() => props.modelValue, value => {
   if (editor.value && value !== lastEmitted) {
+    // 程序化载入（打开笔记/冲突重载）：丢弃未发出的序列化结果，防止旧内容回写覆盖新载入值
+    if (emitTimer) { clearTimeout(emitTimer); emitTimer = null }
     lastEmitted = value
     editor.value.commands.setContent(value, { contentType: 'markdown', emitUpdate: false }); reportHeadings(editor.value)
   }
 })
 watch(() => props.readonly, value => editor.value?.setEditable(!value))
-onBeforeUnmount(() => editor.value?.destroy())
+defineExpose({ flushPending })
+onBeforeUnmount(() => {
+  // 同步冲刷未上报的修改（切笔记/切布局经 :key 重建编辑器时，保证父层草稿拿到最新内容）
+  if (emitTimer) cancelAndEmit()
+  editor.value?.destroy()
+})
 </script>
 <style>
 .slash-menu { position: relative; z-index: 1000; display: flex; flex-direction: column; min-width: 248px; max-height: 322px; overflow: hidden; background: var(--panel, #fff); border: 1px solid var(--line, #e5e9ef); border-radius: 8px; box-shadow: 0 10px 32px #20334b1f; color: #243044; font: 12px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
@@ -150,4 +196,20 @@ html.dark .format-bar .format-divider { background: #334257; }
 html.dark .format-bar .format-btn { color: #98a8bd; }
 html.dark .format-bar .format-btn:hover { background: #2b405d; color: #9abded; }
 html.dark .format-bar .format-btn.active { background: #2b405d; color: #9abded; }
+/* PlantUML 预览（widget 装饰，非可编辑内容）：默认收起源码，点卡片切换展开 */
+.tiptap pre.plantuml-src-hidden { display: none; }
+.tiptap .plantuml-preview { position: relative; display: flex; justify-content: center; margin: 2px 0 10px; padding: 12px 10px; border: 1px solid var(--line, #e5e9ef); border-radius: 8px; background: var(--soft, #f7f9fc); user-select: none; cursor: pointer; }
+.tiptap .plantuml-preview img { max-width: 100%; height: auto; display: block; }
+.tiptap .plantuml-tools { position: absolute; top: 8px; right: 10px; display: flex; align-items: center; gap: 6px; }
+.tiptap .plantuml-hint { font-size: 11px; line-height: 1; padding: 4px 8px; border-radius: 10px; border: 1px solid var(--line, #e5e9ef); background: #ffffffbf; color: var(--muted, #8b97a8); backdrop-filter: blur(2px); }
+.tiptap .plantuml-copy { display: inline-flex; align-items: center; gap: 4px; padding: 3.5px 9px; border: 1px solid var(--line, #e5e9ef); border-radius: 6px; background: #fff; color: var(--muted, #6b7a8d); font: 11px/1 inherit; cursor: pointer; }
+.tiptap .plantuml-copy:hover { color: var(--blue, #3564a9); border-color: #9dbede; background: var(--blue-bg, #eef3fa); }
+.tiptap .plantuml-copy.copied { color: #1c8a4e; border-color: #9ed8b6; background: #eafaf1; }
+.tiptap .plantuml-copy svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+html.dark .tiptap .plantuml-preview { border-color: #334257; background: #eef2f7; box-shadow: 0 0 0 6px #eef2f7; }
+html.dark .tiptap .plantuml-hint { background: #f2f5f9; border-color: #d5dde6; color: #6d7c92; }
+html.dark .tiptap .plantuml-copy { background: #f5f7fa; border-color: #d5dde6; color: #5d6c7e; }
+html.dark .tiptap .plantuml-copy.copied { color: #1c8a4e; }
+
+
 </style>

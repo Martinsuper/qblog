@@ -115,6 +115,19 @@
             <version>0.24.0</version>
         </dependency>
 
+        <!-- PlantUML 图表本地渲染（文章 ```plantuml 代码块 → SVG），不依赖外部服务 -->
+        <dependency>
+            <groupId>net.sourceforge.plantuml</groupId>
+            <artifactId>plantuml</artifactId>
+            <version>1.2024.6</version>
+        </dependency>
+
+        <!-- 进程内热点数据缓存（文章详情/分类/标签列表），版本由 Spring Boot BOM 管理 -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

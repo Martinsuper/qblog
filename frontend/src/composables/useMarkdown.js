@@ -15,7 +15,8 @@ import { useSettingsStore } from '@/stores/settings'
 import {
   tipContainerPlugin,
   headingAnchorPlugin,
-  codeCopyPlugin
+  codeCopyPlugin,
+  plantumlPlugin
 } from '@/utils/markdownPlugins'
 
 // 未注册的语言安全回退到纯文本，避免加载全部语言。
@@ -50,15 +51,21 @@ function createRenderer(theme) {
     }
   })
 
-  // 添加安全链接校验（只允许 http/https/mailto 协议）
+  // 安全链接校验：http/https/mailto + 站内相对链接与锚点，
+  // 其余（javascript:、data: 等危险协议）一律拦截
   md.validateLink = (url) => {
-    const allowed = /^(?:https?:\/\/|mailto:)/i
-    return allowed.test(url)
+    const clean = url.trim().toLowerCase()
+    if (/^(?:https?:\/\/|mailto:)/i.test(clean)) return true
+    // 相对路径与页内锚点（排除 // 开头的协议相对地址）
+    if (/^(?:\/(?![/])|\.{1,2}\/|#)/.test(clean)) return true
+    return false
   }
 
   // 应用插件
   tipContainerPlugin(md)
   headingAnchorPlugin(md)
+  // ```plantuml 代码块 → 本地渲染 SVG（在悬停/复制等插件之前接管）
+  plantumlPlugin(md)
 
   // VuePress 风格启用代码复制按钮
   if (theme === 'vuepress') {

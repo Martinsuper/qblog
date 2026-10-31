@@ -18,6 +18,11 @@ export function codeCopyPlugin(md) {
     // 默认渲染
     let result = defaultFenceRenderer(tokens, idx, options, env, self)
 
+    // PlantUML 已由 plantumlPlugin 渲染成图表，不加复制按钮包装
+    const isPlantUml = (info.split(/\s+/)[0].toLowerCase() === 'plantuml')
+      || (!info && content.trim().startsWith('@startuml'))
+    if (isPlantUml) return result
+
     // 包装代码块并添加复制按钮
     const language = escapeHtml(info || 'text')
     const languageLabel = `<span class="code-lang">${language}</span>`
