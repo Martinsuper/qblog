@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.qblog.common.SecurityUtils;
+import com.qblog.common.Transactions;
 import com.qblog.common.WebUtils;
 import com.qblog.common.exception.ResourceNotFoundException;
 import com.qblog.common.exception.UnauthorizedException;
@@ -25,6 +26,7 @@ import com.qblog.model.vo.UserVO;
 import com.qblog.service.ArticleService;
 import com.qblog.service.ArticleTagService;
 import com.qblog.service.CategoryService;
+import com.qblog.service.ContentCacheService;
 import com.qblog.service.TagService;
 import com.qblog.service.UserService;
 import com.qblog.service.ViewCountService;
@@ -54,6 +56,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private final TagService tagService;
     private final ArticleTagService articleTagService;
     private final ViewCountService viewCountService;
+    private final ContentCacheService contentCacheService;
 
     // List queries must not load the potentially large Markdown body.
     private LambdaQueryWrapper<Article> listQuery() {
@@ -180,9 +183,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             return assembleArticleVO(article);
         }
 
-        // Do not cache mutable publication snapshots. A stale in-flight loader can
-        // repopulate Redis after invalidation, including across application instances.
-        ArticleVO vo = assembleArticleVO(article);
+        // 已发布文章走进程内短 TTL 缓存（陈旧窗口与设计权衡见 ContentCacheService 类注释）
+        ArticleVO vo = contentCacheService.getArticleDetail(id, () -> assembleArticleVO(getById(id)));
 
         // 仅已发布文章计数浏览量（同一访客 24 小时内去重）
         if (vo != null && Integer.valueOf(1).equals(vo.getStatus())) {
@@ -269,6 +271,12 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         save(article);
         saveArticleTags(article.getId(), articleDTO.getTagIds());
 
+        // 新文章影响分类/标签的 article_count 统计；事务提交后再失效缓存（见 Transactions#afterCommit）
+        Transactions.afterCommit(() -> {
+            contentCacheService.evictCategories();
+            contentCacheService.evictTags();
+        });
+
         return assembleArticleVO(article);
     }
 
@@ -303,6 +311,13 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             saveArticleTags(id, articleDTO.getTagIds());
         }
 
+        // 内容/状态/分类/标签都可能变化；事务提交后再失效详情与统计缓存
+        Transactions.afterCommit(() -> {
+            contentCacheService.evictArticle(id);
+            contentCacheService.evictCategories();
+            contentCacheService.evictTags();
+        });
+
         return assembleArticleVO(article);
     }
 
@@ -326,19 +341,25 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (article != null) {
             article.setStatus(2); // 标记为已删除
             updateById(article);
+            Transactions.afterCommit(() -> {
+                contentCacheService.evictArticle(id);
+                contentCacheService.evictCategories();
+                contentCacheService.evictTags();
+            });
         }
     }
 
     @Override
     public List<ArticleListItemVO> getHotArticles(Integer limit) {
         // Prefer fresh publication state over distributed snapshot-cache races.
-        return convertToListItemVO(page(new Page<Article>(1, limit), listQuery()
+        // searchCount=false：top-N 不需要总数，省掉分页插件默认附加的 COUNT 查询
+        return convertToListItemVO(page(new Page<Article>(1, limit, false), listQuery()
                 .eq(Article::getStatus, 1).orderByDesc(Article::getViewCount)).getRecords());
     }
 
     @Override
     public List<ArticleListItemVO> getLatestArticles(Integer limit) {
-        return convertToListItemVO(page(new Page<Article>(1, limit), listQuery()
+        return convertToListItemVO(page(new Page<Article>(1, limit, false), listQuery()
                 .eq(Article::getStatus, 1).orderByDesc(Article::getPublishTime)).getRecords());
     }
 

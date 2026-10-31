@@ -28,10 +28,12 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // 按依赖族分包：博客页不必下载知识库编辑器（tiptap），博客页缓存不受发版影响
+        // 注意：不要把 element-plus 整体归入单一 chunk——入口仅引用 ElMessage/ElLoading，
+        // el-table 等重组件只有管理后台使用，跟随路由 chunk 按需加载（未归组的共享模块
+        // 由 Rollup 自动提升为公共 chunk）
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined
           if (/[\\/]node_modules[\\/](vue|vue-router|pinia|@vue)[\\/]/.test(id)) return 'vue-vendor'
-          if (id.includes('element-plus') || id.includes('@element-plus')) return 'element-plus'
           if (id.includes('@tiptap') || id.includes('prosemirror')) return 'editor'
           if (id.includes('highlight.js')) return 'highlight'
           if (id.includes('markdown-it')) return 'markdown'

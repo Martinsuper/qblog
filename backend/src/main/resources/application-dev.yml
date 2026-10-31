@@ -1,0 +1,9 @@
+# 开发环境 profile：保留 SQL stdout 日志与 DEBUG 级别便于调试。
+# 默认（无 profile）与 prod 均为安静模式，见 application.yml / application-prod.yml。
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    com.qblog: DEBUG

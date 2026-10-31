@@ -53,44 +53,41 @@ public class ViewCountService {
     private static final DefaultRedisScript<Long> UNLOCK = new DefaultRedisScript<>(
             "if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) end; return 0", Long.class);
 
+    // 单次往返完成：24h 访客去重（SET NX PX）+ INCR + 7 天滑动 EXPIRE。
+    // 返回 0 表示去重窗口内重复访客，不计数；异常时调用方走本地兜底。
+    private static final DefaultRedisScript<Long> COUNT = new DefaultRedisScript<>(
+            "if redis.call('SET', KEYS[1], '1', 'NX', 'PX', ARGV[1]) then " +
+            "local n = redis.call('INCR', KEYS[2]); " +
+            "redis.call('EXPIRE', KEYS[2], ARGV[2]); return n end; return 0", Long.class);
+
     public void incrementViewCount(Long articleId, String visitorKey) {
-        if (!shouldCount(articleId, visitorKey)) return;
+        String dedupKey = DEDUP + articleId + ":" + visitorKey;
         if (redisTemplate != null) {
             try {
-                String key = CURRENT + articleId;
-                redisTemplate.opsForValue().increment(key);
-                // 滑动 TTL：文章删除或不再被访问后计数 key 自动消失，SCAN 集合不会无限增长
-                redisTemplate.expire(key, Duration.ofDays(7));
-                return;
+                Long counted = redisTemplate.execute(COUNT,
+                        List.of(dedupKey, CURRENT + articleId),
+                        String.valueOf(DEDUP_WINDOW_MS),
+                        String.valueOf(Duration.ofDays(7).toSeconds()));
+                if (counted != null) return; // 1=新访客已计数；0=24h 窗口内去重
             } catch (Exception e) {
                 // An ambiguous Redis result may duplicate, but must not break reads.
                 log.warn("Redis view increment failed; buffering locally", e);
             }
         }
-        localViewCounts.merge(articleId, 1L, Long::sum);
-    }
-
-    private boolean shouldCount(Long articleId, String visitorKey) {
-        String key = DEDUP + articleId + ":" + visitorKey;
-        if (redisTemplate != null) {
-            try {
-                return Boolean.TRUE.equals(redisTemplate.opsForValue()
-                        .setIfAbsent(key, "1", Duration.ofMillis(DEDUP_WINDOW_MS)));
-            } catch (Exception e) {
-                log.warn("Redis view dedup unavailable; using local dedup: {}", e.getMessage());
-            }
-        }
+        // 本地兜底：同样的 24h 固定窗口去重（不滑动）
         long now = System.currentTimeMillis();
         if (localViewDedup.size() > 100_000) localViewDedup.clear();
         boolean[] count = {false};
-        localViewDedup.compute(key, (ignored, previous) -> {
+        localViewDedup.compute(dedupKey, (ignored, previous) -> {
             if (previous == null || now - previous >= DEDUP_WINDOW_MS) {
                 count[0] = true;
                 return now;
             }
             return previous; // Do not turn a fixed 24h window into a sliding window.
         });
-        return count[0];
+        if (count[0]) {
+            localViewCounts.merge(articleId, 1L, Long::sum);
+        }
     }
 
     @Scheduled(fixedRate = 300000)

@@ -120,6 +120,8 @@ echo ""
 # CORS 白名单：加入 frp 公网域名 ali.younote.top（经服务器 Caddy /blog 反代访问）
 # 必须在启动前 export，mvn 子进程才会继承
 export CORS_ALLOWED_ORIGINS="https://ali.younote.top,http://localhost:3001,http://localhost:3000"
+# 本地开发启用 dev profile（保留 SQL stdout 日志）；默认 profile 已改为安静模式以提速
+export SPRING_PROFILES_ACTIVE=dev
 mvn spring-boot:run &
 BACKEND_PID=$!
 

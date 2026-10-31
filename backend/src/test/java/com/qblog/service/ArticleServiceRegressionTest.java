@@ -29,7 +29,7 @@ class ArticleServiceRegressionTest {
     ArticleTagService associations = mock(ArticleTagService.class);
     ArticleServiceImpl service = spy(new ArticleServiceImpl(mock(UserService.class),
             mock(CategoryService.class), mock(TagService.class), associations,
-            mock(ViewCountService.class)));
+            mock(ViewCountService.class), new ContentCacheService()));
 
     @BeforeEach void metadata() {
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), "test"), Article.class);
