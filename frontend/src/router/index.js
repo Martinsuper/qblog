@@ -10,41 +10,15 @@ const router = createRouter({
       component: () => import('@/views/Knowledge/Index.vue'),
       meta: { requiresAuth: true, requiresAdmin: true, standalone: true }
     },
-    {
-      path: '/articles',
-      name: 'article-list',
-      component: () => import('@/views/Article/List.vue')
-    },
-    {
-      path: '/article/:id',
-      name: 'article-detail',
-      component: () => import('@/views/Article/Detail.vue')
-    },
-    {
-      path: '/archives',
-      name: 'archive',
-      component: () => import('@/views/Archive/Index.vue')
-    },
-    {
-      path: '/categories',
-      name: 'category-list',
-      component: () => import('@/views/Category/List.vue')
-    },
-    {
-      path: '/category/:id',
-      name: 'category',
-      component: () => import('@/views/Category/Index.vue')
-    },
-    {
-      path: '/tags',
-      name: 'tag-list',
-      component: () => import('@/views/Tag/List.vue')
-    },
-    {
-      path: '/tag/:id',
-      name: 'tag',
-      component: () => import('@/views/Tag/Index.vue')
-    },
+    // 博客阅读页已下线（阅读侧只有知识库工作区）；旧链接统一回到知识库首页。
+    // 文章数据与后端 API 保留：管理后台（/admin）与智能体/MCP 仍可维护文章。
+    { path: '/articles', redirect: '/' },
+    { path: '/article/:id', redirect: '/' },
+    { path: '/archives', redirect: '/' },
+    { path: '/categories', redirect: '/' },
+    { path: '/category/:id', redirect: '/' },
+    { path: '/tags', redirect: '/' },
+    { path: '/tag/:id', redirect: '/' },
     {
       path: '/login',
       name: 'login',
@@ -54,6 +28,12 @@ const router = createRouter({
     {
       path: '/register',
       redirect: '/login'
+    },
+    {
+      path: '/assistant',
+      name: 'assistant',
+      component: () => import('@/views/Agent/Index.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true, standalone: true }
     },
     {
       path: '/settings',
