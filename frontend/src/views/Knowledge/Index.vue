@@ -109,6 +109,8 @@
           @click="mobileView = 'reader'; readerOpen = true"
         >
           正文
+        </button><button @click="onView('agent')">
+          智能体
         </button>
       </nav>
       <main
@@ -135,9 +137,9 @@
           >
             ☆ 我的收藏
           </button><button
-            :class="{ active: route.path === '/assistant' }"
+            :class="{ active: mobileView === 'agent' }"
             data-testid="kb-agent-entry-layout"
-            @click="router.push('/assistant')"
+            @click="onView('agent')"
           >
             ✦ 智能体
           </button><div class="kb-sidebar-title">
@@ -189,7 +191,7 @@
           </div>
         </aside>
         <section
-          v-if="appearance.layout === 'library'"
+          v-if="appearance.layout === 'library' && mobileView !== 'agent'"
           class="kb-shelf"
         >
           <div><strong>我的知识书架</strong><small>一本一主题 · 笔记作为章节</small></div><div class="kb-books">
@@ -210,7 +212,10 @@
             </button>
           </div>
         </section>
-        <section class="kb-list">
+        <section
+          v-show="mobileView !== 'agent'"
+          class="kb-list"
+        >
           <div class="kb-list-head">
             <div>
               <h2>{{ scopeTitle }} <small>{{ total }}</small></h2><button
@@ -297,7 +302,10 @@
             </button>
           </footer>
         </section>
-        <section class="kb-reader">
+        <section
+          v-show="mobileView !== 'agent'"
+          class="kb-reader"
+        >
           <header>
             <button
               v-if="appearance.layout === 'paper'"
@@ -427,6 +435,13 @@
               </button>
             </aside>
           </div>
+        </section>
+        <section
+          v-if="mobileView === 'agent'"
+          class="kb-agent-workspace"
+          aria-label="智能体工作区"
+        >
+          <AgentWorkspace embedded />
         </section>
       </main>
     </template>
@@ -574,6 +589,7 @@ import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } 
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter, useRoute } from 'vue-router'
 import KnowledgeEditor from '@/components/KnowledgeEditor.vue'
 import KnowledgeSeven from '@/components/KnowledgeSeven.vue'
+import AgentWorkspace from '@/views/Agent/Index.vue'
 import * as api from '@/api/knowledge'
 import { useUserStore } from '@/stores/user'
 import { useAgentStore } from '@/stores/agent'

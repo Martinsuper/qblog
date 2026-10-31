@@ -405,7 +405,7 @@ header{height:48px;padding:0 18px;gap:16px;background:var(--panel)}
 .seven .nav-favorites span { margin-left:auto; font-size:11px; font-variant-numeric:tabular-nums; }
 .seven .nav-favorites:hover,.seven .nav-favorites.active { background:#b2997024; color:#8a744a; }
 .seven .nav-agent { display:flex; align-items:center; gap:9px; min-height:38px; padding:8px 12px; border-radius:6px; font-size:13px; text-align:left; color:var(--muted); }
-.seven .nav-agent:hover { background:var(--blue-bg); color:var(--blue); }
+.seven .nav-agent:hover,.seven .nav-agent.active { background:var(--blue-bg); color:var(--blue); }
 .seven .nav-agent span { font-weight:500; }
 .seven[data-color='dark'] .nav-agent { color:var(--muted); }
 .seven[data-color='dark'] .nav-agent:hover { background:#b2997030; color:#cbb083; }
@@ -504,9 +504,11 @@ header{height:48px;padding:0 18px;gap:16px;background:var(--panel)}
 .seven .nav-overview.active { background:var(--blue-bg); color:var(--blue); }
 .seven .nav-overview .count { margin-left:auto; font-size:11px; font-weight:400; font-variant-numeric:tabular-nums; }
 @media(max-width:900px) {
-  .seven .app[data-view='overview'] .reader { display:flex; height:100%; width:100%; }
+  .seven .app[data-view='overview'] .reader,.seven .app[data-view='agent'] .reader { display:flex; height:100%; width:100%; }
   .seven .nav-overview { min-height:42px; }
 }
+.seven .agent-workspace-scroll{display:flex;overflow:hidden}
+.seven .agent-workspace-scroll > .agent-page{flex:1}
 
 /* 顶栏全局搜索：图标与快捷键提示垂直居中。 */
 .seven .global-search svg { top:50%; transform:translateY(-50%); }

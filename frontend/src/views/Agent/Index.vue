@@ -1,7 +1,11 @@
 <template>
-  <div class="agent-page">
+  <div
+    class="agent-page"
+    :class="{ 'is-embedded': embedded }"
+  >
     <header class="agent-topbar">
       <router-link
+        v-if="!embedded"
         to="/"
         class="tb-back"
       >
@@ -15,6 +19,7 @@
       <span class="tb-sp" />
 
       <el-popover
+        :teleported="false"
         placement="bottom-end"
         :width="280"
         trigger="click"
@@ -24,7 +29,7 @@
             class="tb-ghost"
             :disabled="store.sending"
           >
-            ⊞ 历史会话
+            <KnowledgeIcon name="layers" />历史会话
           </button>
         </template>
         <div class="history-panel">
@@ -34,6 +39,7 @@
               :key="conv.id"
               class="history-item"
               :class="{ active: conv.id === store.currentId }"
+              :disabled="store.sending"
               @click="store.select(conv.id)"
             >
               <span class="history-title">{{ conv.title || '新会话' }}</span>
@@ -54,20 +60,20 @@
         :disabled="store.sending"
         @click="startNew"
       >
-        ＋ 新会话
+        <KnowledgeIcon name="plus" />新会话
       </button>
       <button
         class="tb-ghost"
         @click="router.push('/settings/tokens')"
       >
-        ⚙ 模型配置
+        <KnowledgeIcon name="panel" />模型配置
       </button>
     </header>
 
     <div class="agent-page-body">
       <AgentChat
         :show-hero="true"
-        placeholder="询问站点内容、整理笔记、生成话题草稿…（Enter 发送，Shift+Enter 换行）"
+        placeholder="询问知识库内容，或描述你想整理的笔记…"
       />
     </div>
   </div>
@@ -78,9 +84,12 @@ import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAgentStore } from '@/stores/agent'
 import AgentChat from '@/components/agent/AgentChat.vue'
+import KnowledgeIcon from '@/components/KnowledgeIcon.vue'
+import '@/styles/agent-theme.css'
 
 const store = useAgentStore()
 const router = useRouter()
+defineProps({ embedded: Boolean })
 
 const pageTitle = computed(() => {
   const conv = store.current
@@ -115,39 +124,35 @@ function shortTime(value) {
 </script>
 
 <style scoped>
-.agent-page{height:100dvh;display:flex;flex-direction:column;background:#fafafa;color:#101828}
-html.dark .agent-page{background:#0c0f14;color:#e8ecf2}
+.agent-page{height:100dvh;min-width:0;display:flex;flex-direction:column;background:var(--agent-panel)}
 
-/* ---- 玻璃拟态顶栏 ---- */
-.agent-topbar{flex:none;display:flex;align-items:center;gap:12px;padding:0 18px;height:52px;
-  border-bottom:1px solid rgba(0,0,0,.07);
-  background:rgba(255,255,255,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:10}
-html.dark .agent-topbar{border-bottom-color:rgba(255,255,255,.08);background:rgba(20,24,31,.72)}
-.tb-back{color:#667085;font-size:12.5px;text-decoration:none;white-space:nowrap}
-.tb-back:hover{color:#101828}
-html.dark .tb-back{color:#94a3b8}
-html.dark .tb-back:hover{color:#e8ecf2}
-.tb-title{font-weight:700;font-size:13.5px;letter-spacing:.2px;max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tb-sub{color:#98a2b3;font-size:11.5px;white-space:nowrap}
+/* ---- 工作区工具栏 ---- */
+.agent-page .agent-topbar{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 20px;height:auto;min-height:52px;border-bottom:1px solid var(--agent-line);background:var(--agent-panel);z-index:10}
+.tb-back{color:var(--agent-muted);font-size:12px;text-decoration:none;white-space:nowrap;margin-right:8px}
+.tb-back:hover{color:var(--agent-accent)}
+.tb-title{font-weight:600;font-size:13px;max-width:min(40vw,320px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-sub{color:var(--agent-muted);font-size:11px;white-space:nowrap}
 .tb-sp{flex:1}
-.tb-ghost{border:1px solid rgba(0,0,0,.11);background:transparent;color:#101828;border-radius:999px;
-  padding:6px 14px;font:600 12px inherit;cursor:pointer;white-space:nowrap}
-.tb-ghost:hover{border-color:#98a2b3}
+.tb-ghost{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--agent-line);background:var(--agent-panel);color:var(--agent-ink);border-radius:5px;padding:5px 10px;min-height:31px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+.tb-ghost svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tb-ghost:hover{background:var(--agent-soft);border-color:var(--agent-accent)}
 .tb-ghost:disabled{opacity:.5;cursor:not-allowed}
-.tb-ghost.primary{background:#101828;border-color:#101828;color:#fafafa}
-html.dark .tb-ghost{border-color:rgba(255,255,255,.14);color:#e8ecf2}
-html.dark .tb-ghost.primary{background:#e8ecf2;border-color:#e8ecf2;color:#0c0f14}
+.tb-ghost.primary{background:var(--agent-accent);border-color:var(--agent-accent);color:var(--agent-on-accent)}
+.tb-ghost:focus-visible,.history-item:focus-visible{outline:2px solid var(--agent-accent);outline-offset:2px}
 
 .agent-page-body{flex:1;min-height:0;display:flex}
 .agent-page-body > *{flex:1;min-width:0}
 
 /* ---- 历史会话 popover ---- */
-.history-panel{display:flex;flex-direction:column;max-height:320px;overflow:auto;scrollbar-width:thin}
+.history-panel{display:flex;flex-direction:column;max-height:320px;overflow:auto;scrollbar-width:thin;background:var(--agent-panel);color:var(--agent-ink)}
 .history-item{display:flex;align-items:center;gap:10px;justify-content:space-between;width:100%;
   text-align:left;border:0;background:transparent;border-radius:8px;padding:8px 10px;cursor:pointer;font:inherit}
-.history-item:hover{background:rgba(99,102,241,.07)}
-.history-item.active{background:rgba(99,102,241,.12);font-weight:700}
-.history-title{font-size:12.5px;color:#101828;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.history-item time{font-size:10.5px;color:#98a2b3;flex:none}
-.history-empty{font-size:12px;color:#98a2b3;text-align:center;padding:14px 0}
+.history-item:hover{background:var(--agent-soft)}
+.history-item.active{background:var(--agent-tint);font-weight:600}
+.history-title{font-size:12px;color:var(--agent-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history-item time{font-size:10px;color:var(--agent-muted);flex:none}
+.history-empty{font-size:12px;color:var(--agent-muted);text-align:center;padding:14px 0}
+.agent-page.is-embedded{height:100%;min-height:0}
+.agent-page :deep(.el-popover){--el-bg-color-overlay:var(--agent-panel);--el-border-color-light:var(--agent-line);--el-text-color-regular:var(--agent-ink)}
+@media(max-width:640px){.tb-sub{display:none}.agent-page .agent-topbar{padding:10px 12px}.tb-ghost{padding:5px 8px}}
 </style>

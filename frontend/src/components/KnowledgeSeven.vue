@@ -124,7 +124,9 @@
         <button
           class="nav-agent"
           data-testid="kb-agent-entry"
-          @click="$router.push('/assistant')"
+          :class="{ active: agentVisible }"
+          :aria-current="agentVisible ? 'page' : undefined"
+          @click="$emit('view', 'agent')"
         >
           <KnowledgeIcon name="spark" /><span>智能体</span>
         </button>
@@ -557,9 +559,12 @@
       <section
         ref="readerPanel"
         class="reader"
-        aria-label="笔记正文"
+        :aria-label="agentVisible ? '智能体工作区' : '笔记正文'"
       >
-        <div class="reader-toolbar">
+        <div
+          v-if="!agentVisible"
+          class="reader-toolbar"
+        >
           <div class="doc-crumb">
             {{ overviewVisible ? '总览 · 队列、分布与最近动态' : active ? folderName(active.folderId) : '知识库' }}
           </div><button
@@ -574,7 +579,7 @@
             @click="$emit('view', 'overview')"
           >
             <KnowledgeIcon name="dashboard" />总览
-          </button><template v-if="active && !overviewVisible">
+          </button><template v-if="active && !overviewVisible && !agentVisible">
             <button
               class="icon-btn"
               :class="{ on: draft.favorite }"
@@ -648,9 +653,14 @@
         <div
           ref="readerElement"
           class="reader-scroll"
+          :class="{ 'agent-workspace-scroll': agentVisible }"
         >
+          <AgentWorkspace
+            v-if="agentVisible"
+            embedded
+          />
           <KnowledgeDashboard
-            v-if="overviewVisible"
+            v-else-if="overviewVisible"
             :loading="overviewLoading"
             :error="overviewError"
             :notes="overviewNotes"
@@ -840,7 +850,7 @@
           </div>
         </div>
         <div
-          v-if="active && !overviewVisible"
+          v-if="active && !overviewVisible && !agentVisible"
           class="doc-end"
         >
           <span
@@ -1003,6 +1013,7 @@ import { noteListFeedback } from '../utils/knowledgeFeedback'
 import KnowledgeIcon from './KnowledgeIcon.vue'
 import KnowledgeEditor from './KnowledgeEditor.vue'
 import KnowledgeDashboard from './KnowledgeDashboard.vue'
+import AgentWorkspace from '../views/Agent/Index.vue'
 const props = defineProps({
   color: String, folders: { type: Array, default: () => [] }, flatFolders: { type: Array, default: () => [] },
   allFolders: { type: Array, default: () => [] }, collapsed: { type: Set, default: () => new Set() },
@@ -1020,9 +1031,10 @@ const browseOpen = ref(false)
 const noteEditor = ref(null)
 // 供父层 safeLeave 在脏检查前冲刷编辑器防抖中的未上报击键
 defineExpose({ flushPending: () => noteEditor.value?.flushPending?.() })
-const showList = computed(() => browseOpen.value || Boolean(props.search || props.listSearch || props.tag || props.source))
+const showList = computed(() => !agentVisible.value && (browseOpen.value || Boolean(props.search || props.listSearch || props.tag || props.source)))
 // 总览视图由 mobileView 统一驱动：桌面端同样生效，打开笔记时 Index 会把它切回 reader。
 const overviewVisible = computed(() => props.mobileView === 'overview')
+const agentVisible = computed(() => props.mobileView === 'agent')
 // 总览里点标签：切到列表视图展示筛选结果（列表栏在设置筛选后会自动出现）。
 function onOverviewTag(tag) { emit('filter-tag', tag); emit('view', 'list') }
 // 全部笔记：从收藏视图切回时重置范围，避免列表仍停留在收藏筛选
@@ -1105,7 +1117,7 @@ onMounted(() => { appObserver = new ResizeObserver(entries => { appWidth.value =
 let ownFullscreenExit = false
 // 阅读目录默认在宽屏展开（右侧悬浮卡片）；窄屏维持收起，由工具栏按钮唤起悬浮层。
 const infoOpen = ref(globalThis.matchMedia?.('(min-width: 1101px)').matches ?? false), readerElement = ref(null), titleElement = ref(null), globalInput = ref(null), headings = ref([]), tocElement = ref(null), activeHeading = ref(0)
-const viewLabels = { overview: '总览', tree: '目录', list: '笔记', reader: '正文阅读' }
+const viewLabels = { overview: '总览', tree: '目录', list: '笔记', reader: '正文阅读', agent: '智能体' }
 const notesForFolder = id => props.notes.filter(note => String(note.folderId ?? '') === String(id ?? ''))
 const displayedFolders = computed(() => {
   const term = treeSearch.value.trim().toLowerCase()

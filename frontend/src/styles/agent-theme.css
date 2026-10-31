@@ -1,0 +1,14 @@
+/* Resolve locally inherited workspace tokens before falling back to site tokens. */
+.agent-page,.agent-chat{
+  --agent-panel:var(--panel,var(--kb-panel,var(--bg-primary,#fff)));
+  --agent-soft:var(--soft,var(--kb-surface,var(--bg-secondary,#f7f9fc)));
+  --agent-ink:var(--ink,var(--kb-ink,var(--text-primary,#243044)));
+  --agent-muted:var(--muted,var(--kb-text,var(--text-secondary,#69788b)));
+  --agent-line:var(--line,var(--kb-line,var(--border-color,#e5e9ef)));
+  --agent-accent:var(--blue,var(--kb-accent,var(--color-primary,#3564a9)));
+  --agent-tint:var(--blue-bg,var(--kb-tint,var(--bg-secondary,#eaf0f9)));
+  --agent-on-accent:var(--kb-on-accent,var(--bg-primary,#fff));
+  --agent-danger:var(--kb-danger,var(--color-danger,#b35967));
+  --agent-font:var(--font,var(--kb-font,Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif));
+  color:var(--agent-ink);font:13px/1.6 var(--agent-font);color-scheme:inherit;
+}
