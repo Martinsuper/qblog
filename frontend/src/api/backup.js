@@ -5,13 +5,23 @@ import request from './request'
  */
 
 /**
- * 创建备份
+ * 创建备份（异步任务，立即返回；用返回的 id 轮询 getBackupTask）
  */
 export function createBackup(type = 'database', description) {
   return request({
     url: '/backup/create',
     method: 'post',
     params: { type, description }
+  })
+}
+
+/**
+ * 查询备份任务状态
+ */
+export function getBackupTask(id) {
+  return request({
+    url: `/backup/tasks/${id}`,
+    method: 'get'
   })
 }
 

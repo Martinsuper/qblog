@@ -265,7 +265,7 @@ import { onMounted, ref } from 'vue'
 import SettingsLayout from '@/components/SettingsLayout.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  createBackup, getBackupList, downloadBackup, restoreBackup,
+  createBackup, getBackupTask, getBackupList, downloadBackup, restoreBackup,
   deleteBackup, importBackup, getBackupSettings, updateBackupSettings
 } from '@/api/backup'
 import { exportNotesMarkdown, exportKnowledgeSnapshot } from '@/api/knowledge'
@@ -326,14 +326,43 @@ async function loadList() {
   }
 }
 
+// 创建为异步任务：提交后轮询任务状态，全库导出 + 复制上传文件可能耗时数分钟
+const POLL_INTERVAL_MS = 1500
+const POLL_TIMEOUT_MS = 15 * 60 * 1000
+
+function pollBackupTask(id) {
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now()
+    const tick = async () => {
+      try {
+        const res = await getBackupTask(id)
+        const task = res.data
+        if (task.status === 'DONE') return resolve(task)
+        if (task.status === 'FAILED') return reject(new Error(task.error || '备份失败'))
+        if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+          return reject(new Error('备份超时，请稍后在备份列表查看结果'))
+        }
+        setTimeout(tick, POLL_INTERVAL_MS)
+      } catch (error) {
+        reject(error)
+      }
+    }
+    tick()
+  })
+}
+
 async function createNow() {
   creating.value = true
   try {
-    await createBackup('json', description.value || undefined)
-    ElMessage.success('备份已创建')
+    const res = await createBackup('json', description.value || undefined)
     description.value = ''
+    await pollBackupTask(res.data.id)
+    ElMessage.success('备份已创建')
     loadList()
-  } catch { /* 提示已由请求层统一处理 */ } finally {
+  } catch (error) {
+    if (error?.message) ElMessage.error(error.message)
+    /* 其余提示已由请求层统一处理 */
+  } finally {
     creating.value = false
   }
 }

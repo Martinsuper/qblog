@@ -6,6 +6,7 @@ import com.qblog.mapper.CategoryMapper;
 import com.qblog.mapper.TagMapper;
 import com.qblog.mapper.UserMapper;
 import com.qblog.model.dto.BackupSettingsDTO;
+import com.qblog.model.vo.BackupTaskVO;
 import com.qblog.model.vo.BackupVO;
 import com.qblog.model.vo.BackupSettingsVO;
 import com.qblog.common.exception.ResourceNotFoundException;
@@ -13,7 +14,6 @@ import com.qblog.service.BackupService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import com.qblog.util.JsonBackupExporter;
 import com.qblog.util.JsonBackupImporter;
@@ -23,12 +23,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.io.*;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 备份服务实现
@@ -71,6 +76,21 @@ public class BackupServiceImpl implements BackupService {
     private Path settingsFilePath;
 
     private final TransactionTemplate transactionTemplate;
+
+    /**
+     * 单线程串行执行备份导出（手动与定时共享队列，避免并发导出）。
+     * 重活不占用请求线程；导出器内部已有"暂存 + 原子改名"，失败不会留下半截 zip。
+     */
+    private final ExecutorService backupExecutor = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "backup-worker");
+        thread.setDaemon(true);
+        return thread;
+    });
+
+    /**
+     * 备份任务状态（内存态，应用重启即失效；最终结果以 backups 目录文件为准）。
+     */
+    private final ConcurrentHashMap<String, BackupTaskVO> backupTasks = new ConcurrentHashMap<>();
 
     @Autowired
     public BackupServiceImpl(UserMapper userMapper,
@@ -131,33 +151,116 @@ public class BackupServiceImpl implements BackupService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public BackupVO createBackup(String type, String description) {
-        log.info("开始创建 JSON 备份，描述：{}", description);
+        log.info("提交 JSON 备份任务，描述：{}", description);
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS")) + "-" + UUID.randomUUID().toString().substring(0, 8);
-        String zipFilename = BACKUP_PREFIX + timestamp + ".zip";
-        Path zipPath = backupDirPath.resolve(zipFilename);
+        String backupId = BACKUP_PREFIX + timestamp;
+        String zipFilename = backupId + ".zip";
 
+        // 立即返回任务受理结果，导出在后台线程执行（全库导出 + 复制上传文件可能耗时数分钟）
+        BackupVO pending = new BackupVO();
+        pending.setId(backupId);
+        pending.setFilename(zipFilename);
+        pending.setType("json");
+        pending.setDescription(description != null ? description : "");
+        pending.setCreateTime(LocalDateTime.now());
+
+        BackupTaskVO task = new BackupTaskVO();
+        task.setId(backupId);
+        task.setStatus("RUNNING");
+        backupTasks.put(backupId, task);
+        pruneFinishedTasks();
+
+        backupExecutor.submit(() -> {
+            try {
+                BackupVO finished = doCreateBackup(backupId, description);
+                BackupTaskVO done = new BackupTaskVO();
+                done.setId(backupId);
+                done.setStatus("DONE");
+                done.setBackup(finished);
+                backupTasks.put(backupId, done);
+            } catch (Exception e) {
+                log.error("创建备份失败：{}", backupId, e);
+                BackupTaskVO failed = new BackupTaskVO();
+                failed.setId(backupId);
+                failed.setStatus("FAILED");
+                failed.setError(e.getMessage());
+                backupTasks.put(backupId, failed);
+            }
+        });
+
+        return pending;
+    }
+
+    /**
+     * 执行备份导出（后台线程运行）。每条查询用独立短连接，
+     * 不再以只读事务把数据库连接占用整个文件 I/O 过程。
+     */
+    private BackupVO doCreateBackup(String backupId, String description) throws IOException {
+        Path zipPath = backupDirPath.resolve(backupId + ".zip");
+
+        // 使用 JSON 导出器创建备份（v3 全库：博客表 + 知识库 + 上传文件）
+        JsonBackupExporter exporter = new JsonBackupExporter(
+            userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper, jdbc, uploadDirectory
+        );
+        exporter.exportBackup(zipPath, description);
+
+        // 创建元数据文件
+        writeMetadata(backupId, description, zipPath);
+
+        log.info("JSON 备份完成：{}", backupId);
+
+        // 清理过期备份
+        cleanupOldBackups();
+
+        return getBackupDetail(backupId);
+    }
+
+    @Override
+    public BackupTaskVO getBackupTask(String backupId) {
+        if (backupId == null || !backupId.matches("qblog-backup-[0-9]{8}-[0-9]{6}(?:-[0-9]{3}-[a-f0-9]{8})?")) {
+            throw new IllegalArgumentException("非法备份 ID");
+        }
+
+        BackupTaskVO task = backupTasks.get(backupId);
+        if (task != null) {
+            return task;
+        }
+
+        // 无内存状态（如应用重启）：以磁盘文件为准推断结果
+        BackupTaskVO inferred = new BackupTaskVO();
+        inferred.setId(backupId);
         try {
-            // 使用 JSON 导出器创建备份（v3 全库：博客表 + 知识库 + 上传文件）
-            JsonBackupExporter exporter = new JsonBackupExporter(
-                userMapper, categoryMapper, tagMapper, articleMapper, articleTagMapper, jdbc, uploadDirectory
-            );
-            exporter.exportBackup(zipPath, description);
+            inferred.setStatus("DONE");
+            inferred.setBackup(getBackupDetail(backupId));
+        } catch (Exception e) {
+            inferred.setStatus("FAILED");
+            inferred.setError("备份任务不存在或应用已重启，请刷新备份列表确认");
+        }
+        return inferred;
+    }
 
-            // 创建元数据文件
-            writeMetadata(BACKUP_PREFIX + timestamp, description, zipPath);
+    /**
+     * 控制任务状态表内存占用：超过阈值时清理所有已完成任务。
+     */
+    private void pruneFinishedTasks() {
+        if (backupTasks.size() <= 32) {
+            return;
+        }
+        backupTasks.entrySet().removeIf(entry -> !"RUNNING".equals(entry.getValue().getStatus()));
+    }
 
-            log.info("JSON 备份完成：{}", zipFilename);
-
-            // 清理过期备份
-            cleanupOldBackups();
-
-            return getBackupDetail(BACKUP_PREFIX + timestamp);
-        } catch (IOException e) {
-            log.error("创建备份失败", e);
-            throw new RuntimeException("创建备份失败：" + e.getMessage(), e);
+    @PreDestroy
+    public void shutdownBackupExecutor() {
+        backupExecutor.shutdown();
+        try {
+            if (!backupExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                backupExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            backupExecutor.shutdownNow();
         }
     }
 

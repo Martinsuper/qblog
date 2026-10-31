@@ -1,6 +1,7 @@
 package com.qblog.service;
 
 import com.qblog.model.dto.BackupSettingsDTO;
+import com.qblog.model.vo.BackupTaskVO;
 import com.qblog.model.vo.BackupVO;
 import com.qblog.model.vo.BackupSettingsVO;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,12 +15,19 @@ import java.util.List;
 public interface BackupService {
 
     /**
-     * 创建备份
+     * 创建备份（异步：立即返回任务受理结果，导出在后台线程执行）
      * @param type 备份类型：database-仅数据库，full-完整备份
      * @param description 备份描述
-     * @return 备份信息
+     * @return 备份信息（含备份 ID，状态以 {@link #getBackupTask} 为准）
      */
     BackupVO createBackup(String type, String description);
+
+    /**
+     * 查询备份任务状态
+     * @param backupId 备份 ID（createBackup 返回的 id）
+     * @return 任务状态（RUNNING/DONE/FAILED 及结果）
+     */
+    BackupTaskVO getBackupTask(String backupId);
 
     /**
      * 获取备份列表

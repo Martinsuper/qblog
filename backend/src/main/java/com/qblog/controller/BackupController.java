@@ -2,6 +2,7 @@ package com.qblog.controller;
 
 import com.qblog.common.Result;
 import com.qblog.model.dto.BackupSettingsDTO;
+import com.qblog.model.vo.BackupTaskVO;
 import com.qblog.model.vo.BackupVO;
 import com.qblog.model.vo.BackupSettingsVO;
 import com.qblog.service.BackupService;
@@ -29,15 +30,24 @@ public class BackupController {
     private final BackupService backupService;
 
     /**
-     * 创建备份
+     * 创建备份（异步任务，立即返回；用返回的 id 轮询任务状态接口）
      */
-    @Operation(summary = "创建备份")
+    @Operation(summary = "创建备份（异步）")
     @PostMapping("/create")
     public Result<BackupVO> createBackup(
             @RequestParam(required = false, defaultValue = "json") String type,
             @RequestParam(required = false) String description) {
         BackupVO backup = backupService.createBackup(type, description);
         return Result.success(backup);
+    }
+
+    /**
+     * 查询备份任务状态
+     */
+    @Operation(summary = "查询备份任务状态")
+    @GetMapping("/tasks/{id}")
+    public Result<BackupTaskVO> getBackupTask(@PathVariable String id) {
+        return Result.success(backupService.getBackupTask(id));
     }
 
     /**
