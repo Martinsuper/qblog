@@ -134,6 +134,12 @@
             @click="selectScope('favorites')"
           >
             ☆ 我的收藏
+          </button><button
+            :class="{ active: route.path === '/assistant' }"
+            data-testid="kb-agent-entry-layout"
+            @click="router.push('/assistant')"
+          >
+            ✦ 智能体
           </button><div class="kb-sidebar-title">
             知识目录 <button
               title="新建目录"
@@ -566,15 +572,15 @@
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter, useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import KnowledgeEditor from '@/components/KnowledgeEditor.vue'
 import KnowledgeSeven from '@/components/KnowledgeSeven.vue'
 import * as api from '@/api/knowledge'
 import { useUserStore } from '@/stores/user'
+import { useAgentStore } from '@/stores/agent'
 import { readAppearance, saveAppearance } from '@/utils/knowledgePreferences'
 import { createNoteAutosave } from '@/utils/noteAutosave'
 import '@/styles/knowledge.css'
-const router = useRouter(), route = useRoute(), user = useUserStore()
+const router = useRouter(), route = useRoute(), user = useUserStore(), agentStore = useAgentStore()
 const appearance = reactive(readAppearance()), systemDark = ref(matchMedia('(prefers-color-scheme: dark)').matches)
 const resolvedColor = computed(() => appearance.color === 'system' ? (systemDark.value ? 'dark' : 'light') : appearance.color)
 const layoutNames = { calm: '留白三栏', paper: '纸间卡片', library: '笔记书架', knowledge: '目录知识库' }

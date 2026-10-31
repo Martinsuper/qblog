@@ -126,6 +126,98 @@
           </el-button>
         </div>
       </template>
+      <template v-if="tab === 'agent'">
+        <div class="section-title">
+          <h2>站内智能体</h2><p>配置页面内智能体使用的大模型 API，任何 OpenAI 兼容接口均可（OpenAI、DeepSeek、通义、本地网关等）。配置仅保存在本站数据库，页面读取时 Key 已脱敏。</p>
+        </div>
+        <section>
+          <el-form
+            label-position="top"
+            class="ai-form"
+            @submit.prevent
+          >
+            <el-form-item>
+              <el-switch
+                v-model="aiForm.enabled"
+                active-text="启用站内智能体"
+                      />
+            </el-form-item>
+            <div class="ai-grid">
+              <el-form-item label="名称（备注）">
+                <el-input
+                  v-model="aiForm.providerName"
+                  maxlength="64"
+                  placeholder="例如：DeepSeek 工作台"
+                />
+              </el-form-item>
+              <el-form-item label="对话模型">
+                <el-input
+                  v-model="aiForm.chatModel"
+                  maxlength="128"
+                  placeholder="例如：deepseek-chat / gpt-4o-mini"
+                />
+              </el-form-item>
+              <el-form-item label="API 地址">
+                <el-input
+                  v-model="aiForm.baseUrl"
+                  maxlength="255"
+                  placeholder="https://api.deepseek.com"
+                />
+              </el-form-item>
+              <el-form-item label="请求路径">
+                <el-input
+                  v-model="aiForm.chatCompletionsPath"
+                  maxlength="128"
+                  placeholder="/v1/chat/completions"
+                />
+              </el-form-item>
+            </div>
+            <el-form-item label="API Key">
+              <el-input
+                v-model="aiForm.apiKey"
+                type="password"
+                show-password
+                maxlength="512"
+                :placeholder="aiMasked ? `已保存（${aiMasked}）；留空保持不变` : '例如：sk-...'"
+              />
+            </el-form-item>
+            <div class="ai-grid">
+              <el-form-item label="温度 temperature（0-2）">
+                <el-input-number
+                  v-model="aiForm.temperature"
+                  :min="0"
+                  :max="2"
+                  :step="0.1"
+                />
+              </el-form-item>
+              <el-form-item label="单轮最大 tokens">
+                <el-input-number
+                  v-model="aiForm.maxTokens"
+                  :min="64"
+                  :max="200000"
+                  :step="256"
+                />
+              </el-form-item>
+            </div>
+            <div class="ai-actions">
+              <el-button
+                type="primary"
+                :loading="aiSaving"
+                @click="saveAiConfig"
+              >
+                保存配置
+              </el-button>
+              <el-button
+                :loading="aiTesting"
+                @click="runAiTest"
+              >
+                测试连接
+              </el-button>
+            </div>
+            <p class="ai-hint">「测试连接」会真实调用一次模型（新增的 API Key 需先保存）。测试通过后即可在导航栏「智能体」页面使用。</p>
+          </el-form>
+        </section>
+      </template>
       <template v-if="tab === 'tools'">
         <div class="section-title">
           <h2>可用工具</h2><p>查看 MCP 客户端可调用的能力及其所需权限。</p>
@@ -341,11 +433,62 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import SettingsLayout from '@/components/SettingsLayout.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { listApiTokens, createApiToken, revokeApiToken, listFolders, listMcpCalls } from '@/api/knowledge'
+import { getAiConfig, updateAiConfig, testAiConnection } from '@/api/agent'
 import { formatDateTime } from '@/composables/useTime'
 const tab = ref('overview'), configOpen = ref(false)
-const tabs = [{ id: 'overview', label: '接入概览' }, { id: 'tokens', label: '访问令牌' }, { id: 'tools', label: '可用工具' }, { id: 'history', label: '调用记录' }, { id: 'guide', label: '安装与使用' }]
+// 站内智能体模型配置
+const aiForm = reactive({ enabled: false, providerName: '', baseUrl: '', chatCompletionsPath: '/v1/chat/completions', chatModel: '', apiKey: '', temperature: 0.7, maxTokens: 4096 })
+const aiMasked = ref(''), aiSaving = ref(false), aiTesting = ref(false)
+async function loadAiConfig() {
+  try {
+    const res = await getAiConfig()
+    const c = res.data || {}
+    Object.assign(aiForm, {
+      enabled: !!c.enabled,
+      providerName: c.providerName || '',
+      baseUrl: c.baseUrl || '',
+      chatCompletionsPath: c.chatCompletionsPath || '/v1/chat/completions',
+      chatModel: c.chatModel || '',
+      temperature: c.temperature ?? 0.7,
+      maxTokens: c.maxTokens ?? 4096,
+      apiKey: ''
+    })
+    aiMasked.value = c.apiKeyMasked || ''
+  } catch { /* 初次部署无迁移脚本时静默失败 */ }
+}
+async function saveAiConfig() {
+  if (!aiForm.baseUrl.trim()) { ElMessage.warning('请填写 API 地址'); return }
+  if (!aiForm.chatModel.trim()) { ElMessage.warning('请填写对话模型'); return }
+  aiSaving.value = true
+  try {
+    const res = await updateAiConfig({
+      enabled: aiForm.enabled,
+      providerName: aiForm.providerName,
+      baseUrl: aiForm.baseUrl.trim(),
+      chatCompletionsPath: aiForm.chatCompletionsPath.trim(),
+      chatModel: aiForm.chatModel.trim(),
+      temperature: Number(aiForm.temperature) || 0.7,
+      maxTokens: aiForm.maxTokens || 4096,
+      // 为空表示保持原有 Key
+      apiKey: aiForm.apiKey.trim() || null
+    })
+    aiForm.apiKey = ''
+    aiMasked.value = res.data?.apiKeyMasked || ''
+    ElMessage.success('智能体配置已保存')
+  } catch { /* 拦截器已提示 */ }
+  finally { aiSaving.value = false }
+}
+async function runAiTest() {
+  if (aiForm.apiKey.trim()) { ElMessage.warning('请先保存新的 API Key 再测试'); return }
+  aiTesting.value = true
+  try {
+    const res = await testAiConnection()
+    ElMessage.success(`连接正常：${res.data || '模型已响应'}`)
+  } catch { /* 拦截器已提示 */ }
+  finally { aiTesting.value = false }
+}
+const tabs = [{ id: 'overview', label: '接入概览' }, { id: 'tokens', label: '访问令牌' }, { id: 'agent', label: '智能体' }, { id: 'tools', label: '可用工具' }, { id: 'history', label: '调用记录' }, { id: 'guide', label: '安装与使用' }]
 const tools = [{ name: 'notes_search', description: '按条件搜索笔记', scope: '读取' }, { name: 'notes_get', description: '获取笔记内容', scope: '读取' }, { name: 'notes_create', description: '创建笔记', scope: '写入' }, { name: 'notes_update', description: '更新已有笔记', scope: '写入' }]
 const folderTools = [{ name: 'folders_list', description: '列出授权范围内可见的目录树', scope: '需要知识库读取' }, { name: 'folders_create', description: '新建目录（可指定上级，null 为根目录）', scope: '需要知识库写入 + 全部目录授权' }, { name: 'folders_update', description: '重命名、排序或移动目录（不允许形成循环）', scope: '需要知识库写入 + 全部目录授权' }, { name: 'folders_delete', description: '删除空目录（不含笔记与子目录）', scope: '需要知识库写入 + 全部目录授权' }]
 const articleTools = [{ name: 'articles_search', description: '搜索文章', scope: '文章读取' }, { name: 'articles_get', description: '读取文章与版本', scope: '文章读取' }, { name: 'articles_create', description: '创建草稿', scope: '文章写入' }, { name: 'articles_update', description: '更新文章', scope: '文章写入；已发布文章还需发布权限' }, { name: 'articles_publish', description: '发布文章', scope: '文章发布' }, { name: 'articles_delete', description: '删除文章', scope: '文章删除' }]
@@ -376,8 +519,8 @@ function scopeLabel(scope) { if (!scope) return '无范围'; if (scope.all) retu
 function formatDate(value) { return formatDateTime(value) || '—' }
 async function copyText(value) { try { await navigator.clipboard.writeText(value); ElMessage.success('已复制') } catch { ElMessage.warning('无法访问剪贴板，请手动复制') } }
 async function copySecret() { try { await navigator.clipboard.writeText(secret.value); ElMessage.success('已复制') } catch { ElMessage.warning('无法访问剪贴板，请手动复制上方凭证') } }
-onMounted(() => { load(); loadCalls() })
+onMounted(() => { load(); loadCalls(); loadAiConfig() })
 </script>
 <style scoped>
 .tokens-page{color:var(--text-primary);font-size:13px}.tokens-page header{margin-bottom:28px}.tokens-page header a{color:var(--color-primary);font-size:12px}.tokens-page h1{font-size:25px;margin:16px 0 8px}.tokens-page h2{font-size:16px;margin:0 0 15px}.tokens-page p{color:var(--text-secondary);line-height:1.8}.tokens-page section{background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:9px;padding:24px;margin-bottom:24px}.tokens-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:17px}.tokens-page code,.tokens-page pre{display:block;background:var(--bg-tertiary);padding:13px 16px;border-radius:5px;overflow:auto;font-size:12px}.token-secret{margin:18px 0;width:100%;padding:12px;min-height:90px;overflow-wrap:anywhere;border:1px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);resize:none}@media(max-width:640px){.tokens-page section{padding:16px}}
-.eyebrow{font-size:11px;letter-spacing:1.5px;color:var(--text-tertiary);margin-top:25px}.tabs{display:flex;gap:28px;border-bottom:1px solid var(--border-color);margin:30px 0 25px;overflow:auto}.tabs button{white-space:nowrap;border:0;background:none;color:var(--text-secondary);padding:0 0 13px;cursor:pointer}.tabs button.active{color:var(--color-primary);border-bottom:2px solid var(--color-primary);font-weight:600}.tokens-heading h2,.section-title h2{margin:0}.tokens-heading p,.section-title p{margin:5px 0 0;font-size:12px}.status{font-size:12px;color:#9a8661;background:#faf6eb;padding:5px 10px;border-radius:20px}.endpoint{display:flex;gap:10px;align-items:center}.endpoint code{flex:1;min-width:0}.actions{display:flex;margin-top:18px}.section-title{margin:32px 0 16px}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.steps small,.group-label{color:var(--text-tertiary)}.steps h3,.tokens-page h3{font-size:14px;margin:14px 0 6px}.steps p{font-size:12px;margin:0}.group-label{margin:22px 0 10px}.tool-list{padding:0!important}.tool-row{display:flex;gap:18px;align-items:center;padding:15px 20px;border-bottom:1px solid var(--border-color)}.tool-row:last-child{border-bottom:0}.tool-row code{width:140px;padding:0;background:none}.tool-row span{flex:1}.tool-row small{color:var(--text-secondary)}.empty{text-align:center;padding:50px!important}pre{white-space:pre-wrap;word-break:break-all}@media(max-width:640px){.steps{grid-template-columns:1fr}.tabs{gap:20px}.endpoint{align-items:stretch;flex-direction:column}.tool-row{flex-wrap:wrap}.tool-row small{width:100%}}</style>
+.eyebrow{font-size:11px;letter-spacing:1.5px;color:var(--text-tertiary);margin-top:25px}.tabs{display:flex;gap:28px;border-bottom:1px solid var(--border-color);margin:30px 0 25px;overflow:auto}.tabs button{white-space:nowrap;border:0;background:none;color:var(--text-secondary);padding:0 0 13px;cursor:pointer}.tabs button.active{color:var(--color-primary);border-bottom:2px solid var(--color-primary);font-weight:600}.tokens-heading h2,.section-title h2{margin:0}.tokens-heading p,.section-title p{margin:5px 0 0;font-size:12px}.status{font-size:12px;color:#9a8661;background:#faf6eb;padding:5px 10px;border-radius:20px}.endpoint{display:flex;gap:10px;align-items:center}.endpoint code{flex:1;min-width:0}.actions{display:flex;margin-top:18px}.section-title{margin:32px 0 16px}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.steps small,.group-label{color:var(--text-tertiary)}.steps h3,.tokens-page h3{font-size:14px;margin:14px 0 6px}.steps p{font-size:12px;margin:0}.group-label{margin:22px 0 10px}.tool-list{padding:0!important}.tool-row{display:flex;gap:18px;align-items:center;padding:15px 20px;border-bottom:1px solid var(--border-color)}.tool-row:last-child{border-bottom:0}.tool-row code{width:140px;padding:0;background:none}.tool-row span{flex:1}.tool-row small{color:var(--text-secondary)}.empty{text-align:center;padding:50px!important}pre{white-space:pre-wrap;word-break:break-all}.ai-form .ai-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}.ai-form .ai-actions{display:flex;gap:10px;margin-top:4px}.ai-form .ai-hint{font-size:12px;color:var(--text-tertiary);margin:14px 0 0}@media(max-width:640px){.ai-form .ai-grid{grid-template-columns:1fr}}@media(max-width:640px){.steps{grid-template-columns:1fr}.tabs{gap:20px}.endpoint{align-items:stretch;flex-direction:column}.tool-row{flex-wrap:wrap}.tool-row small{width:100%}}</style>

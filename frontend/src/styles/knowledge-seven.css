@@ -404,6 +404,11 @@ header{height:48px;padding:0 18px;gap:16px;background:var(--panel)}
 .seven .nav-favorites { display:flex; align-items:center; gap:9px; min-height:38px; padding:8px 12px; border-radius:6px; font-size:13px; text-align:left; color:var(--muted); }
 .seven .nav-favorites span { margin-left:auto; font-size:11px; font-variant-numeric:tabular-nums; }
 .seven .nav-favorites:hover,.seven .nav-favorites.active { background:#b2997024; color:#8a744a; }
+.seven .nav-agent { display:flex; align-items:center; gap:9px; min-height:38px; padding:8px 12px; border-radius:6px; font-size:13px; text-align:left; color:var(--muted); }
+.seven .nav-agent:hover { background:var(--blue-bg); color:var(--blue); }
+.seven .nav-agent span { font-weight:500; }
+.seven[data-color='dark'] .nav-agent { color:var(--muted); }
+.seven[data-color='dark'] .nav-agent:hover { background:#b2997030; color:#cbb083; }
 .seven .section-label { margin:0 4px 6px; padding:0 4px; }
 .seven .folder-tree { min-height:0; flex:1; overflow:auto; padding:2px 0 16px; }
 .seven .tree-row { min-height:36px; }

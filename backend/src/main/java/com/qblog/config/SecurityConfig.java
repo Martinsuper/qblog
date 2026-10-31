@@ -85,8 +85,10 @@ public class SecurityConfig {
         if (allowedOrigins != null && !allowedOrigins.isEmpty()) {
             configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
         } else {
-            // 开发环境默认值
-            configuration.setAllowedOrigins(List.of("http://localhost:3001", "http://localhost:3000"));
+            // 开发环境默认值（localhost 与 127.0.0.1 均放行，避免换写法被 CORS 拒绝）
+            configuration.setAllowedOrigins(List.of(
+                    "http://localhost:3001", "http://localhost:3000",
+                    "http://127.0.0.1:3001", "http://127.0.0.1:3000"));
         }
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));

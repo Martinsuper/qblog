@@ -121,6 +121,13 @@
             <KnowledgeIcon name="star" />收藏的笔记<span>{{ counts.favorites ?? 0 }}</span>
           </button>
         </div>
+        <button
+          class="nav-agent"
+          data-testid="kb-agent-entry"
+          @click="$router.push('/assistant')"
+        >
+          <KnowledgeIcon name="spark" /><span>智能体</span>
+        </button>
         <div
           class="section-label"
           @contextmenu.prevent="openRootMenu"

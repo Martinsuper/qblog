@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.13</version>
+        <version>3.5.16</version>
         <relativePath/>
     </parent>
     
@@ -21,10 +21,24 @@
     <properties>
         <java.version>17</java.version>
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
+        <spring-ai.version>1.1.8</spring-ai.version>
         <knife4j.version>4.3.0</knife4j.version>
         <jjwt.version>0.12.3</jjwt.version>
         <lombok.version>1.18.38</lombok.version>
+        <spring-ai.version>1.1.8</spring-ai.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     
     <dependencies>
         <!-- Spring Boot Starter -->
@@ -126,6 +140,21 @@
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
+        </dependency>
+
+        <!-- 站内智能体：OpenAI 兼容 Chat 客户端（Spring AI 库，不启用其自动装配；
+             地址/Key/模型在“API 与 MCP”设置页动态配置，由 LlmModelHolder 手工构建 ChatModel） -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-openai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-client-chat</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
         <!-- Test -->
