@@ -18,16 +18,22 @@ public final class NoteMarkdownPolicy {
             + "使用明确的专业名词或动宾短语，同级标题保持平行结构，一标题只表达一个主题。"
             + "禁止使用这是什么、能做什么、怎么做、如何做等口语化开头；不使用冒号拼接说明、问号或感叹号。"
             + "解释、步骤细节和宣传性措辞放入正文，不堆叠修饰语，不为压缩长度删除必要的技术术语。"
+            + "链接统一使用 [标题](https://完整网址) 写法：网址仅包含 ASCII 字符，"
+            + "不得在网址中夹带空格、中文或全角标点（补充说明放在链接之后，形如 [仓库](https://github.com/xxx)：说明）。"
             + "创建或更新前必须检查全部章节编号；不合规将拒绝保存。";
     private static final Pattern NUMBERED = Pattern.compile("([1-9][0-9]*(?:\\.[1-9][0-9]*){0,2}) ([^\\s].*)");
     private static final Pattern CHINESE_NUMBERED = Pattern.compile("([一二三四五六七八九十百千零]+)、([^\\s].*)");
     private static final Pattern TITLE_PUNCTUATION = Pattern.compile("[：:？?！!]");
+    /** 链接目标中的空白、中文与全角标点会让编辑器把说明文字吸入地址，产生不可访问的 URL。 */
+    private static final Pattern FORBIDDEN_IN_URL = Pattern.compile("[\\s\\u4e00-\\u9fff\\u3000-\\u303f\\uff00-\\uffef]");
+    private static final Pattern HTTP_HOST = Pattern.compile("^https?://[^/?#\\s]+");
 
     private NoteMarkdownPolicy() {}
 
     /** Rejects invalid content without accessing persisted notes or exposing authorization information. */
     public static void validate(String content) {
         Node document = Parser.builder().build().parse(content);
+        validateLinks(content);
         List<Section> sections = new ArrayList<>();
         int[] counters = new int[3];
         int[] previousDepth = {-1};
@@ -57,6 +63,48 @@ public final class NoteMarkdownPolicy {
             }
         });
         if (sections.isEmpty()) throw invalid("至少需要一个正文章节");
+    }
+
+    /** 数组 notes 与 MCP 文章共用的链接规范校验：仅检查地址本身，不考虑章节结构。 */
+    public static void validateLinks(String content) {
+        Node document = Parser.builder().build().parse(content);
+        document.accept(new AbstractVisitor() {
+            @Override public void visit(Link link) { checkLink(label(link), link.getDestination()); }
+            @Override public void visit(Image image) { checkDestination(image.getDestination()); }
+        });
+    }
+
+    private static String label(Link link) {
+        StringBuilder out = new StringBuilder();
+        Node child = link.getFirstChild();
+        while (child != null) {
+            if (child instanceof Text text) out.append(text.getLiteral());
+            else if (child instanceof Code code) out.append(code.getLiteral());
+            child = child.getNext();
+        }
+        return out.toString();
+    }
+
+    private static void checkLink(String label, String destination) {
+        // 事故模式：把网址和中文说明一并塞进标题，如 [https://x）：说明](https://x)：说明)
+        if (label.matches("(?i)^https?://.*") && FORBIDDEN_IN_URL.matcher(label).find())
+            throw invalid("链接标题不得混合网址与中文说明：说明放在链接文字之外，如 [仓库](https://example.com)：说明，或直接 [标题](https://example.com)");
+        checkDestination(destination);
+    }
+
+    private static void checkDestination(String destination) {
+        if (destination == null || destination.isBlank())
+            throw invalid("链接目标为空，请使用 [标题](https://example.com) 写法");
+        if (FORBIDDEN_IN_URL.matcher(destination).find())
+            throw invalid("链接地址不得包含空格、中文或全角标点：请写成 [标题](https://example.com/path)，"
+                    + "说明文字放在链接之后（如 [仓库](https://github.com/xxx)：说明）");
+        boolean relative = destination.startsWith("/") || destination.startsWith("./")
+                || destination.startsWith("../") || destination.startsWith("#");
+        if (relative) return;
+        if (!destination.matches("(?i)^(?:https?|mailto):.*"))
+            throw invalid("链接仅支持 http、https、mailto 或站内相对地址");
+        if (destination.matches("(?i)^https?:.*") && !HTTP_HOST.matcher(destination).find())
+            throw invalid("链接缺少主机地址，需形如 https://example.com");
     }
 
     /** Formats canonical Chinese chapter numbers from one through nine thousand nine hundred ninety-nine. */

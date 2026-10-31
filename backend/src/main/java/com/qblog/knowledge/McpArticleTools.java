@@ -58,6 +58,7 @@ public class McpArticleTools {
     }
     private ArticleDTO write(JsonNode args) {
         ArticleDTO dto = new ArticleDTO(); dto.setTitle(text(args, "title", 200)); dto.setContent(text(args, "content", 60000));
+        NoteMarkdownPolicy.validateLinks(dto.getContent());
         if (args.has("summary")) dto.setSummary(text(args, "summary", 500));
         return dto;
     }

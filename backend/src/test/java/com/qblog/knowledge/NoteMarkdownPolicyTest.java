@@ -102,4 +102,36 @@ class NoteMarkdownPolicyTest {
         assertThrows(NoteMarkdownPolicy.InvalidFormat.class,
                 () -> NoteMarkdownPolicy.validate("## 一、简介\n## 二、安装\n### 1.1 配置"));
     }
+
+    @Test void acceptsCleanLinksAndRelativeReferences() {
+        assertDoesNotThrow(() -> NoteMarkdownPolicy.validate("""
+                ## 一、简介
+                参考 [仓库](https://github.com/x/GenAI_Agents)：说明，或 [邮箱](mailto:a@b.com)。
+                ![配图](https://example.com/img.png)
+                ![本地](./assets/roadmap.png)
+                转到 [小节](#intro)，见（https://example.com/page.x）：说明文字在链接之外。
+                """));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "[https://github.com/x）：说明](https://github.com/x)：说明)",
+            "[仓库](https://github.com/x）：说明)",
+            "[带空格](<https://example.com/a b.png>)",
+            "<https://example.com/page）：中文>",
+            "[x](javascript:alert(1))",
+            "[x](https://)",
+            "[x](ftp://host/file)",
+            "![图](中文图片.png)"})
+    void rejectsPollutedLinkDestinations(String line) {
+        assertThrows(NoteMarkdownPolicy.InvalidFormat.class,
+                () -> NoteMarkdownPolicy.validate("## 一、简介\n" + line));
+    }
+
+    @Test void linksRuleAppliesToArticlesWithoutHeadingPolicy() {
+        // 文章不要求编号章节，但链接规范仍然生效
+        assertDoesNotThrow(() -> NoteMarkdownPolicy.validateLinks("自由正文 [仓库](https://github.com/x)：说明"));
+        assertThrows(NoteMarkdownPolicy.InvalidFormat.class,
+                () -> NoteMarkdownPolicy.validateLinks("自由正文 [坏](https://example.com/x）：说明)"));
+    }
 }
