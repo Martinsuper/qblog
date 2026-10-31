@@ -576,9 +576,17 @@ watch(() => [articleForm.title, articleForm.content, articleForm.summary, articl
   if (editorReady) triggerDebouncedSave()
 })
 
-// 渲染后的内容
+// 渲染后的内容：markdown-it + highlight.js 全文渲染较重，预览打开时逐键渲染会卡顿。
+// 镜像成 300ms 防抖的 ref——预览晚 300ms 刷新无感知（computed 只在预览渲染时求值）。
+const renderedSource = ref('')
+let renderedTimer
+watch(() => articleForm.content, value => {
+  if (!showPreview.value) { renderedSource.value = ''; return }
+  clearTimeout(renderedTimer)
+  renderedTimer = setTimeout(() => { renderedSource.value = value }, 300)
+})
 const renderedContent = computed(() => {
-  return render(articleForm.content)
+  return render(renderedSource.value)
 })
 
 // Markdown 样式类
@@ -598,6 +606,8 @@ const goBack = () => {
 
 const togglePreview = () => {
   showPreview.value = !showPreview.value
+  // 打开预览时立即同步一次当前内容（防抖镜像可能在预览关闭期间未更新），避免首帧空白
+  if (showPreview.value) { clearTimeout(renderedTimer); renderedSource.value = articleForm.content }
 }
 
 // 滚动同步

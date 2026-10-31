@@ -18,18 +18,26 @@ import { ref, onMounted, onUnmounted } from 'vue'
 
 const progress = ref(0)
 
+// rAF 合并连续 scroll 事件：每帧最多计算一次，避免高频滚动下重复布局读
+let ticking = false
 const updateProgress = () => {
+  ticking = false
   const scrollTop = window.scrollY
   const docHeight = document.documentElement.scrollHeight - window.innerHeight
   progress.value = docHeight > 0 ? Math.min(100, (scrollTop / docHeight) * 100) : 0
 }
+const onScroll = () => {
+  if (ticking) return
+  ticking = true
+  requestAnimationFrame(updateProgress)
+}
 
 onMounted(() => {
-  window.addEventListener('scroll', updateProgress, { passive: true })
+  window.addEventListener('scroll', onScroll, { passive: true })
   updateProgress()
 })
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', updateProgress)
+  window.removeEventListener('scroll', onScroll)
 })
 </script>

@@ -237,7 +237,9 @@ header{height:48px;padding:0 18px;gap:16px;background:var(--panel)}
 .pane-toggle,.pane-splitter{display:none}
 .reader{min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;background:var(--panel)}
 .reader-toolbar{flex:none;position:static}
-.reader-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+/* 阅读窗滚动条隐藏（点击目录平滑滚动时不再闪出滑块；滚轮/拖拽照常） */
+.reader-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:none}
+.reader-scroll::-webkit-scrollbar{display:none}
 .reading-area{padding-bottom:110px}
 .doc-end{flex:none;min-height:42px;align-items:center;padding:8px 20px;margin:0;background:var(--panel)}
 .doc-end span:last-child{text-align:right}
@@ -333,3 +335,197 @@ header{height:48px;padding:0 18px;gap:16px;background:var(--panel)}
 }
 @media(hover:none){.tree-manage{min-width:32px;min-height:32px}}
 
+
+/* Keep secondary information legible on both light and dark surfaces. */
+.seven{--muted:#566579}
+.seven :is(.brand small,.section-label,.nav-row .count,.tree-name .count,.local-info,.list-title-row span,.list-caption,.note-item .excerpt,.note-meta,.list-foot,.doc-crumb,.doc-properties,.eyebrow,.doc-end,.rail-title,.toc button,.source-block,.empty,.dialog-body label,.dialog-body p){color:var(--muted)}
+.seven :is(input,textarea)::placeholder{color:var(--muted);opacity:1}
+.seven .markdown{color:#344359}
+.seven[data-color='dark'] .markdown{color:var(--ink)}
+
+/* A modest weight increase improves readability while preserving hierarchy. */
+.seven{font-weight:450}
+.seven :is(button,input,select,textarea){font-weight:inherit}
+.seven :is(.nav-row,.tree-name,.note-item h3,.document h1,.markdown h2,.markdown h3){font-weight:600}
+.seven :is(.markdown,.doc-crumb,.doc-properties,.note-meta,.note-item .excerpt){font-weight:450}
+
+/* Directory and document are the two primary work areas. */
+@media(min-width:901px){
+  .app{grid-template-columns:var(--tree-width) 6px minmax(0,1fr)}
+  .app .sidebar{grid-column:1;grid-row:1}
+  .app .reader{grid-column:3;grid-row:1;display:flex}
+  .app .splitter-tree{grid-column:2}
+}
+.app .list-pane,.app .splitter-list,.app .pane-toggle{display:none}
+.folder-tree{min-height:0;overflow-y:auto;flex:1}
+.tree-file{width:100%;min-height:32px;display:flex;align-items:center;gap:8px;padding:5px 8px 5px calc(29px + var(--depth) * 16px);border-radius:4px;text-align:left;color:var(--muted);font:inherit}
+.tree-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-file:hover,.tree-file.selected{background:var(--blue-bg);color:var(--blue)}
+.tree-message{padding:10px;color:var(--muted);font-size:12px}
+@media(max-width:900px){
+  .app[data-view='tree'] .sidebar{display:flex;width:100%;height:100%}
+  .app[data-view='tree'] .reader{display:none}
+  .app[data-view='reader'] .sidebar{display:none}
+  .app[data-view='reader'] .reader{display:flex;width:100%;height:100%}
+}
+
+/* Calm two-pane navigation: a restrained wordmark and a clear file tree. */
+.seven header{height:58px;padding:0 20px;border-bottom:1px solid var(--line)}
+.seven .app{height:calc(100dvh - 58px)}
+.seven .brand{width:auto;min-width:220px;gap:9px;color:var(--ink);font-size:16px;font-weight:700;letter-spacing:-.3px}
+.seven .brand-mark{width:25px;height:25px;border-radius:6px;background:var(--blue);color:#fff;font:700 17px/1 var(--font)}
+.seven .sidebar{padding:18px 12px 14px;background:#f7f9fc}
+.seven .section-label{height:35px;margin:0 4px 10px;padding:0 5px;color:var(--ink);font-size:13px;font-weight:650;letter-spacing:0}
+.seven .section-label>span{font-size:13px;font-weight:650}
+.seven .directory-actions .icon-btn{width:28px;height:28px;color:var(--muted)}
+.seven .directory-actions .icon-btn:hover{background:var(--blue-bg);color:var(--blue)}
+.seven .folder-tree{padding:2px 2px 10px}
+.seven .tree-row{height:36px;margin:1px 0;padding-left:calc(var(--depth) * 17px);border-radius:6px;color:var(--ink)}
+.seven .tree-row.child::before{left:calc(var(--depth) * 17px - 4px);border-color:var(--line)}
+.seven .tree-row:hover,.seven .tree-row:focus-within{background:var(--soft)}
+.seven .tree-row .tree-toggle{width:24px;color:var(--muted)}
+.seven .tree-row .tree-name{gap:8px;font-size:13px;font-weight:550}
+.seven .tree-row .tree-name svg{width:15px;height:15px;color:#7790ae}
+.seven .tree-file{min-height:34px;padding-left:calc(29px + var(--depth) * 17px);font-size:12px}
+.seven .tree-file.selected{background:var(--blue-bg);color:var(--blue);font-weight:600}
+.seven[data-color='dark'] .sidebar{background:var(--bg)}
+.seven[data-color='dark'] .tree-row:hover,.seven[data-color='dark'] .tree-row:focus-within{background:var(--soft)}
+@media(max-width:900px){.seven header{height:48px}.seven .app{height:calc(100dvh - 87px)}.seven .brand{min-width:0}.seven .sidebar{padding:12px 10px}}
+.seven .tree-root-label{margin:16px 8px 5px;padding:0 5px;color:var(--muted);font-size:11px;font-weight:600}
+.seven .brand-mark{display:grid;place-items:center}
+.seven .brand-mark svg{width:17px;height:17px;stroke-width:1.8}
+
+/* Knowledge navigation: retain the two-pane reader, reveal results on demand. */
+.seven .sidebar { padding:16px 12px 0; }
+.sidebar-entry { display:grid; gap:8px; padding:0 4px 16px; border-bottom:1px solid var(--line); margin-bottom:12px; }
+.create-note,.browse-notes { display:flex; align-items:center; gap:9px; min-height:38px; padding:8px 12px; border-radius:6px; font-size:13px; text-align:left; }
+.seven .create-note { background:var(--blue); color:var(--panel); font-weight:600; }
+.seven .create-note:hover { filter:brightness(.94); }
+.browse-notes { color:var(--muted); }
+.browse-notes span { margin-left:auto; font-size:11px; font-variant-numeric:tabular-nums; }
+.seven .browse-notes:hover,.seven .browse-notes.active { background:var(--blue-bg); color:var(--blue); }
+.seven .section-label { margin:0 4px 6px; padding:0 4px; }
+.seven .folder-tree { min-height:0; flex:1; overflow:auto; padding:2px 0 16px; }
+.seven .tree-row { min-height:36px; }
+.seven .tree-name { min-width:0; flex:1; }
+.tree-more { opacity:0; flex:none; width:28px; height:28px; border-radius:4px; font-size:18px; }
+.tree-row:hover .tree-more,.tree-row:focus-within .tree-more { opacity:1; }
+.seven .tree-file { position:relative; min-height:36px; border-radius:5px; }
+.seven .tree-file.selected::before { content:''; position:absolute; left:1px; top:9px; bottom:9px; width:3px; border-radius:2px; background:var(--blue); }
+.sidebar-hint { display:flex; justify-content:space-between; gap:8px; flex:none; padding:14px 8px; border-top:1px solid var(--line); color:var(--muted); font-size:11px; }
+.sidebar-hint span { opacity:.8; }
+.search-clear { position:absolute; right:5px; display:grid; place-items:center; width:28px; height:28px; border-radius:4px; color:var(--muted); }
+.seven .global-search input { padding-right:38px; }
+.seven .global-search input::-webkit-search-cancel-button { -webkit-appearance:none; }
+.seven .reader { position:relative; }
+.seven :deep(.reader-format-bar) { visibility:hidden; }
+.seven .reader:has(.tiptap:focus) :deep(.reader-format-bar),.seven :deep(.reader-format-bar:focus-within) { visibility:visible; }
+.seven .reading-area { max-width:100%; padding:36px clamp(24px,5vw,72px) 100px; }
+.seven .document { width:100%; max-width:760px; }
+.seven .info-rail.expanded { position:absolute; z-index:6; top:50px; right:16px; width:250px; max-height:min(55dvh,440px); overflow:auto; margin:0; padding:16px; background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:0 8px 28px #20334b1f; }
+.seven .info-rail.expanded .toc { flex-direction:column; gap:10px; margin:0; }
+.seven .info-rail.expanded .toc button { padding:3px 0; text-align:left; }
+.seven .info-rail.expanded .rail-title { margin-bottom:12px; font-weight:600; }
+.seven .welcome-empty { padding:clamp(60px,12vh,140px) 24px 40px; }
+.welcome-icon { display:grid; place-items:center; width:56px; height:56px; margin:0 auto 20px; border:1px solid var(--line); border-radius:14px; color:var(--blue); background:var(--soft); }
+.welcome-icon svg { width:26px; height:26px; }
+.seven .welcome-empty strong { display:block; font-size:20px; color:var(--ink); }
+.welcome-empty .feedback-description { margin:10px auto 22px; font-size:13px; }
+.welcome-empty .btn { min-height:36px; }
+.welcome-tip { margin:24px auto 0; font-size:12px; color:var(--muted); }
+.seven[data-color='dark'] .create-note { color:var(--bg); }
+@media(min-width:901px) {
+  .seven .app { grid-template-columns:var(--tree-width) 4px minmax(0,1fr); }
+  .seven .app.show-list { grid-template-columns:var(--tree-width) 4px var(--list-width) 4px minmax(0,1fr); }
+  .seven .app.show-list .list-pane { display:flex; grid-column:3; }
+  .seven .app.show-list .splitter-list { display:block; grid-column:4; }
+  .seven .app.show-list .reader { grid-column:5; }
+  .seven .list-head { padding:18px 16px 12px; }
+  .seven .list-title-row h2 { min-width:0; font-size:14px; }
+  .seven .list-title-row h2 { flex:1; }
+  .seven .list-title-row .close-list { background:transparent; color:var(--muted); margin-right:5px; }
+  .seven .list-title-row>button { width:28px; height:28px; }
+  .seven .note-item { padding:14px 16px; }
+  .seven .note-item h3 { flex-wrap:wrap; gap:5px 8px; }
+  .seven .note-title { flex:1 1 140px; }
+  .seven .note-item .excerpt { line-height:1.7; }
+  .seven .list-collapsed.show-list .list-pane { display:none; }
+}
+@media(min-width:901px) and (max-width:1100px) {
+  .seven .app.show-list { grid-template-columns:0 0 min(300px,36vw) 4px minmax(0,1fr); }
+  .seven .app.show-list .sidebar,.seven .app.show-list .splitter-tree { display:none; }
+  .seven .app.show-list .reading-area { padding:28px 24px 100px; }
+}
+@media(max-width:900px) {
+  .seven .close-list { display:none; }
+  .seven .mobile-nav { gap:20px; height:40px; padding:0 16px; }
+  .seven .mobile-nav button { min-width:44px; min-height:40px; font-size:12px; }
+  .seven .app { display:block; height:calc(100dvh - 88px); }
+  .seven .app .sidebar,.seven .app .list-pane,.seven .app .reader { display:none; }
+  .seven .app[data-view='tree'] .sidebar { display:flex; height:100%; width:100%; }
+  .seven .app[data-view='list'] .list-pane { display:flex; height:100%; width:100%; }
+  .seven .app[data-view='reader'] .reader { display:flex; height:100%; width:100%; }
+  .seven .reading-area { padding:28px 24px 100px; }
+  .seven .sidebar { padding:16px 12px 0; }
+  .seven .sidebar-entry { grid-template-columns:1fr 1fr; }
+  .seven .sidebar-entry button { min-height:42px; }
+  .seven .tree-more { opacity:1; min-width:36px; min-height:36px; }
+  .seven .tree-file,.seven .tree-row { min-height:42px; }
+  .seven .directory-actions .icon-btn { width:36px; height:36px; }
+  .seven .list-head { padding:16px; }
+  .seven .list-search input { min-height:38px; }
+  .seven .list-title-row>.icon-btn { width:36px; height:36px; }
+}
+@media(max-width:620px) {
+  .seven header { padding:0 12px; gap:10px; }
+  .seven .brand { font-size:13px; gap:7px; }
+  .seven .global-search { margin-left:auto; min-width:0; }
+  .seven .global-search input { height:34px; }
+  .seven .reader-toolbar { min-height:48px; padding:6px 12px; }
+  .seven .reading-area { padding:24px 20px 110px; }
+  .seven .info-rail.expanded { top:54px; right:12px; max-width:calc(100% - 24px); }
+  .seven .sidebar-hint { padding-bottom:calc(14px + env(safe-area-inset-bottom)); }
+}
+@media(hover:none) { .seven .tree-more { opacity:1; } }
+.seven.focus-mode .app { grid-template-columns:minmax(0,1fr); height:100dvh; }
+.seven.focus-mode .app .sidebar,.seven.focus-mode .app .list-pane,.seven.focus-mode .app .pane-splitter { display:none; }
+.seven.focus-mode .app .reader { display:flex; grid-column:1; }
+
+/* Overview dashboard: sidebar entry plus overview pane switching. */
+.seven .nav-overview { display:flex; align-items:center; gap:9px; width:100%; min-height:38px; margin-bottom:8px; padding:8px 12px; border-radius:6px; font-size:13px; font-weight:600; text-align:left; color:var(--muted); }
+.seven .nav-overview svg { width:16px; height:16px; flex-shrink:0; }
+.seven .nav-overview:hover { background:var(--soft); color:var(--ink); }
+.seven .nav-overview.active { background:var(--blue-bg); color:var(--blue); }
+.seven .nav-overview .count { margin-left:auto; font-size:11px; font-weight:400; font-variant-numeric:tabular-nums; }
+@media(max-width:900px) {
+  .seven .app[data-view='overview'] .reader { display:flex; height:100%; width:100%; }
+  .seven .nav-overview { min-height:42px; }
+}
+
+/* 顶栏全局搜索：图标与快捷键提示垂直居中。 */
+.seven .global-search svg { top:50%; transform:translateY(-50%); }
+.seven .global-search kbd { top:50%; transform:translateY(-50%); }
+
+/* 阅读目录（无框融入）：去掉卡片装饰，与正文共用灰阶，当前小节蓝色指示条。
+ * 保持 sticky + 内部独立滚动；选择器需与 .info-rail.expanded 同级，否则会被其全局 absolute 规则压制。 */
+@media(min-width:1101px){
+  .seven .info-rail,
+  .seven .info-rail.expanded { position:sticky; top:24px; right:auto; width:210px; max-height:calc(100dvh - 160px); overflow:auto; overscroll-behavior:contain; margin:0; padding:4px 0 8px; background:transparent; border:0; border-radius:0; box-shadow:none; scrollbar-width:none; }
+  .seven .info-rail::-webkit-scrollbar,
+  .seven .info-rail.expanded::-webkit-scrollbar { display:none; }
+  .seven .rail-title,
+  .seven .info-rail.expanded .rail-title { margin:0 0 10px 14px; font-weight:600; font-size:11px; letter-spacing:.18em; }
+  .seven .toc,
+  .seven .info-rail.expanded .toc { border-left:0; padding-left:0; flex-direction:column; gap:1px; margin:0; }
+  .seven .toc button,
+  .seven .info-rail.expanded .toc button { padding:5px 10px 5px 12px; border-left:2px solid transparent; border-radius:0 5px 5px 0; font-size:12px; line-height:1.7; text-align:left; color:var(--muted); transition:color .15s,border-color .15s,background .15s; }
+  .seven .toc button:first-child { color:var(--muted); }
+  .seven .toc button:hover,
+  .seven .info-rail.expanded .toc button:hover { color:var(--ink); background:var(--soft); }
+  .seven .toc button.on,
+  .seven .info-rail.expanded .toc button.on { color:var(--blue); font-weight:600; border-left-color:var(--blue); background:linear-gradient(90deg,var(--blue-bg),transparent); }
+  .seven .toc button.nested,
+  .seven .info-rail.expanded .toc button.nested { padding-left:26px; font-size:11.5px; }
+}
+/* 窄屏切换出的目录悬浮层同样不连带正文滚动。 */
+.seven .info-rail.expanded { overscroll-behavior:contain; }

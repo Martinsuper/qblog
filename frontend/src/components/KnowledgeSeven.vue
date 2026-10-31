@@ -12,9 +12,9 @@
       <router-link
         class="brand"
         to="/"
-        aria-label="知识库首页"
+        aria-label="书山有路，返回知识库首页"
       >
-        <span class="brand-mark">Q</span>QBlog
+        <span class="brand-mark"><KnowledgeIcon name="book" /></span><span>书山有路</span>
       </router-link>
       <label class="global-search"><span><KnowledgeIcon name="search" /></span><input
         ref="globalInput"
@@ -23,7 +23,12 @@
         placeholder="搜索整个知识库…"
         aria-label="全文搜索整个知识库"
         @input="$emit('search', $event.target.value)"
-      ><kbd>/</kbd></label>
+      ><button
+        v-if="search"
+        class="search-clear"
+        aria-label="清除全文搜索"
+        @click="$emit('search', '')"
+      ><KnowledgeIcon name="x" /></button><kbd v-else>/</kbd></label>
       <div
         class="header-right"
         @click.stop
@@ -71,6 +76,7 @@
         v-for="(label, view) in viewLabels"
         :key="view"
         :class="{ active: mobileView === view }"
+        :aria-current="mobileView === view ? 'page' : undefined"
         @click="$emit('view', view)"
       >
         {{ label }}
@@ -79,7 +85,7 @@
     <main
       ref="appElement"
       class="app"
-      :class="{ 'tree-collapsed': !paneOpen[0], 'list-collapsed': !paneOpen[1] }"
+      :class="{ 'tree-collapsed': !paneOpen[0], 'list-collapsed': !paneOpen[1], 'show-list': showList }"
       :style="paneStyle"
       :data-view="mobileView"
     >
@@ -87,22 +93,45 @@
         id="knowledge-tree-pane"
         class="sidebar"
         aria-label="知识库导航"
+        @contextmenu.self.prevent="openRootMenu"
       >
-        <div class="section-label">
-          笔记
+        <div class="sidebar-entry">
+          <button
+            class="create-note"
+            @click="$emit('new-note')"
+          >
+            <KnowledgeIcon name="plus" />新建笔记
+          </button>
+          <button
+            class="browse-notes"
+            :class="{ active: showList }"
+            :aria-pressed="showList"
+            @click="browseOpen = !browseOpen; $emit('view', 'list')"
+          >
+            <KnowledgeIcon name="layers" />全部笔记<span>{{ counts.all ?? total }}</span>
+          </button>
         </div>
         <button
-          v-for="item in scopes"
-          :key="item.value"
-          class="nav-row"
-          :class="{ active: scope === item.value }"
-          @click="$emit('scope', item.value)"
+          class="nav-overview"
+          :class="{ active: overviewVisible }"
+          :aria-current="overviewVisible ? 'page' : undefined"
+          @click="$emit('view', 'overview')"
         >
-          <KnowledgeIcon :name="item.icon" />{{ item.label }}<span class="count">{{ counts[item.value] ?? '—' }}</span>
+          <KnowledgeIcon name="dashboard" /><span>总览</span><span class="count">{{ counts.all ?? total }}</span>
         </button>
-        <hr>
-        <div class="section-label">
-          目录 <div class="directory-actions">
+        <div
+          class="section-label"
+          @contextmenu.prevent="openRootMenu"
+        >
+          <span>目录</span><div class="directory-actions">
+            <button
+              class="icon-btn"
+              title="新建目录"
+              aria-label="新建目录"
+              @click="$emit('manage-folder')"
+            >
+              <KnowledgeIcon name="plus" />
+            </button>
             <button
               class="icon-btn"
               title="筛选目录"
@@ -111,14 +140,6 @@
               @click="treeSearchOpen = !treeSearchOpen; treeSearch = ''"
             >
               <KnowledgeIcon name="search" />
-            </button><button
-              class="icon-btn"
-              title="折叠或展开全部目录"
-              aria-label="折叠或展开全部目录"
-              style="width:22px;height:22px"
-              @click="$emit('collapse-all')"
-            >
-              <KnowledgeIcon name="fold" />
             </button>
           </div>
         </div>
@@ -136,51 +157,105 @@
         <nav
           class="folder-tree"
           aria-label="多级知识目录"
+          @contextmenu.self.prevent="openRootMenu"
         >
-          <div
+          <template
             v-for="folder in displayedFolders"
             :key="folder.id"
-            class="tree-row"
-            :class="{ active: String(scope) === String(folder.id), child: folder.depth > 0 }"
-            :style="{ '--depth': folder.depth }"
-            @contextmenu.prevent="openFolderMenu($event, folder)"
           >
-            <button
-              v-if="folder.hasChildren"
-              class="tree-toggle"
-              :class="{ open: !collapsed.has(folder.id) }"
-              :aria-expanded="!collapsed.has(folder.id)"
-              :aria-label="`${collapsed.has(folder.id) ? '展开' : '折叠'}${folder.name}`"
-              @click="$emit('collapse', folder.id)"
+            <div
+              class="tree-row"
+              :class="{ child: folder.depth > 0 }"
+              :style="{ '--depth': folder.depth }"
+              @contextmenu.stop.prevent="openFolderMenu($event, folder)"
             >
-              <KnowledgeIcon name="chevron" />
-            </button><span
-              v-else
-              class="tree-toggle"
-            />
-            <button
-              class="tree-name"
-              @click="$emit('scope', folder.id)"
-            >
-              <KnowledgeIcon name="folder" /><span class="folder-label">{{ folder.name }}</span><span class="count">{{ folder.count }}</span>
-            </button>
-            <button
-              class="tree-manage"
-              title="管理目录"
-              :aria-label="`管理目录 ${folder.name}`"
-              @click="$emit('manage-folder', folder)"
-            >
-              ⋯
-            </button>
+              <button
+                class="tree-toggle"
+                :class="{ open: !collapsed.has(folder.id) }"
+                :aria-expanded="!collapsed.has(folder.id)"
+                :aria-label="`${collapsed.has(folder.id) ? '展开' : '折叠'}${folder.name}`"
+                @click="$emit('collapse', folder.id)"
+              >
+                <KnowledgeIcon name="chevron" />
+              </button>
+              <button
+                class="tree-name"
+                :title="folder.path || folder.name"
+                @click="$emit('collapse', folder.id)"
+              >
+                <KnowledgeIcon name="folder" /><span class="folder-label">{{ folder.name }}</span>
+              </button>
+              <button
+                class="tree-more"
+                :aria-label="`目录操作：${folder.name}`"
+                title="目录操作"
+                @click.stop="openFolderButtonMenu($event, folder)"
+              >
+                ⋯
+              </button>
+            </div>
+            <template v-if="!collapsed.has(folder.id)">
+              <button
+                v-for="note in notesForFolder(folder.id)"
+                :key="note.id"
+                class="tree-file"
+                :title="note.title || '无标题'"
+                :aria-current="active?.id === note.id ? 'page' : undefined"
+                :class="{ selected: active?.id === note.id }"
+                :style="{ '--depth': folder.depth + 1 }"
+                @click="$emit('open-note', note.id)"
+                @contextmenu.stop.prevent="openNoteMenu($event, note)"
+                @keydown.shift.f10.prevent="openKeyboardNoteMenu($event, note)"
+              >
+                <KnowledgeIcon name="file" /><span>{{ note.title || '无标题' }}</span>
+              </button>
+            </template>
+          </template>
+          <div
+            v-if="notesForFolder(null).length"
+            class="tree-root-label"
+            @contextmenu.prevent="openRootMenu"
+          >
+            未分类
           </div>
+          <button
+            v-for="note in notesForFolder(null)"
+            :key="note.id"
+            class="tree-file"
+            :title="note.title || '无标题'"
+            :aria-current="active?.id === note.id ? 'page' : undefined"
+            :class="{ selected: active?.id === note.id }"
+            style="--depth: 0"
+            @click="$emit('open-note', note.id)"
+            @contextmenu.stop.prevent="openNoteMenu($event, note)"
+            @keydown.shift.f10.prevent="openKeyboardNoteMenu($event, note)"
+          >
+            <KnowledgeIcon name="file" /><span>{{ note.title || '无标题' }}</span>
+          </button>
+          <div
+            v-if="loadingList"
+            class="tree-message"
+          >
+            正在加载笔记…
+          </div>
+          <button
+            v-else-if="listError"
+            class="tree-message"
+            @click="$emit('retry-list')"
+          >
+            加载失败，点击重试
+          </button>
+          <p
+            v-if="treeSearch && !displayedFolders.length"
+            class="tree-message"
+            role="status"
+          >
+            没有匹配的目录
+          </p>
         </nav>
-        <button
-          class="new-folder"
-          aria-label="新建目录"
-          @click="$emit('manage-folder')"
-        >
-          <KnowledgeIcon name="plus" />新建目录
-        </button>
+        <div class="sidebar-hint">
+          个人知识库<span>自动保存</span>
+        </div>
       </aside>
       <div
         v-if="paneOpen[0]"
@@ -217,7 +292,20 @@
       >
         <div class="list-head">
           <div class="list-title-row">
-            <h2>{{ scopeTitle }} <span>{{ total }}</span></h2><button
+            <h2>
+              {{ search ? '搜索结果' : scopeTitle }} <span
+                role="status"
+                aria-live="polite"
+              >{{ total }}</span>
+            </h2>
+            <button
+              class="icon-btn close-list"
+              title="关闭笔记列表"
+              aria-label="关闭笔记列表"
+              @click="browseOpen = false; clearFilters(); $emit('view', 'tree')"
+            >
+              <KnowledgeIcon name="x" />
+            </button><button
               class="icon-btn"
               title="新建笔记"
               aria-label="新建笔记"
@@ -229,8 +317,8 @@
           <label class="list-search"><KnowledgeIcon name="search" /><input
             type="search"
             :value="listSearch"
-            placeholder="搜索当前目录…"
-            aria-label="搜索当前笔记列表"
+            placeholder="在当前结果中继续搜索…"
+            aria-label="进一步筛选笔记列表"
             @input="$emit('list-search', $event.target.value)"
           ></label>
           <div class="list-controls">
@@ -351,9 +439,10 @@
           </div>
           <template v-else>
             <button
-              v-for="note in notes"
+              v-for="note in visibleNotes"
               :key="note.id"
               class="note-item"
+              :title="note.title || '无标题'"
               :class="{ selected: active?.id === note.id }"
               :aria-pressed="active?.id === note.id"
               @click="$emit('open-note', note.id)"
@@ -463,8 +552,20 @@
       >
         <div class="reader-toolbar">
           <div class="doc-crumb">
-            {{ active ? folderName(active.folderId) : '知识库' }}
-          </div><template v-if="active">
+            {{ overviewVisible ? '总览 · 队列、分布与最近动态' : active ? folderName(active.folderId) : '知识库' }}
+          </div><button
+            v-if="overviewVisible"
+            class="btn"
+            @click="$emit('view', 'reader')"
+          >
+            <KnowledgeIcon name="book" />返回笔记
+          </button><button
+            v-else
+            class="btn"
+            @click="$emit('view', 'overview')"
+          >
+            <KnowledgeIcon name="dashboard" />总览
+          </button><template v-if="active && !overviewVisible">
             <button
               class="icon-btn"
               :class="{ on: draft.favorite }"
@@ -539,8 +640,19 @@
           ref="readerElement"
           class="reader-scroll"
         >
+          <KnowledgeDashboard
+            v-if="overviewVisible"
+            :loading="overviewLoading"
+            :error="overviewError"
+            :notes="overviewNotes"
+            :folders="folders"
+            :mcp-calls="overviewMcpCalls"
+            @open-note="$emit('open-note', $event)"
+            @filter-tag="onOverviewTag"
+            @retry="$emit('overview-retry')"
+          />
           <div
-            v-if="loadingNote"
+            v-else-if="loadingNote"
             class="empty"
             role="status"
           >
@@ -569,18 +681,28 @@
             </button>
           </div><div
             v-else-if="!active"
-            class="empty"
+            class="empty welcome-empty"
           >
+            <span class="welcome-icon"><KnowledgeIcon name="book" /></span>
             <strong>选择一篇笔记</strong>
             <p class="feedback-description">
-              从列表打开笔记，或新建一篇开始记录。
+              从目录中打开笔记，或写下此刻的新想法。
             </p>
             <button
-              class="btn"
+              class="btn primary"
               @click="$emit('new-note')"
             >
-              新建笔记
+              <KnowledgeIcon name="plus" />新建笔记
             </button>
+            <button
+              class="btn"
+              @click="browseOpen = true; $emit('view', 'list')"
+            >
+              浏览全部笔记
+            </button>
+            <p class="welcome-tip">
+              通过顶部搜索查找标题、正文和标签
+            </p>
           </div>
           <div
             v-else
@@ -670,6 +792,7 @@
               </div>
               <div class="markdown">
                 <KnowledgeEditor
+                  ref="noteEditor"
                   :key="active.id"
                   :model-value="draft.content"
                   quiet-toolbar
@@ -688,13 +811,14 @@
               <div class="rail-title">
                 本文目录
               </div><nav
+                ref="tocElement"
                 class="toc"
                 aria-label="本文目录"
               >
                 <button
                   v-for="(heading, index) in headings"
                   :key="index"
-                  :class="{ nested: heading.level > 2 }"
+                  :class="{ on: activeHeading === index, nested: heading.level > 2 }"
                   @click="scrollToHeading(index)"
                 >
                   {{ heading.text }}
@@ -707,7 +831,7 @@
           </div>
         </div>
         <div
-          v-if="active"
+          v-if="active && !overviewVisible"
           class="doc-end"
         >
           <span
@@ -778,7 +902,7 @@
       ref="contextMenuElement"
       class="context-menu"
       role="menu"
-      :aria-label="contextMenu.type === 'folder' ? `目录操作：${contextMenu.folder.name}` : `笔记操作：${contextMenu.note.title}`"
+      :aria-label="contextMenu.type === 'folder' ? `目录操作：${contextMenu.folder.name}` : contextMenu.type === 'root' ? '目录操作' : `笔记操作：${contextMenu.note.title}`"
       :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
       @keydown="contextMenuKeydown"
       @click.stop
@@ -788,6 +912,12 @@
         <div class="menu-title">
           {{ contextMenu.folder.name }}
         </div>
+        <button
+          role="menuitem"
+          @click="createNoteInFolder(contextMenu.folder.id)"
+        >
+          <KnowledgeIcon name="plus" />新建笔记
+        </button>
         <button
           role="menuitem"
           @click="folderAction('create-child')"
@@ -806,6 +936,20 @@
           @click="folderAction('delete')"
         >
           <KnowledgeIcon name="x" />删除空目录
+        </button>
+      </template>
+      <template v-else-if="contextMenu.type === 'root'">
+        <button
+          role="menuitem"
+          @click="createNoteInFolder(null)"
+        >
+          <KnowledgeIcon name="plus" />新建笔记
+        </button>
+        <button
+          role="menuitem"
+          @click="closeMenu(); $emit('manage-folder')"
+        >
+          <KnowledgeIcon name="folder" />新建目录
         </button>
       </template>
       <template v-else>
@@ -849,18 +993,31 @@ import { readKnowledgeDensity, saveKnowledgeDensity } from '../utils/knowledgeDe
 import { noteListFeedback } from '../utils/knowledgeFeedback'
 import KnowledgeIcon from './KnowledgeIcon.vue'
 import KnowledgeEditor from './KnowledgeEditor.vue'
+import KnowledgeDashboard from './KnowledgeDashboard.vue'
 const props = defineProps({
   color: String, folders: { type: Array, default: () => [] }, flatFolders: { type: Array, default: () => [] },
   allFolders: { type: Array, default: () => [] }, collapsed: { type: Set, default: () => new Set() },
   counts: { type: Object, default: () => ({}) }, notes: { type: Array, default: () => [] },
   scope: [String, Number], scopeTitle: String, search: String, listSearch: String, tag: String, source: String, sort: String,
   active: Object, draft: { type: Object, required: true }, mobileView: String,
-  total: Number, page: Number, pageSize: Number, loadingList: Boolean, listError: Boolean,
-  loadingNote: Boolean, noteError: Boolean, deletingNote: Boolean, saveStatus: String, saveFailed: Boolean, conflicted: Boolean, folderName: Function
+  total: Number, page: Number, pageSize: Number, allNotesLoaded: Boolean, loadingList: Boolean, listError: Boolean,
+  loadingNote: Boolean, noteError: Boolean, deletingNote: Boolean, saveStatus: String, saveFailed: Boolean, conflicted: Boolean, folderName: Function,
+  overviewLoading: Boolean, overviewError: Boolean, overviewNotes: { type: Array, default: () => [] }, overviewMcpCalls: { type: Array, default: () => [] }
 })
-const emit = defineEmits(['appearance', 'logout', 'scope', 'search', 'list-search', 'tag', 'source', 'sort', 'view', 'collapse', 'collapse-all', 'manage-folder', 'folder-action', 'note-action', 'new-note', 'open-note', 'retry-list', 'retry-note', 'dismiss-note-error', 'page', 'favorite', 'move', 'tags', 'dirty', 'save', 'download-draft', 'reload-conflict', 'filter-tag', 'delete', 'reader-element'])
+const emit = defineEmits(['appearance', 'logout', 'scope', 'search', 'list-search', 'tag', 'source', 'sort', 'view', 'collapse', 'collapse-all', 'manage-folder', 'folder-action', 'note-action', 'new-note', 'open-note', 'retry-list', 'retry-note', 'dismiss-note-error', 'page', 'favorite', 'move', 'tags', 'dirty', 'save', 'download-draft', 'reload-conflict', 'filter-tag', 'delete', 'reader-element', 'overview-retry'])
 const treeSearch = ref(''), treeSearchOpen = ref(false), menuOpen = ref(false), recordOpen = ref(false), filtersOpen = ref(false)
 const density = ref('standard')
+const browseOpen = ref(false)
+const noteEditor = ref(null)
+// 供父层 safeLeave 在脏检查前冲刷编辑器防抖中的未上报击键
+defineExpose({ flushPending: () => noteEditor.value?.flushPending?.() })
+const showList = computed(() => browseOpen.value || Boolean(props.search || props.listSearch || props.tag || props.source))
+// 总览视图由 mobileView 统一驱动：桌面端同样生效，打开笔记时 Index 会把它切回 reader。
+const overviewVisible = computed(() => props.mobileView === 'overview')
+// 总览里点标签：切到列表视图展示筛选结果（列表栏在设置筛选后会自动出现）。
+function onOverviewTag(tag) { emit('filter-tag', tag); emit('view', 'list') }
+const visibleNotes = computed(() => props.allNotesLoaded ? props.notes.slice((props.page - 1) * props.pageSize, props.page * props.pageSize) : props.notes)
+watch(() => props.search, value => { if (value) emit('view', 'list') })
 onMounted(() => { try { density.value = readKnowledgeDensity(window.localStorage) } catch { /* Storage access can be blocked. */ } })
 function toggleDensity() {
   density.value = density.value === 'compact' ? 'standard' : 'compact'
@@ -900,11 +1057,18 @@ function contextMenuKeydown(event) {
 }
 let menuTrigger = null
 // 右键菜单锚定鼠标位置，并向视口内收拢避免被裁剪；点击空白处 / Esc / 滚轮 / 窗口失焦都会关闭。
+function openFolderButtonMenu(event, folder) {
+  const rect = event.currentTarget.getBoundingClientRect()
+  showMenu({ clientX: rect.right, clientY: rect.bottom }, { type: 'folder', folder })
+  nextTick(() => contextMenuElement.value?.querySelector('button')?.focus())
+}
 function openFolderMenu(event, folder) { showMenu(event, { type: 'folder', folder }) }
 function openNoteMenu(event, note) { showMenu(event, { type: 'note', note }) }
+function openRootMenu(event) { showMenu(event, { type: 'root' }) }
+function createNoteInFolder(folderId) { closeMenu(); emit('new-note', folderId) }
 function showMenu(event, base) {
   menuTrigger = document.activeElement
-  const width = 172, height = base.type === 'folder' ? 130 : 160
+  const width = 172, height = base.type === 'folder' ? 170 : base.type === 'root' ? 90 : 160
   const x = Math.max(8, Math.min(event.clientX, window.innerWidth - width - 8))
   const y = Math.max(8, Math.min(event.clientY, window.innerHeight - height - 8))
   contextMenu.value = { ...base, x, y }
@@ -913,11 +1077,12 @@ function folderAction(action) { const menu = contextMenu.value; closeMenu(); if 
 function noteAction(action) { const menu = contextMenu.value; closeMenu(); if (menu?.note) emit('note-action', { action, note: menu.note }) }
 function closeMenu() { contextMenu.value = null }
 const focusMode = ref(false), nativeFullscreen = ref(false)
-const appElement = ref(null), readerPanel = ref(null), paneOpen = ref([true, true]), paneWidths = ref([190, 330]), appWidth = ref(1000)
-const layout = computed(() => paneLayout(appWidth.value, paneWidths.value, paneOpen.value))
+const appElement = ref(null), readerPanel = ref(null), paneOpen = ref([true, true]), paneWidths = ref([240, 300]), appWidth = ref(1000)
+const effectivePaneOpen = computed(() => [paneOpen.value[0], showList.value && paneOpen.value[1]])
+const layout = computed(() => paneLayout(appWidth.value, paneWidths.value, effectivePaneOpen.value))
 const paneStyle = computed(() => ({ '--tree-width': `${layout.value.widths[0]}px`, '--list-width': `${layout.value.widths[1]}px` }))
-const paneMax = index => Math.round(paneResizeLimit(index, appWidth.value, paneOpen.value, layout.value.widths))
-function resizePane(index, value) { const next = [...paneWidths.value]; next[index] = clampPaneWidth(index, value, appWidth.value, paneOpen.value, layout.value.widths); paneWidths.value = next }
+const paneMax = index => Math.round(paneResizeLimit(index, appWidth.value, effectivePaneOpen.value, layout.value.widths))
+function resizePane(index, value) { const next = [...paneWidths.value]; next[index] = clampPaneWidth(index, value, appWidth.value, effectivePaneOpen.value, layout.value.widths); paneWidths.value = next }
 function togglePane(index) { const next = [...paneOpen.value]; next[index] = !next[index]; paneOpen.value = next }
 let drag = null, appObserver
 function startResize(event, index) { if (event.button !== 0) return; drag = { index, id: event.pointerId, x: event.clientX, width: layout.value.widths[index] }; event.currentTarget.setPointerCapture(event.pointerId); event.preventDefault() }
@@ -926,9 +1091,10 @@ function endResize(event) { if (drag?.id === event.pointerId) drag = null }
 function resizeKey(event, index) { const step = event.shiftKey ? 40 : 10; const current = layout.value.widths[index]; let value; if (event.key === 'ArrowLeft') value = current - step; else if (event.key === 'ArrowRight') value = current + step; else if (event.key === 'Home') value = PANE_LIMITS[index].min; else if (event.key === 'End') value = Infinity; else return; event.preventDefault(); resizePane(index, value) }
 onMounted(() => { appObserver = new ResizeObserver(entries => { appWidth.value = entries[0].contentRect.width }); appObserver.observe(appElement.value) })
 let ownFullscreenExit = false
-const infoOpen = ref(true), readerElement = ref(null), titleElement = ref(null), globalInput = ref(null), headings = ref([])
-const scopes = [{ value: 'all', label: '全部笔记', icon: 'layers' }, { value: 'inbox', label: '收件箱', icon: 'inbox' }, { value: 'favorites', label: '我的收藏', icon: 'star' }]
-const viewLabels = { tree: '目录', list: '笔记列表', reader: '正文阅读' }
+// 阅读目录默认在宽屏展开（右侧悬浮卡片）；窄屏维持收起，由工具栏按钮唤起悬浮层。
+const infoOpen = ref(globalThis.matchMedia?.('(min-width: 1101px)').matches ?? false), readerElement = ref(null), titleElement = ref(null), globalInput = ref(null), headings = ref([]), tocElement = ref(null), activeHeading = ref(0)
+const viewLabels = { overview: '总览', tree: '目录', list: '笔记', reader: '正文阅读' }
+const notesForFolder = id => props.notes.filter(note => String(note.folderId ?? '') === String(id ?? ''))
 const displayedFolders = computed(() => {
   const term = treeSearch.value.trim().toLowerCase()
   if (!term) return props.flatFolders
@@ -944,6 +1110,46 @@ function resizeTitle() { if (titleElement.value) { titleElement.value.style.heig
 function titleInput(event) { props.draft.title = event.target.value; resizeTitle(); emit('dirty') }
 function contentInput(value) { props.draft.content = value; emit('dirty') }
 function scrollToHeading(index) { readerElement.value?.querySelectorAll('.tiptap h1, .tiptap h2, .tiptap h3')[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+// 滚动跟随（scrollspy）：定位当前小节，目录高亮并滚入可视区；目录过长时只滚目录自身。
+// 对全部标题做 getBoundingClientRect 属于 O(n) 布局读，rAF 合并连续 scroll 事件，每帧最多算一次。
+let spyScheduled = false
+// 找出 el 的最近可滚祖先（桌面端为展开后的 .info-rail；其他布局逐级向上查找）
+function scrollableParentOf(el) {
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    if (typeof node.scrollWidth !== 'number') break
+    if (node.scrollHeight > node.clientHeight && /(auto|scroll)/.test(getComputedStyle(node).overflowY)) return node
+  }
+  return null
+}
+function spyActiveHeading() {
+  if (spyScheduled) return
+  spyScheduled = true
+  requestAnimationFrame(() => {
+    spyScheduled = false
+    const container = readerElement.value
+    if (!container || !headings.value.length) return
+    const nodes = container.querySelectorAll('.tiptap h1, .tiptap h2, .tiptap h3')
+    const top = container.getBoundingClientRect().top
+    let active = 0
+    nodes.forEach((node, index) => { if (node.getBoundingClientRect().top < top + 96) active = index })
+    if (active !== activeHeading.value) {
+      activeHeading.value = active
+      // 不能用 scrollIntoView：目录按钮嵌在 .info-rail 内，而它又是 .reader-scroll 的子元素，
+      // scrollIntoView 会把正文滚动容器一并卷入，取消平滑滚动导致跳转错位
+      const nav = tocElement.value
+      const el = nav?.children[active]
+      if (nav && el) {
+        const scroller = scrollableParentOf(el)
+        if (scroller) {
+          const box = el.getBoundingClientRect()
+          const view = scroller.getBoundingClientRect()
+          if (box.top < view.top) scroller.scrollTop += Math.ceil(box.top - view.top)
+          else if (box.bottom > view.bottom) scroller.scrollTop += Math.ceil(box.bottom - view.bottom)
+        }
+      }
+    }
+  })
+}
 function toggleInfo() { infoOpen.value = !infoOpen.value }
 function requestNativeFullscreen() { try { document.documentElement.requestFullscreen?.()?.catch(() => {}) } catch { /* 请求被拒绝或环境不支持时，仅保留隐藏界面的专注态 */ } }
 function toggleFocusMode() { focusMode.value = true; requestNativeFullscreen() }
@@ -964,12 +1170,17 @@ function handleFullscreenChange() {
 }
 window.addEventListener('keydown', handleFocusShortcut)
 window.addEventListener('fullscreenchange', handleFullscreenChange)
-function focusSearchShortcut(event) { if (event.key === '/' && !event.target.closest('input,textarea,select,button,[role=dialog],[contenteditable=true]')) { event.preventDefault(); globalInput.value?.focus() } if (event.key === 'Escape') { menuOpen.value = false; closeMenu() } }
+function focusSearchShortcut(event) { if (event.key === '/' && !event.target.closest('input,textarea,select,button,[role=dialog],[contenteditable=true]')) { event.preventDefault(); globalInput.value?.focus() } if (event.key === 'Escape') { menuOpen.value = false; infoOpen.value = false; closeMenu() } }
 window.addEventListener('scroll', closeMenu, true)
 window.addEventListener('blur', closeMenu)
-watch(readerElement, element => emit('reader-element', element), { immediate: true })
+watch(readerElement, (element, previous) => {
+  emit('reader-element', element)
+  previous?.removeEventListener('scroll', spyActiveHeading)
+  element?.addEventListener('scroll', spyActiveHeading, { passive: true })
+}, { immediate: true })
+watch(headings, () => nextTick(spyActiveHeading))
 watch(() => [props.active?.id, props.draft.title, props.loadingNote], () => nextTick(resizeTitle), { immediate: true })
-watch(() => props.active?.id, () => { headings.value = []; recordOpen.value = false })
+watch(() => props.active?.id, () => { headings.value = []; activeHeading.value = 0; recordOpen.value = false })
 let titleObserver
 watch(titleElement, element => {
   titleObserver?.disconnect()
@@ -984,6 +1195,7 @@ watch(titleElement, element => {
 onBeforeUnmount(() => {
   appObserver?.disconnect()
   titleObserver?.disconnect()
+  readerElement.value?.removeEventListener('scroll', spyActiveHeading)
   window.removeEventListener('scroll', closeMenu, true)
   window.removeEventListener('blur', closeMenu)
   window.removeEventListener('keydown', handleFocusShortcut)
@@ -999,8 +1211,6 @@ onBeforeUnmount(() => {
 .workspace-name { color:#7a899e; }
 .header-right { position:relative; }
 .reader-toolbar .delete-note { color:#b34b55; }
-.new-folder { border:1px dashed var(--line); border-radius:5px; }
-@media(hover:none) { .tree-manage { opacity:1; } }
 .context-menu { position:fixed; z-index:60; width:172px; padding:5px; background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:0 10px 28px #20334b26; }
 .context-menu .menu-title { padding:6px 10px 5px; border-bottom:1px solid var(--line); margin-bottom:4px; color:var(--muted); font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .context-menu :is(button,a) { display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:8px 10px; color:var(--ink); font-size:12px; border-radius:5px; }
@@ -1015,9 +1225,6 @@ onBeforeUnmount(() => {
 .folder-label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .tree-row { padding-left:calc(var(--depth) * 18px); position:relative; }
 .tree-row.child::before { content:''; position:absolute; top:0; bottom:0; left:calc(var(--depth) * 18px - 3px); border-left:1px solid #dfe5ed; }
-.tree-manage { position:absolute; right:23px; opacity:0; background:var(--soft); border-radius:3px; }
-.tree-row:hover .tree-manage,.tree-row:focus-within .tree-manage { opacity:1; }
-.new-folder { display:flex; align-items:center; gap:7px; padding:8px 10px; margin-top:6px; color:var(--muted); font-size:11px; }
 .about-link { padding:5px 0; color:#6e85a2; font-size:10px; }
 .note-star { color:#b29970; font-size:11px; }
 .sort-button { font-size:10px; padding:2px; border-radius:3px; }

@@ -206,10 +206,11 @@ const fetchArticle = async () => {
   article.value = null
   relatedArticles.value = []
   try {
+    // 相关文章与正文互不依赖，并行请求（失败由 fetchRelatedArticles 自行兜底）
+    fetchRelatedArticles(id, isCurrent)
     const res = await getArticleDetail(id)
     if (!isCurrent()) return
     article.value = res.data
-    fetchRelatedArticles(id, isCurrent)
   } catch (error) {
     if (!isCurrent()) return
     // 失败提示由 axios 拦截器统一弹出
